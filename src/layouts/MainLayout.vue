@@ -1,6 +1,6 @@
 <script setup>
-import Navbar from '@/components/common/Navbar.vue'
-import Footer from '@/components/common/Footer.vue'
+import Navbar from '@/components/navigation/Navbar.vue'
+import Footer from '@/components/navigation/Footer.vue'
 </script>
 
 <template>
@@ -14,15 +14,3 @@ import Footer from '@/components/common/Footer.vue'
     <Footer> </Footer>
   </div>
 </template>
-
-<style scoped>
-.layout {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.content {
-  flex: 1;
-}
-</style>

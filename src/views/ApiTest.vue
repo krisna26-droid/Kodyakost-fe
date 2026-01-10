@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import api from '@/services/api'
+import api from '@/api/Axios'
 
 const rawResponse = ref(null)
 const error = ref(null)

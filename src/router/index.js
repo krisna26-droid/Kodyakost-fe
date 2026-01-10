@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
-import HomeView from '../views/HomeView.vue'
+// Perhatikan: path HomeView berubah karena file sudah dipindah ke folder 'public'
+import HomeView from '../views/public/HomeView.vue'
 import ApiTest from '../views/ApiTest.vue'
 
 const router = createRouter({
@@ -25,6 +26,7 @@ const router = createRouter({
     {
       path: '/about',
       name: 'about',
+      // Tetap seperti kode asli Anda (lazy load)
       component: () => import('../views/AboutView.vue'),
     }
   ],
