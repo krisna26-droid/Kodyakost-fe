@@ -1,27 +1,31 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import MainLayout from '../layouts/MainLayout.vue'
 import HomeView from '../views/HomeView.vue'
-import ApiTest from '@/views/Apitest.vue'
+import ApiTest from '../views/ApiTest.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: HomeView,
+      component: MainLayout,
+      children: [
+        {
+          path: '',
+          name: 'home',
+          component: HomeView,
+        },
+        {
+          path: 'api-test',
+          name: 'api-test',
+          component: ApiTest,
+        }
+      ],
     },
     {
       path: '/about',
       name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
       component: () => import('../views/AboutView.vue'),
-    },
-    {
-      path: '/api-test',
-      name: 'apitest',
-      component: ApiTest,
     }
   ],
 })
