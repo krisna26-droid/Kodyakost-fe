@@ -1,60 +1,5 @@
-<script setup>
-import { ref, onMounted } from 'vue';
-import { Icon } from '@iconify/vue';
-
-// 1. Import Service Data
-import kostService from '@/services/kostService';
-
-// 2. Import Components sesuai struktur folder
-import Navbar from '@/components/navigation/Navbar.vue'; // Asumsi nama file Navbar.vue
-import FooterSection from '@/components/navigation/Footer.vue';
-import KostCard from '@/components/common/KostCard.vue';
-
-// State Management
-const properties = ref([]);
-const isLoading = ref(true);
-
-// Static Data untuk "Why Choose Us"
-const features = [
-  { 
-    title: 'Verified Properties', 
-    desc: 'All listings are verified and inspected for quality and safety standards.', 
-    icon: 'mdi:shield-check-outline' 
-  },
-  { 
-    title: 'Prime Locations', 
-    desc: 'Strategically located near office areas, campuses, and hangouts.', 
-    icon: 'mdi:map-marker-radius-outline' 
-  },
-  { 
-    title: 'Instant Booking', 
-    desc: 'Secure your room instantly without the hassle of waiting for approval.', 
-    icon: 'mdi:clock-fast' 
-  },
-  { 
-    title: 'Trusted Community', 
-    desc: 'Join a community of trusted residents and verified landlords.', 
-    icon: 'mdi:thumb-up-outline' 
-  },
-];
-
-// Fetch Data saat Component Mounted
-onMounted(async () => {
-  try {
-    const data = await kostService.getFeaturedKost();
-    properties.value = data;
-  } catch (error) {
-    console.error("Gagal mengambil data kost:", error);
-  } finally {
-    isLoading.value = false;
-  }
-});
-</script>
-
 <template>
   <div class="home-view">
-    
-    <Navbar />
 
     <header class="hero-section">
       <div class="hero-overlay"></div> 
@@ -110,11 +55,57 @@ onMounted(async () => {
         </div>
       </div>
     </section>
-
-    <FooterSection />
     
   </div>
 </template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import { Icon } from '@iconify/vue';
+
+import kostService from '@/services/kostService';
+import KostCard from '@/components/common/KostCard.vue';
+
+// State Management
+const properties = ref([]);
+const isLoading = ref(true);
+
+// Static Data untuk "Why Choose Us"
+const features = [
+  { 
+    title: 'Verified Properties', 
+    desc: 'All listings are verified and inspected for quality and safety standards.', 
+    icon: 'mdi:shield-check-outline' 
+  },
+  { 
+    title: 'Prime Locations', 
+    desc: 'Strategically located near office areas, campuses, and hangouts.', 
+    icon: 'mdi:map-marker-radius-outline' 
+  },
+  { 
+    title: 'Instant Booking', 
+    desc: 'Secure your room instantly without the hassle of waiting for approval.', 
+    icon: 'mdi:clock-fast' 
+  },
+  { 
+    title: 'Trusted Community', 
+    desc: 'Join a community of trusted residents and verified landlords.', 
+    icon: 'mdi:thumb-up-outline' 
+  },
+];
+
+// Fetch Data saat Component Mounted
+onMounted(async () => {
+  try {
+    const data = await kostService.getFeaturedKost();
+    properties.value = data;
+  } catch (error) {
+    console.error("Gagal mengambil data kost:", error);
+  } finally {
+    isLoading.value = false;
+  }
+});
+</script>
 
 <style scoped>
 /* --- VARIABLES --- */
