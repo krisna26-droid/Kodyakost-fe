@@ -27,7 +27,7 @@ const supportLinks = ref([
         
         <div class="footer-col brand-col">
           <div class="logo-wrapper">
-             <img src="@/assets/images/kodyakost-logo.png" alt="KodyaKost" class="logo-img" />
+             <img src="@/assets/images/kodyakost-logo-putih.png" alt="KodyaKost" class="logo-img" />
           </div>
           <p class="description">
             Your trusted partner for finding the perfect boarding house in Bali

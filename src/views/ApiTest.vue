@@ -32,3 +32,12 @@ onMounted(async () => {
     <p v-else>⏳ Loading...</p>
   </div>
 </template>
+
+<style scoped>
+div {
+  font-family: 'Courier New', Courier, monospace;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  color: #333;
+}
+</style>

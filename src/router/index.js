@@ -3,6 +3,7 @@ import MainLayout from '../layouts/MainLayout.vue'
 // Perhatikan: path HomeView berubah karena file sudah dipindah ke folder 'public'
 import HomeView from '../views/public/HomeView.vue'
 import ApiTest from '../views/ApiTest.vue'
+import LoginView from '../views/auth/LoginView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,10 +27,15 @@ const router = createRouter({
     {
       path: '/about',
       name: 'about',
-      // Tetap seperti kode asli Anda (lazy load)
       component: () => import('../views/AboutView.vue'),
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: LoginView,
     }
   ],
+  
 })
 
 export default router
