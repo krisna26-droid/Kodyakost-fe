@@ -78,26 +78,26 @@ const hasFacility = (fac) => {
 <style scoped>
 .kost-card {
   background: white;
-  border-radius: 16px;
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  border: none;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   display: flex;
   flex-direction: column;
 }
 
 .kost-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
 }
 
 /* Bagian Gambar */
 .card-image {
   position: relative;
-  height: 220px;
+  height: 240px;
   width: 100%;
-  background-color: #eee;
+  background-color: #f5f5f5;
 }
 
 .card-image img {
@@ -108,15 +108,15 @@ const hasFacility = (fac) => {
 
 .price-tag {
   position: absolute;
-  top: 15px;
-  right: 15px;
+  top: 16px;
+  right: 16px;
   background: white;
-  color: #fca311; /* Oranye */
-  padding: 6px 14px;
-  border-radius: 20px;
+  color: #ff6b35;
+  padding: 8px 16px;
+  border-radius: 25px;
   font-weight: 700;
-  font-size: 0.85rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  font-size: 0.9rem;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
 }
 
 /* Bagian Detail */
@@ -135,24 +135,28 @@ const hasFacility = (fac) => {
 }
 
 .title {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  color: #1f3a52; /* Biru Gelap */
+  color: #2d3748;
   margin: 0;
   line-height: 1.3;
+  flex: 1;
+  padding-right: 10px;
 }
 
 .rating {
   display: flex;
   align-items: center;
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: #333;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #2d3748;
+  flex-shrink: 0;
 }
 
 .star-icon {
-  color: #fca311;
+  color: #fbbf24;
   margin-right: 4px;
+  font-size: 1.1rem;
 }
 
 .location-row {
@@ -170,7 +174,7 @@ const hasFacility = (fac) => {
 
 .review-row {
   font-size: 0.8rem;
-  color: #9ca3af; /* Abu-abu terang */
+  color: #9ca3af;
   margin-bottom: 15px;
 }
 
@@ -178,10 +182,10 @@ const hasFacility = (fac) => {
 .facilities-row {
   border-top: 1px solid #f3f4f6;
   padding-top: 15px;
-  margin-top: auto; /* Push ke bawah jika card tinggi beda */
+  margin-top: auto;
   display: flex;
   gap: 15px;
-  color: #fca311;
+  color: #ff6b35;
 }
 
 .fac-item {

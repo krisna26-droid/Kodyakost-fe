@@ -32,7 +32,7 @@
         </div>
 
         <div class="action-wrapper">
-          <button class="btn-primary">View All Properties</button>
+          <button class="btn-primary" @click="goToAllProperties">View All Properties</button>
         </div>
       </div>
     </section>
@@ -61,10 +61,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 
 import kostService from '@/services/kostService';
 import KostCard from '@/components/common/KostCard.vue';
+
+const router = useRouter();
 
 // State Management
 const properties = ref([]);
@@ -94,6 +97,11 @@ const features = [
   },
 ];
 
+// Methods
+const goToAllProperties = () => {
+  router.push('/properties');
+};
+
 // Fetch Data saat Component Mounted
 onMounted(async () => {
   try {
@@ -108,37 +116,34 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* --- VARIABLES --- */
-:root {
-  --primary-blue: #1f3a52;
-  --accent-orange: #fca311;
-  --bg-light-blue: #f0f8ff; 
-  --text-gray: #6b7280;
-}
-
 /* --- GENERAL --- */
 .home-view {
   font-family: 'Poppins', sans-serif;
   color: #333;
 }
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
 }
+
 .section {
-  padding: 80px 0; /* Padding lebih besar sesuai desain modern */
+  padding: 80px 0;
 }
+
 .section-header {
   text-align: center;
   margin-bottom: 50px;
 }
+
 .section-header h2 {
   font-size: 2rem;
   color: #1f3a52;
   margin-bottom: 10px;
   font-weight: 700;
 }
+
 .section-header p {
   color: #6b7280;
   font-size: 1rem;
@@ -146,21 +151,22 @@ onMounted(async () => {
 
 /* --- HERO SECTION --- */
 .hero-section {
-  /* Gambar background interior sesuai desain */
-  background-image: url('https://images.unsplash.com/photo-1522771753035-4a5047867269?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80');
+  background-image: url('@/assets/images/BANNER.png');
   background-size: cover;
   background-position: center;
-  height: 600px; /* Tinggi disesuaikan */
+  height: 600px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Overlay opsional untuk kontras */
 .hero-overlay {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.1);
 }
 
@@ -172,14 +178,13 @@ onMounted(async () => {
   justify-content: center;
 }
 
-/* Kotak Putih di tengah Hero */
 .hero-card {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.512);
   padding: 50px 80px;
   border-radius: 20px;
   text-align: center;
   max-width: 800px;
-  box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(5px);
 }
 
@@ -192,7 +197,7 @@ onMounted(async () => {
 }
 
 .highlight {
-  color: #fca311; /* Warna Oranye pada "Kost in Bali" */
+  color: #fca311;
 }
 
 .hero-card p {
@@ -201,10 +206,14 @@ onMounted(async () => {
   font-weight: 400;
 }
 
-/* --- PROPERTY GRID --- */
+/* --- FEATURED SECTION --- */
+.featured-section {
+  background-color: #ffffff;
+}
+
 .property-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* 3 Kolom */
+  grid-template-columns: repeat(3, 1fr);
   gap: 30px;
   margin-bottom: 50px;
 }
@@ -232,14 +241,14 @@ onMounted(async () => {
   box-shadow: 0 5px 15px rgba(31, 58, 82, 0.3);
 }
 
-/* --- WHY CHOOSE US --- */
+/* --- WHY CHOOSE SECTION --- */
 .why-choose-section {
-  background-color: #f0fbfb; /* Warna background mint/biru sangat muda */
+  background-color: #f0fbfb;
 }
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* 4 Kolom */
+  grid-template-columns: repeat(4, 1fr);
   gap: 30px;
 }
 
@@ -248,12 +257,13 @@ onMounted(async () => {
   padding: 40px 25px;
   border-radius: 16px;
   text-align: center;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.03);
-  transition: transform 0.3s ease;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.03);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .feature-item:hover {
   transform: translateY(-10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 .icon-circle {
@@ -286,31 +296,85 @@ onMounted(async () => {
   line-height: 1.6;
 }
 
-/* --- LOADING --- */
+/* --- LOADING STATE --- */
 .loading-state {
   text-align: center;
   padding: 50px;
   font-size: 1.2rem;
   color: #999;
 }
+
 .spin {
   animation: spin 1s linear infinite;
 }
-@keyframes spin { 100% { transform: rotate(360deg); } }
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
 
 /* --- RESPONSIVE --- */
 @media (max-width: 992px) {
-  .hero-card h1 { font-size: 2.5rem; }
-  .property-grid { grid-template-columns: repeat(2, 1fr); }
-  .features-grid { grid-template-columns: repeat(2, 1fr); }
+  .hero-card {
+    padding: 40px 60px;
+  }
+  
+  .hero-card h1 {
+    font-size: 2.5rem;
+  }
+  
+  .property-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
-  .hero-section { height: 500px; }
-  .hero-card { padding: 30px; margin: 0 15px; }
-  .hero-card h1 { font-size: 2rem; }
+  .hero-section {
+    height: 500px;
+  }
   
-  .property-grid { grid-template-columns: 1fr; }
-  .features-grid { grid-template-columns: 1fr; }
+  .hero-card {
+    padding: 30px 40px;
+    margin: 0 15px;
+  }
+  
+  .hero-card h1 {
+    font-size: 2rem;
+  }
+  
+  .hero-card p {
+    font-size: 1rem;
+  }
+  
+  .property-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .section {
+    padding: 60px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-card {
+    padding: 25px 30px;
+  }
+  
+  .hero-card h1 {
+    font-size: 1.75rem;
+  }
+  
+  .section-header h2 {
+    font-size: 1.75rem;
+  }
 }
 </style>

@@ -7,9 +7,9 @@ const isLoggedIn = ref(false)
 // Data Menu Navigasi
 const menuItems = [
   { name: 'Home', link: '#' },
-  { name: 'Pusat Bantuan', link: '#' },
-  { name: 'Syarat dan Ketentuan', link: '#' },
-  { name: 'Tentang Kami', link: '#' }
+  { name: 'Help Center', link: '#' },
+  { name: 'Terms and Conditions', link: '#' },
+  { name: 'About Us', link: '#' }
 ]
 
 // Fungsi toggle untuk demo (bisa dihapus nanti)
@@ -46,7 +46,7 @@ const toggleAuth = () => {
         <div class="separator"></div>
 
         <div v-if="!isLoggedIn" class="auth-action">
-          <button class="btn-login" @click="toggleAuth">Masuk</button>
+          <button class="btn-login" @click="toggleAuth">Sign In</button>
         </div>
 
         <div v-else class="user-action">
@@ -176,7 +176,8 @@ const toggleAuth = () => {
 }
 
 .btn-login:hover {
-  background-color: #f8fafc;
+  background-color: #0f172a;
+  color: white;
 }
 
 /* State: Sudah Login */
