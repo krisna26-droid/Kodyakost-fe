@@ -1,7 +1,6 @@
 <template>
   <div class="signup-container">
     
-    <!-- Left Image Section -->
     <div class="image-section">
       <div class="overlay"></div>
       <img 
@@ -10,22 +9,37 @@
       />
     </div>
 
-    <!-- Right Form Section -->
     <div class="form-section">
       <div class="form-wrapper">
         
-        <!-- Header -->
         <div class="header">
           <h1>Sign Up</h1>
           <p>Register your identity to continue</p>
         </div>
 
-        <!-- Form Card -->
         <div class="form-card">
           
+          <div class="role-switcher">
+            <button 
+              type="button"
+              class="role-btn" 
+              :class="{ active: role === 'tenant' }"
+              @click="role = 'tenant'"
+            >
+              Pencari Kost
+            </button>
+            <button 
+              type="button"
+              class="role-btn" 
+              :class="{ active: role === 'owner' }"
+              @click="role = 'owner'"
+            >
+              Pemilik Kost
+            </button>
+          </div>
+
           <form @submit.prevent="handleSignUp">
             
-            <!-- Full Name Input -->
             <div class="input-group">
               <label>Full Name <span class="required">*</span></label>
               <input 
@@ -33,10 +47,10 @@
                 type="text" 
                 placeholder="Enter your full name here"
                 required
+                :disabled="authStore.loading"
               />
             </div>
 
-            <!-- Phone Number Input -->
             <div class="input-group">
               <label>Phone Number <span class="required">*</span></label>
               <input 
@@ -44,10 +58,10 @@
                 type="tel" 
                 placeholder="Enter your phone number here"
                 required
+                :disabled="authStore.loading"
               />
             </div>
 
-            <!-- Email Input -->
             <div class="input-group">
               <label>Email <span class="required">*</span></label>
               <input 
@@ -55,10 +69,11 @@
                 type="email" 
                 placeholder="Enter Your Email Here"
                 required
+                autocomplete="email"
+                :disabled="authStore.loading"
               />
             </div>
 
-            <!-- Password Input -->
             <div class="input-group">
               <label>Password <span class="required">*</span></label>
               <div class="password-wrapper">
@@ -67,23 +82,16 @@
                   :type="showPassword ? 'text' : 'password'" 
                   placeholder="Enter Your Password Here"
                   required
+                  autocomplete="new-password"
+                  :disabled="authStore.loading"
                 />
                 <button type="button" class="eye-btn" @click="togglePassword">
-                  <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
-                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
-                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7c.8 0 1.6-.1 2.38-.31"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
+                  <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7c.8 0 1.6-.1 2.38-.31"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                 </button>
               </div>
             </div>
 
-            <!-- Confirm Password Input -->
             <div class="input-group">
               <label>Confirm Password <span class="required">*</span></label>
               <div class="password-wrapper">
@@ -92,29 +100,23 @@
                   :type="showConfirmPassword ? 'text' : 'password'" 
                   placeholder="Re-enter your password here"
                   required
+                  autocomplete="new-password"
+                  :disabled="authStore.loading"
                 />
                 <button type="button" class="eye-btn" @click="toggleConfirmPassword">
-                  <svg v-if="!showConfirmPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
-                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
-                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7c.8 0 1.6-.1 2.38-.31"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
+                  <svg v-if="!showConfirmPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7c.8 0 1.6-.1 2.38-.31"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                 </button>
               </div>
             </div>
 
-            <!-- Terms & Conditions Checkbox -->
             <div class="checkbox-group">
               <label class="checkbox-label">
                 <input 
                   v-model="agreeToTerms"
                   type="checkbox" 
                   required
+                  :disabled="authStore.loading"
                 />
                 <span class="checkbox-text">
                   By clicking, I agree to all applicable 
@@ -123,20 +125,27 @@
               </label>
             </div>
 
-            <!-- Submit Button -->
-            <button type="submit" class="btn-continue" :disabled="!agreeToTerms">
-              Continue
+            <div v-if="localError || authStore.error" class="error-message" style="color: #ef4444; background-color: #fef2f2; border: 1px solid #fee2e2; padding: 0.75rem; border-radius: 8px; font-size: 0.875rem; text-align: center; margin-bottom: 1.5rem;">
+              {{ localError || authStore.error }}
+            </div>
+
+            <button 
+              type="submit" 
+              class="btn-continue" 
+              :disabled="!agreeToTerms || authStore.loading"
+              :class="{ 'opacity-70 cursor-not-allowed': authStore.loading || !agreeToTerms }"
+            >
+              <span v-if="authStore.loading">Creating Account...</span>
+              <span v-else>Continue</span>
             </button>
           </form>
 
-          <!-- Divider -->
           <div class="divider">
             <div class="line"></div>
             <span>Or continue with</span>
             <div class="line"></div>
           </div>
 
-          <!-- Google Sign Up -->
           <button class="btn-google" @click="handleGoogleSignUp">
             <svg viewBox="0 0 24 24" width="20" height="20">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -147,21 +156,34 @@
             Sign up with Google
           </button>
 
-          <!-- Footer Link -->
           <div class="footer-text">
-            Already have an account? <a href="#">Sign in here</a>
+            Already have an account? <router-link to="/login">Sign in here</router-link>
           </div>
 
         </div>
       </div>
     </div>
+
+    <SuccessModal 
+      :is-open="showSuccessModal"
+      title="Account Created!"
+      message="You have successfully registered. Please sign in."
+    />
+
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import { useRouter } from 'vue-router';
+import SuccessModal from '@/components/modal/SuccessModal.vue';
+
+const authStore = useAuthStore();
+const router = useRouter();
 
 // State Management
+const role = ref('tenant'); // Default: Pencari Kost
 const fullName = ref('');
 const phoneNumber = ref('');
 const email = ref('');
@@ -170,6 +192,9 @@ const confirmPassword = ref('');
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
 const agreeToTerms = ref(false);
+
+const showSuccessModal = ref(false);
+const localError = ref(null);
 
 // Methods
 const togglePassword = () => {
@@ -180,25 +205,39 @@ const toggleConfirmPassword = () => {
   showConfirmPassword.value = !showConfirmPassword.value;
 };
 
-const handleSignUp = () => {
+const handleSignUp = async () => {
+  localError.value = null;
+
   if (password.value !== confirmPassword.value) {
-    alert('Passwords do not match!');
+    localError.value = 'Passwords do not match!';
     return;
   }
   
-  console.log('Signing up with:', {
-    fullName: fullName.value,
-    phoneNumber: phoneNumber.value,
-    email: email.value,
-    password: password.value
-  });
-  // Tambahkan logika sign up di sini
+  // Kirim data ke store termasuk ROLE
+  const isSuccess = await authStore.register(fullName.value, email.value, password.value, role.value);
+
+  if (isSuccess) {
+    showSuccessModal.value = true;
+    setTimeout(() => {
+      showSuccessModal.value = false;
+      router.push('/login');
+    }, 1500);
+  }
 };
 
 const handleGoogleSignUp = () => {
   console.log('Google sign up triggered');
-  // Tambahkan logika Google OAuth di sini
 };
+
+onMounted(() => {
+  fullName.value = '';
+  phoneNumber.value = '';
+  email.value = '';
+  password.value = '';
+  confirmPassword.value = '';
+  agreeToTerms.value = false;
+  role.value = 'tenant';
+});
 </script>
 
 <style scoped>
@@ -537,5 +576,36 @@ const handleGoogleSignUp = () => {
   .input-group {
     margin-bottom: 1rem;
   }
+}
+.role-switcher {
+  display: flex;
+  background-color: #f3f4f6;
+  padding: 4px;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.role-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.role-btn.active {
+  background-color: #ffffff;
+  color: #00897b;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.role-btn:hover:not(.active) {
+  color: #374151;
 }
 </style>

@@ -1,7 +1,6 @@
 <template>
   <div class="login-container">
     
-    <!-- Left Image Section -->
     <div class="image-section">
       <div class="overlay"></div>
       <img 
@@ -10,41 +9,40 @@
       />
     </div>
 
-    <!-- Right Form Section -->
     <div class="form-section">
       <div class="form-wrapper">
         
-        <!-- Header -->
         <div class="header">
           <h1>Sign In</h1>
           <p>Enter Your Identity to Sign In</p>
         </div>
 
-        <!-- Form Card -->
         <div class="form-card">
           
           <form @submit.prevent="handleLogin">
             
-            <!-- Email Input -->
             <div class="input-group">
               <label>Email <span class="required">*</span></label>
               <input 
                 v-model="email"
                 type="email" 
-                placeholder="Enter Your Email Here"
+                placeholder="Masukan email anda"
                 required
+                autocomplete="username"
+                :disabled="authStore.loading"
               />
             </div>
 
-            <!-- Password Input -->
             <div class="input-group">
               <label>Password <span class="required">*</span></label>
               <div class="password-wrapper">
                 <input 
                   v-model="password"
                   :type="showPassword ? 'text' : 'password'" 
-                  placeholder="Enter Your Password Here"
+                  placeholder="Masukan kata sandi"
                   required
+                  autocomplete="current-password"
+                  :disabled="authStore.loading"
                 />
                 <button type="button" class="eye-btn" @click="togglePassword">
                   <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -61,25 +59,31 @@
               </div>
             </div>
 
-            <!-- Forgot Password -->
             <div class="forgot-password">
               <a href="#">Forgot password?</a>
             </div>
 
-            <!-- Submit Button -->
-            <button type="submit" class="btn-continue">
-              Continue
+            <div v-if="authStore.error" class="error-message">
+              {{ authStore.error }}
+            </div>
+
+            <button 
+              type="submit" 
+              class="btn-continue" 
+              :disabled="authStore.loading"
+              :class="{ 'opacity-70 cursor-not-allowed': authStore.loading }"
+            >
+              <span v-if="authStore.loading">Signing in...</span>
+              <span v-else>Continue</span>
             </button>
           </form>
 
-          <!-- Divider -->
           <div class="divider">
             <div class="line"></div>
             <span>Or continue with</span>
             <div class="line"></div>
           </div>
 
-          <!-- Google Sign In -->
           <button class="btn-google" @click="handleGoogleLogin">
             <svg viewBox="0 0 24 24" width="20" height="20">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -90,39 +94,73 @@
             Sign in with Google
           </button>
 
-          <!-- Footer Link -->
           <div class="footer-text">
-            Don't have an account? <a href="#">Sign up now</a>
+              Don't have an account? <router-link to="/register">Sign up now</router-link>
           </div>
 
         </div>
       </div>
     </div>
+    <SuccessModal 
+      :isOpen="showSuccessModal" 
+      title="Login Successful!" 
+      message="You have successfully logged in."/>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import { useRouter } from 'vue-router'; // 1. Import Router
+import SuccessModal from '@/components/modal/SuccessModal.vue'; // 2. Import Component Modal
+
+// Init Store & Router
+const authStore = useAuthStore();
+const router = useRouter();
 
 // State Management
 const email = ref('');
 const password = ref('');
 const showPassword = ref(false);
+const showSuccessModal = ref(false); // 3. State untuk kontrol Modal
 
 // Methods
 const togglePassword = () => {
   showPassword.value = !showPassword.value;
 };
 
-const handleLogin = () => {
-  console.log('Logging in with:', email.value, password.value);
-  // Tambahkan logika login di sini
+const handleLogin = async () => {
+  // 4. Panggil store dan tangkap hasilnya (true/false)
+  const isSuccess = await authStore.login(email.value, password.value);
+
+  if (isSuccess) {
+    // A. Login Berhasil -> Munculkan Modal
+    showSuccessModal.value = true;
+
+    // B. Tunggu 1.5 detik (agar user melihat pesan sukses)
+    setTimeout(() => {
+      showSuccessModal.value = false;
+      
+      // C. Redirect manual sesuai Role
+      if (authStore.user?.role === 'owner') {
+        router.push('/dashboard');
+      } else {
+        router.push('/');
+      }
+    }, 1500);
+  } 
+  // Jika gagal, error message otomatis muncul di template dari authStore.error
 };
 
 const handleGoogleLogin = () => {
   console.log('Google login triggered');
-  // Tambahkan logika Google OAuth di sini
 };
+
+// Reset form fields when component mounts
+onMounted(() => {
+  email.value = '';
+  password.value = '';
+});
 </script>
 
 <style scoped>
@@ -299,6 +337,18 @@ const handleGoogleLogin = () => {
   text-decoration: underline;
 }
 
+/* Error Message */
+.error-message {
+  color: #ef4444;
+  background-color: #fef2f2;
+  border: 1px solid #fee2e2;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
 /* Continue Button */
 .btn-continue {
   width: 100%;
@@ -322,6 +372,13 @@ const handleGoogleLogin = () => {
 
 .btn-continue:active {
   transform: translateY(0);
+}
+
+.btn-continue:disabled {
+  background-color: #a5d6a7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 /* Divider */

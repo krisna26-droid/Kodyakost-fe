@@ -1,30 +1,50 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import { useRouter } from 'vue-router';
+import LogoutModal from '@/components/modal/LogoutModal.vue'; // Import Modal yang baru dibuat
 
-// State untuk simulasi Login/Logout (Ubah ke true untuk melihat tampilan 'Sesudah Login')
-const isLoggedIn = ref(false)
+const authStore = useAuthStore();
+const router = useRouter();
 
-// Data Menu Navigasi
+// State
+const isLoggedIn = computed(() => authStore.isAuthenticated);
+const currentUser = computed(() => authStore.user);
+const isDropdownOpen = ref(false);
+const showLogoutModal = ref(false); // State untuk kontrol Modal
+
+const toggleDropdown = () => {
+  isDropdownOpen.value = !isDropdownOpen.value;
+};
+
+// 1. Saat tombol Logout di dropdown diklik -> Buka Modal
+const confirmLogout = () => {
+  isDropdownOpen.value = false; // Tutup dropdown
+  showLogoutModal.value = true; // Buka modal
+};
+
+// 2. Saat tombol "Logout" di Modal diklik -> Eksekusi Logout
+const handleLogout = () => {
+  showLogoutModal.value = false;
+  authStore.logout();
+};
+
 const menuItems = [
-  { name: 'Home', link: '#' },
+  { name: 'Home', link: '/' },
   { name: 'Help Center', link: '#' },
   { name: 'Terms and Conditions', link: '#' },
   { name: 'About Us', link: '#' }
-]
-
-// Fungsi toggle untuk demo (bisa dihapus nanti)
-const toggleAuth = () => {
-  isLoggedIn.value = !isLoggedIn.value
-}
+];
 </script>
 
 <template>
   <div class="navbar-container">
     <nav class="navbar">
+      
       <div class="logo-section">
-        <a href="/" class="logo-link">
+        <router-link to="/" class="logo-link">
           <img src="@/assets/images/kodyakost-logo.png" alt="KodyaKost Logo" class="logo-img" />
-        </a>
+        </router-link>
       </div>
 
       <div class="search-section">
@@ -39,14 +59,14 @@ const toggleAuth = () => {
       <div class="nav-actions">
         <ul class="nav-links">
           <li v-for="item in menuItems" :key="item.name">
-            <a :href="item.link">{{ item.name }}</a>
+            <router-link :to="item.link">{{ item.name }}</router-link>
           </li>
         </ul>
 
         <div class="separator"></div>
 
         <div v-if="!isLoggedIn" class="auth-action">
-          <button class="btn-login" @click="toggleAuth">Sign In</button>
+          <button class="btn-login" @click="router.push('/login')">Sign In</button>
         </div>
 
         <div v-else class="user-action">
@@ -55,185 +75,136 @@ const toggleAuth = () => {
             <span class="badge">1</span>
           </div>
 
-          <div class="avatar-wrapper" @click="toggleAuth">
-            <img src="https://i.pravatar.cc/150?img=11" alt="User Profile" class="avatar-img" />
-            <svg class="chevron-down" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <div class="relative">
+            <div class="avatar-wrapper" @click="toggleDropdown">
+              <img 
+                :src="currentUser?.avatar || 'https://i.pravatar.cc/150?img=11'" 
+                alt="User Profile" 
+                class="avatar-img" 
+              />
+              <span class="user-name">{{ currentUser?.name }}</span>
+              <svg class="chevron-down" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+
+            <div v-if="isDropdownOpen" class="dropdown-menu">
+              
+              <router-link to="/profile" class="dropdown-item">
+                <span class="icon-box">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </span>
+                Profile
+              </router-link>
+
+              <div class="dropdown-divider"></div>
+
+              <button @click="confirmLogout" class="dropdown-item text-red">
+                <span class="icon-box text-red">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </span>
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </nav>
+
+    <LogoutModal 
+      :is-open="showLogoutModal" 
+      @close="showLogoutModal = false"
+      @confirm="handleLogout"
+    />
   </div>
 </template>
 
 <style scoped>
-/* Reset dasar untuk komponen ini */
-* {
-  box-sizing: border-box;
-}
+/* Gunakan style navbar yang sudah ada */
+* { box-sizing: border-box; }
+.navbar-container { width: 100%; font-family: 'Inter', sans-serif; position: relative; z-index: 50; }
+.navbar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; background-color: white; border-bottom: 1px solid #f0f0f0; height: 80px; }
+.logo-section { flex-shrink: 0; }
+.logo-img { height: 90px; display: block; }
+.search-section { flex-grow: 1; max-width: 600px; margin-right: 2rem; }
+.search-wrapper { position: relative; width: 100%; }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #888; display: flex; }
+.search-input { width: 100%; padding: 10px 10px 10px 40px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+.search-input:focus { border-color: #f97316; }
+.nav-actions { display: flex; align-items: center; gap: 1.5rem; }
+.nav-links { display: flex; list-style: none; margin: 0; padding: 0; gap: 20px; }
+.nav-links a { text-decoration: none; color: #556; font-size: 14px; font-weight: 500; }
+.nav-links a:hover { color: #f97316; }
+.separator { height: 24px; width: 1px; background-color: #eee; }
+.btn-login { background-color: white; border: 1px solid #0f172a; color: #0f172a; padding: 8px 24px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-login:hover { background-color: #0f172a; color: white; }
+.user-action { display: flex; align-items: center; gap: 20px; }
+.icon-wrapper { position: relative; cursor: pointer; display: flex; align-items: center; }
+.badge { position: absolute; top: -5px; right: -6px; background-color: #dc2626; color: white; font-size: 10px; font-weight: bold; height: 16px; width: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid white; }
+.relative { position: relative; }
+.avatar-wrapper { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px; border-radius: 8px; transition: background-color 0.2s; }
+.avatar-wrapper:hover { background-color: #f5f5f5; }
+.avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; }
+.user-name { font-size: 0.9rem; font-weight: 500; color: #333; display: none; }
+@media (min-width: 1024px) { .user-name { display: block; } }
+.chevron-down { color: #666; }
+@media (max-width: 768px) { .nav-links, .search-section { display: none; } }
 
-.navbar-container {
-  width: 100%;
-  font-family: 'Inter', sans-serif; /* Pastikan font sesuai */
-}
-
-.navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 2rem;
-  background-color: white;
-  border-bottom: 1px solid #f0f0f0; /* Garis tipis di bawah */
-  height: 80px;
-}
-
-/* --- 1. Logo --- */
-.logo-section {
-  flex-shrink: 0;
-}
-
-.logo-img {
-  height: 90px; /* Sesuaikan tinggi logo */
-  display: block;
-}
-
-/* --- 2. Search Bar --- */
-.search-section {
-  flex-grow: 1;
-  max-width: 600px; /* Batas lebar search bar agar mirip desain */
-  margin-right: 2rem;
-}
-
-.search-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-.search-icon {
+/* --- STYLE UNTUK DROPDOWN --- */
+.dropdown-menu {
   position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #888;
-  display: flex;
+  right: 0;
+  top: 120%;
+  width: 200px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f0f0f0;
+  overflow: hidden;
+  z-index: 100;
+  padding: 0.5rem 0;
 }
 
-.search-input {
-  width: 100%;
-  padding: 10px 10px 10px 40px; /* Padding kiri untuk icon */
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.search-input:focus {
-  border-color: #f97316; /* Warna orange saat fokus */
-}
-
-/* --- 3. Nav Actions --- */
-.nav-actions {
+.dropdown-item {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-}
-
-.nav-links {
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  gap: 20px;
-}
-
-.nav-links a {
+  gap: 12px;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  color: #374151;
   text-decoration: none;
-  color: #556;
-  font-size: 14px;
+  transition: all 0.2s;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
   font-weight: 500;
 }
 
-.nav-links a:hover {
-  color: #f97316;
+.dropdown-item:hover {
+  background-color: #f9fafb;
 }
 
-.separator {
-  height: 24px;
-  width: 1px;
-  background-color: #eee;
+/* Style Khusus Tombol Logout */
+.dropdown-item.text-red {
+  color: #dc2626;
+}
+.dropdown-item.text-red:hover {
+  background-color: #fef2f2;
 }
 
-/* State: Belum Login */
-.btn-login {
-  background-color: white;
-  border: 1px solid #0f172a;
-  color: #0f172a;
-  padding: 8px 24px;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-login:hover {
-  background-color: #0f172a;
-  color: white;
-}
-
-/* State: Sudah Login */
-.user-action {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.icon-wrapper {
-  position: relative;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.badge {
-  position: absolute;
-  top: -5px;
-  right: -6px;
-  background-color: #dc2626; /* Merah */
-  color: white;
-  font-size: 10px;
-  font-weight: bold;
-  height: 16px;
-  width: 16px;
-  border-radius: 50%;
+.icon-box {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid white;
+  color: #6b7280;
 }
 
-.avatar-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
+.icon-box.text-red {
+  color: #dc2626;
 }
 
-.avatar-img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #eee;
-}
-
-.chevron-down {
-  color: #666;
-}
-
-/* Responsiveness Basic */
-@media (max-width: 768px) {
-  .nav-links, .search-section {
-    display: none; /* Sembunyikan menu di mobile untuk contoh ini */
-  }
+.dropdown-divider {
+  border-top: 1px solid #f3f4f6;
+  margin: 0.25rem 0;
 }
 </style>
