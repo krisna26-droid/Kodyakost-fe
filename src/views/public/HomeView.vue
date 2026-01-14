@@ -24,11 +24,14 @@
         </div>
 
         <div v-else class="property-grid">
-          <KostCard 
+          <router-link 
             v-for="prop in properties" 
             :key="prop.id" 
-            :data="prop" 
-          />
+            :to="{ name: 'kost-detail', params: { id: prop.id } }"
+            class="property-link"
+          >
+            <KostCard :data="prop" />
+          </router-link>
         </div>
 
         <div class="action-wrapper">
@@ -376,5 +379,16 @@ onMounted(async () => {
   .section-header h2 {
     font-size: 1.75rem;
   }
+}
+/* Tambahkan di paling bawah style */
+.property-link {
+  text-decoration: none; /* Hilangkan garis bawah */
+  color: inherit;        /* Gunakan warna teks asli */
+  display: block;        /* Agar area klik memenuhi kartu */
+  transition: transform 0.2s;
+}
+
+.property-link:hover {
+  transform: translateY(-5px); /* Efek naik sedikit saat di-hover */
 }
 </style>
