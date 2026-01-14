@@ -63,8 +63,14 @@
               <a href="#">Forgot password?</a>
             </div>
 
-            <div v-if="authStore.error" class="error-message">
-              {{ authStore.error }}
+            <div v-if="authStore.error" class="error-alert">
+              <span>{{ authStore.error }}</span>
+              <button type="button" @click="clearError" class="close-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             </div>
 
             <button 
@@ -114,28 +120,35 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import { useRouter, useRoute } from 'vue-router'; // Import useRoute
+import { useRouter, useRoute } from 'vue-router'; 
 import SuccessModal from '@/components/modal/SuccessModal.vue'; 
 
 // Init Store & Router
 const authStore = useAuthStore();
 const router = useRouter();
-const route = useRoute(); // Init Route untuk baca URL
+const route = useRoute(); 
 
 // State Management
 const email = ref('');
 const password = ref('');
 const showPassword = ref(false);
 const showSuccessModal = ref(false);
-const currentRole = ref('tenant'); // Simpan role dari URL
+const currentRole = ref('tenant'); 
 
 // Methods
 const togglePassword = () => {
   showPassword.value = !showPassword.value;
 };
 
+// --- TAMBAHAN BARU: Fungsi Hapus Error ---
+const clearError = () => {
+  authStore.error = null; // Reset error di Pinia
+};
+
 const handleLogin = async () => {
-  // [PERBAIKAN] Tambahkan currentRole.value sebagai parameter ke-3
+  // Reset error dulu sebelum mencoba login baru
+  clearError();
+
   const isSuccess = await authStore.login(email.value, password.value, currentRole.value);
 
   if (isSuccess) {
@@ -143,8 +156,6 @@ const handleLogin = async () => {
 
     setTimeout(() => {
       showSuccessModal.value = false;
-      
-      // Redirect sesuai role asli dari database
       if (authStore.user?.role === 'owner') {
         router.push('/dashboard');
       } else {
@@ -158,13 +169,13 @@ const handleGoogleLogin = () => {
   console.log('Google login triggered');
 };
 
-// Reset form fields when component mounts
 onMounted(() => {
+  // 1. PENTING: Bersihkan error saat halaman dibuka
+  clearError();
+
   email.value = '';
   password.value = '';
 
-  // Cek apakah ada role di URL (dikirim dari Modal Navbar)
-  // Contoh: /login?role=owner
   if (route.query.role) {
     currentRole.value = route.query.role;
   }
@@ -346,15 +357,37 @@ onMounted(() => {
 }
 
 /* Error Message */
-.error-message {
-  color: #ef4444;
+/* --- GANTI ATAU TAMBAHKAN CSS INI DI PALING BAWAH --- */
+
+.error-alert {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   background-color: #fef2f2;
   border: 1px solid #fee2e2;
-  padding: 0.75rem;
+  color: #ef4444;
+  padding: 0.75rem 1rem;
   border-radius: 8px;
   font-size: 0.875rem;
-  text-align: center;
   margin-bottom: 1.5rem;
+  gap: 10px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ef4444;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 /* Continue Button */

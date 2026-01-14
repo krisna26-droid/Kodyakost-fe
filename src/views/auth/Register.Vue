@@ -111,8 +111,15 @@
               </label>
             </div>
 
-            <div v-if="localError || authStore.error" class="error-message" style="color: #ef4444; background-color: #fef2f2; border: 1px solid #fee2e2; padding: 0.75rem; border-radius: 8px; font-size: 0.875rem; text-align: center; margin-bottom: 1.5rem;">
-              {{ localError || authStore.error }}
+            <div v-if="localError || authStore.error" class="error-alert">
+              <span>{{ localError || authStore.error }}</span>
+              
+              <button type="button" @click="clearError" class="close-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             </div>
 
             <button 
@@ -164,11 +171,11 @@
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useRouter, useRoute } from 'vue-router'; 
-import SuccessModal from '@/components/modal/SuccessModal.vue'; // Cek path ini apakah sudah sesuai dengan foldermu
+import SuccessModal from '@/components/modal/SuccessModal.vue'; 
 
 const authStore = useAuthStore();
 const router = useRouter();
-const route = useRoute(); // 1. Init Route untuk membaca URL
+const route = useRoute(); 
 
 // State Management
 const role = ref('tenant'); 
@@ -193,22 +200,34 @@ const toggleConfirmPassword = () => {
   showConfirmPassword.value = !showConfirmPassword.value;
 };
 
-const handleSignUp = async () => {
+// --- TAMBAHAN BARU: Fungsi untuk tombol close (X) dan reset ---
+const clearError = () => {
   localError.value = null;
+  authStore.error = null; // Reset error di Pinia supaya tidak muncul lagi
+};
+
+const handleSignUp = async () => {
+  // Reset error sebelum mencoba register baru
+  clearError();
 
   if (password.value !== confirmPassword.value) {
     localError.value = 'Passwords do not match!';
     return;
   }
   
-  // 2. Kirim data register (termasuk role) ke Store
-  const isSuccess = await authStore.register(fullName.value, email.value, password.value, role.value);
+  const isSuccess = await authStore.register(
+    fullName.value, 
+    email.value, 
+    password.value, 
+    role.value,
+    phoneNumber.value 
+  );
 
   if (isSuccess) {
     showSuccessModal.value = true;
     setTimeout(() => {
       showSuccessModal.value = false;
-      router.push('/login');
+      router.push({ path: '/login', query: { role: role.value } });
     }, 1500);
   }
 };
@@ -218,7 +237,10 @@ const handleGoogleSignUp = () => {
 };
 
 onMounted(() => {
-  // 1. Reset Form Fields
+  // 1. PENTING: Bersihkan error lama saat halaman dibuka!
+  clearError();
+
+  // 2. Reset Form Fields
   fullName.value = '';
   phoneNumber.value = '';
   email.value = '';
@@ -226,12 +248,10 @@ onMounted(() => {
   confirmPassword.value = '';
   agreeToTerms.value = false;
 
-  // 2. [LOGIKA PENTING] Cek apakah ada role di URL?
-  // Jika ada (misal: /register?role=owner), pakai itu.
+  // 3. Cek role di URL
   if (route.query.role) {
     role.value = route.query.role;
   } else {
-    // Jika tidak ada di URL, baru default ke tenant
     role.value = 'tenant';
   }
 });
@@ -604,5 +624,36 @@ onMounted(() => {
 
 .role-btn:hover:not(.active) {
   color: #374151;
+}
+/* --- TAMBAHAN CSS ERROR ALERT --- */
+.error-alert {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #ef4444;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+  gap: 10px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ef4444;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
 }
 </style>
