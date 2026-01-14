@@ -14,30 +14,16 @@
         
         <div class="header">
           <h1>Sign Up</h1>
-          <p>Register your identity to continue</p>
+          <p>
+            Registering as 
+            <span :class="role === 'owner' ? 'text-owner' : 'text-tenant'">
+              {{ role === 'owner' ? 'Owner (Pemilik)' : 'Tenant (Pencari)' }}
+            </span>
+          </p>
         </div>
 
         <div class="form-card">
           
-          <div class="role-switcher">
-            <button 
-              type="button"
-              class="role-btn" 
-              :class="{ active: role === 'tenant' }"
-              @click="role = 'tenant'"
-            >
-              Pencari Kost
-            </button>
-            <button 
-              type="button"
-              class="role-btn" 
-              :class="{ active: role === 'owner' }"
-              @click="role = 'owner'"
-            >
-              Pemilik Kost
-            </button>
-          </div>
-
           <form @submit.prevent="handleSignUp">
             
             <div class="input-group">
@@ -157,7 +143,8 @@
           </button>
 
           <div class="footer-text">
-            Already have an account? <router-link to="/login">Sign in here</router-link>
+            Already have an account? 
+            <router-link :to="{ path: '/login', query: { role: role } }">Sign in here</router-link>
           </div>
 
         </div>
@@ -176,14 +163,15 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import { useRouter } from 'vue-router';
-import SuccessModal from '@/components/modal/SuccessModal.vue';
+import { useRouter, useRoute } from 'vue-router'; 
+import SuccessModal from '@/components/modal/SuccessModal.vue'; // Cek path ini apakah sudah sesuai dengan foldermu
 
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute(); // 1. Init Route untuk membaca URL
 
 // State Management
-const role = ref('tenant'); // Default: Pencari Kost
+const role = ref('tenant'); 
 const fullName = ref('');
 const phoneNumber = ref('');
 const email = ref('');
@@ -213,7 +201,7 @@ const handleSignUp = async () => {
     return;
   }
   
-  // Kirim data ke store termasuk ROLE
+  // 2. Kirim data register (termasuk role) ke Store
   const isSuccess = await authStore.register(fullName.value, email.value, password.value, role.value);
 
   if (isSuccess) {
@@ -230,13 +218,22 @@ const handleGoogleSignUp = () => {
 };
 
 onMounted(() => {
+  // 1. Reset Form Fields
   fullName.value = '';
   phoneNumber.value = '';
   email.value = '';
   password.value = '';
   confirmPassword.value = '';
   agreeToTerms.value = false;
-  role.value = 'tenant';
+
+  // 2. [LOGIKA PENTING] Cek apakah ada role di URL?
+  // Jika ada (misal: /register?role=owner), pakai itu.
+  if (route.query.role) {
+    role.value = route.query.role;
+  } else {
+    // Jika tidak ada di URL, baru default ke tenant
+    role.value = 'tenant';
+  }
 });
 </script>
 

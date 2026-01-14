@@ -95,7 +95,10 @@
           </button>
 
           <div class="footer-text">
-              Don't have an account? <router-link to="/register">Sign up now</router-link>
+            Don't have an account? 
+            <router-link :to="{ path: '/register', query: { role: currentRole } }">
+              Sign up now
+            </router-link>
           </div>
 
         </div>
@@ -111,18 +114,20 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import { useRouter } from 'vue-router'; // 1. Import Router
-import SuccessModal from '@/components/modal/SuccessModal.vue'; // 2. Import Component Modal
+import { useRouter, useRoute } from 'vue-router'; // Import useRoute
+import SuccessModal from '@/components/modal/SuccessModal.vue'; 
 
 // Init Store & Router
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute(); // Init Route untuk baca URL
 
 // State Management
 const email = ref('');
 const password = ref('');
 const showPassword = ref(false);
-const showSuccessModal = ref(false); // 3. State untuk kontrol Modal
+const showSuccessModal = ref(false);
+const currentRole = ref('tenant'); // Simpan role dari URL
 
 // Methods
 const togglePassword = () => {
@@ -130,18 +135,16 @@ const togglePassword = () => {
 };
 
 const handleLogin = async () => {
-  // 4. Panggil store dan tangkap hasilnya (true/false)
-  const isSuccess = await authStore.login(email.value, password.value);
+  // [PERBAIKAN] Tambahkan currentRole.value sebagai parameter ke-3
+  const isSuccess = await authStore.login(email.value, password.value, currentRole.value);
 
   if (isSuccess) {
-    // A. Login Berhasil -> Munculkan Modal
     showSuccessModal.value = true;
 
-    // B. Tunggu 1.5 detik (agar user melihat pesan sukses)
     setTimeout(() => {
       showSuccessModal.value = false;
       
-      // C. Redirect manual sesuai Role
+      // Redirect sesuai role asli dari database
       if (authStore.user?.role === 'owner') {
         router.push('/dashboard');
       } else {
@@ -149,7 +152,6 @@ const handleLogin = async () => {
       }
     }, 1500);
   } 
-  // Jika gagal, error message otomatis muncul di template dari authStore.error
 };
 
 const handleGoogleLogin = () => {
@@ -160,6 +162,12 @@ const handleGoogleLogin = () => {
 onMounted(() => {
   email.value = '';
   password.value = '';
+
+  // Cek apakah ada role di URL (dikirim dari Modal Navbar)
+  // Contoh: /login?role=owner
+  if (route.query.role) {
+    currentRole.value = route.query.role;
+  }
 });
 </script>
 

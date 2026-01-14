@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import axios from 'axios';
+import apiClient from '@/api/Axios'; // [PENTING] Import axios settinganmu
 import router from '@/router';
 
 export const useAuthStore = defineStore('auth', {
@@ -17,71 +17,120 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    // --- ACTION LOGIN (Sama seperti sebelumnya) ---
-    async login(email, password) {
+    // --- LOGIN (DINAMIS DENGAN API) ---
+    async login(email, password, targetRole) {
       this.loading = true;
       this.error = null;
+
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        let mockUser = null;
-        if (email === 'tenant@gmail.com' && password === 'password123') {
-            mockUser = { id: 1, name: 'Made Tenant', email, role: 'tenant', phone: '08123456789' };
-        } else if (email === 'owner@gmail.com' && password === 'password123') {
-            mockUser = { id: 2, name: 'Krisna Owner', email, role: 'owner', phone: '08987654321' };
+        // 1. Panggil API Backend menggunakan apiClient
+        // URL otomatis jadi: http://localhost:8000/api/login
+        const response = await apiClient.post('/login', { 
+          email: email, 
+          password: password 
+        });
+
+        // 2. Ambil data User & Token
+        // NOTE: Sesuaikan 'response.data.user' dengan format JSON backend temanmu.
+        // Kadang backend kasih format: response.data.data.user
+        const user = response.data.user || response.data.data?.user;
+        const token = response.data.token || response.data.data?.token || response.data.access_token;
+
+        if (!user || !token) {
+            throw new Error('Format respon server tidak dikenali.');
         }
-        if (mockUser) {
-            const mockToken = 'mock-token-abc-123';
-            this.setUserData(mockUser, mockToken);
-            return true; 
+
+        // 3. Validasi Role (Frontend Check)
+        // Mencegah Owner login di halaman Tenant dan sebaliknya
+        if (targetRole && user.role !== targetRole) {
+          throw new Error(`Akun ini terdaftar sebagai ${user.role.toUpperCase()}, bukan ${targetRole.toUpperCase()}.`);
+        }
+
+        // 4. Simpan Data
+        this.setUserData(user, token);
+        
+        return true; // Login Sukses
+
+      } catch (err) {
+        // Error Handling
+        if (err.response) {
+          // Error dari Backend (401, 422, dll)
+          this.error = err.response.data.message || 'Email atau password salah';
         } else {
-            throw new Error('Email atau password salah');
+          // Error manual / jaringan
+          this.error = err.message || 'Gagal menghubungi server';
         }
-      } catch (err) {
-        this.error = err.message || 'Login gagal';
-        return false; 
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    // --- ACTION REGISTER (BARU DENGAN ROLE) ---
-    async register(name, email, password, role) { // Parameter role ditambahkan
-      this.loading = true;
-      this.error = null;
-      try {
-        // Simulasi delay register
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Disini nanti API call backend, misal:
-        // axios.post('/api/register', { name, email, password, role })
-
-        console.log('Registering:', { name, email, password, role });
-        
-        return true; // Register Berhasil
-      } catch (err) {
-        this.error = err.message || 'Registrasi gagal';
         return false;
       } finally {
         this.loading = false;
       }
     },
 
-    // --- ACTION SET USER & LOGOUT (Sama seperti sebelumnya) ---
+    // --- REGISTER (DINAMIS DENGAN API) ---
+    async register(name, email, password, role) {
+      this.loading = true;
+      this.error = null;
+
+      try {
+        // URL otomatis jadi: http://localhost:8000/api/register
+        await apiClient.post('/register', {
+          name: name,
+          email: email,
+          password: password,
+          password_confirmation: password, // Laravel biasanya butuh ini
+          role: role 
+        });
+
+        return true; // Register Sukses
+
+      } catch (err) {
+        if (err.response) {
+          this.error = err.response.data.message || 'Registrasi gagal';
+          // Jika ada error detail validation (misal email sudah ada)
+          if(err.response.data.errors) {
+             console.log(err.response.data.errors);
+          }
+        } else {
+          this.error = 'Gagal menghubungi server';
+        }
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // --- SET DATA & TOKEN ---
     setUserData(user, token) {
         this.user = user;
         this.token = token;
+        
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('token', token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Update header Authorization di apiClient instance
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     },
 
-    logout() {
-      this.user = null;
-      this.token = null;
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
-      router.push('/'); 
+    // --- LOGOUT ---
+    async logout() {
+      try {
+        if (this.token) {
+           // URL otomatis: http://localhost:8000/api/logout
+           await apiClient.post('/logout'); 
+        }
+      } catch (error) {
+        console.error('Logout error', error);
+      } finally {
+        this.user = null;
+        this.token = null;
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        
+        // Hapus header Authorization
+        delete apiClient.defaults.headers.common['Authorization'];
+        
+        router.push('/'); 
+      }
     }
   }
 });
