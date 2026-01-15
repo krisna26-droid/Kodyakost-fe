@@ -35,7 +35,9 @@
         </div>
 
         <div class="action-wrapper">
-          <button class="btn-primary" @click="goToAllProperties">View All Properties</button>
+          <BaseButton @click="goToAllProperties">
+            View All Properties
+          </BaseButton>
         </div>
       </div>
     </section>
@@ -67,8 +69,10 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 
+// Import Services & Components
 import kostService from '@/services/kostService';
 import KostCard from '@/components/common/KostCard.vue';
+import BaseButton from '@/components/common/BaseButton.vue'; // Hanya import BaseButton
 
 const router = useRouter();
 
@@ -76,7 +80,7 @@ const router = useRouter();
 const properties = ref([]);
 const isLoading = ref(true);
 
-// Static Data untuk "Why Choose Us"
+// Static Data
 const features = [
   { 
     title: 'Verified Properties', 
@@ -105,7 +109,7 @@ const goToAllProperties = () => {
   router.push('/properties');
 };
 
-// Fetch Data saat Component Mounted
+// Fetch Data
 onMounted(async () => {
   try {
     const data = await kostService.getFeaturedKost();
@@ -182,7 +186,7 @@ onMounted(async () => {
 }
 
 .hero-card {
-  background: rgba(255, 255, 255, 0.512);
+  background: rgba(255, 255, 255, 0.512); /* Kembali ke transparansi awal */
   padding: 50px 80px;
   border-radius: 20px;
   text-align: center;
@@ -224,24 +228,6 @@ onMounted(async () => {
 .action-wrapper {
   text-align: center;
   margin-top: 20px;
-}
-
-.btn-primary {
-  background-color: #1f3a52;
-  color: white;
-  padding: 14px 36px;
-  border-radius: 8px;
-  border: none;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-  background-color: #15293b;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(31, 58, 82, 0.3);
 }
 
 /* --- WHY CHOOSE SECTION --- */
@@ -317,20 +303,28 @@ onMounted(async () => {
   }
 }
 
+.property-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: transform 0.2s;
+}
+
+.property-link:hover {
+  transform: translateY(-5px);
+}
+
 /* --- RESPONSIVE --- */
 @media (max-width: 992px) {
   .hero-card {
     padding: 40px 60px;
   }
-  
   .hero-card h1 {
     font-size: 2.5rem;
   }
-  
   .property-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -340,28 +334,22 @@ onMounted(async () => {
   .hero-section {
     height: 500px;
   }
-  
   .hero-card {
     padding: 30px 40px;
     margin: 0 15px;
   }
-  
   .hero-card h1 {
     font-size: 2rem;
   }
-  
   .hero-card p {
     font-size: 1rem;
   }
-  
   .property-grid {
     grid-template-columns: 1fr;
   }
-  
   .features-grid {
     grid-template-columns: 1fr;
   }
-  
   .section {
     padding: 60px 0;
   }
@@ -371,24 +359,11 @@ onMounted(async () => {
   .hero-card {
     padding: 25px 30px;
   }
-  
   .hero-card h1 {
     font-size: 1.75rem;
   }
-  
   .section-header h2 {
     font-size: 1.75rem;
   }
-}
-/* Tambahkan di paling bawah style */
-.property-link {
-  text-decoration: none; /* Hilangkan garis bawah */
-  color: inherit;        /* Gunakan warna teks asli */
-  display: block;        /* Agar area klik memenuhi kartu */
-  transition: transform 0.2s;
-}
-
-.property-link:hover {
-  transform: translateY(-5px); /* Efek naik sedikit saat di-hover */
 }
 </style>

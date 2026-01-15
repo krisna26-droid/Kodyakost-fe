@@ -1,8 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth' // Import Store Auth
+import { useAuthStore } from '@/stores/auth' 
 
 import MainLayout from '../layouts/MainLayout.vue'
 import HomeView from '../views/public/HomeView.vue'
+// 1. Import PropertiesView (Pastikan file ada di folder views/public/)
+import PropertiesView from '../views/public/PropertiesView.vue' 
+
 import ApiTest from '../views/ApiTest.vue'
 import LoginView from '../views/auth/LoginView.vue'
 import Register from '../views/auth/Register.vue'
@@ -21,6 +24,12 @@ const router = createRouter({
           name: 'home',
           component: HomeView,
         },
+        // 2. Daftarkan Route Properties di sini (child dari MainLayout)
+        {
+          path: 'properties',
+          name: 'properties',
+          component: PropertiesView,
+        },
         {
           path: 'api-test',
           name: 'api-test',
@@ -28,6 +37,8 @@ const router = createRouter({
         }
       ],
     },
+    // Catatan: KostDetail saat ini ada di LUAR MainLayout. 
+    // Jika ingin KostDetail punya Navbar/Footer juga, pindahkan ke dalam children MainLayout di atas.
     {
       path: '/kost/:id',
       name: 'kost-detail',
@@ -42,30 +53,19 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView,
-      meta: { guestOnly: true } // Menandakan halaman ini khusus tamu (belum login)
+      meta: { guestOnly: true }
     },
     {
       path: '/register',
       name: 'register',
       component: Register,
-      meta: { guestOnly: true } // Menandakan halaman ini khusus tamu
+      meta: { guestOnly: true }
     },
     {
       path: '/test',
       name: 'test',
       component: () => import('../views/TestView.vue'),
     },
-    
-    // --- CONTOH ROUTE PROTECTED (Untuk Dashboard Nanti) ---
-    // Uncomment jika sudah punya DashboardView
-    /*
-    {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('../views/admin/DashboardView.vue'),
-      meta: { requiresAuth: true } // Wajib Login
-    } 
-    */
   ],
 })
 
@@ -73,15 +73,12 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
 
-  // 1. Cek jika route butuh Auth (requiresAuth) dan user BELUM login
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'login' }) // Lempar ke login
+    next({ name: 'login' }) 
   } 
-  // 2. Cek jika route khusus Guest (Login/Register) tapi user SUDAH login
   else if (to.meta.guestOnly && authStore.isAuthenticated) {
-    next({ name: 'home' }) // Lempar ke home (atau dashboard)
+    next({ name: 'home' }) 
   } 
-  // 3. Lanjut normal
   else {
     next()
   }

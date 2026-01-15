@@ -4,6 +4,8 @@ import { useAuthStore } from '@/stores/auth';
 import { useRouter } from 'vue-router';
 import LogoutModal from '@/components/modal/LogoutModal.vue';
 import RoleSelectionModal from '@/components/modal/RoleSelectionModal.vue';
+import BaseButton from '@/components/common/BaseButton.vue';
+import BaseInput from '@/components/common/BaseInput.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -13,7 +15,8 @@ const isLoggedIn = computed(() => authStore.isAuthenticated);
 const currentUser = computed(() => authStore.user);
 const isDropdownOpen = ref(false);
 const showLogoutModal = ref(false); 
-const showRoleModal = ref(false); // State Modal Role
+const showRoleModal = ref(false);
+const searchQuery = ref('');
 
 const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value;
@@ -29,10 +32,16 @@ const handleLogout = () => {
   authStore.logout();
 };
 
-// Logic: Pilih Role -> Redirect ke Login dengan query role
 const handleRoleSelect = (role) => {
   showRoleModal.value = false;
   router.push({ path: '/login', query: { role: role } });
+};
+
+const handleSearch = () => {
+  if (searchQuery.value.trim()) {
+    console.log("Searching:", searchQuery.value);
+    // router.push({ path: '/properties', query: { q: searchQuery.value } });
+  }
 };
 
 const menuItems = [
@@ -47,73 +56,115 @@ const menuItems = [
   <div class="navbar-container">
     <nav class="navbar">
       
+      <!-- Logo Section -->
       <div class="logo-section">
         <router-link to="/" class="logo-link">
           <img src="@/assets/images/kodyakost-logo.png" alt="KodyaKost Logo" class="logo-img" />
         </router-link>
       </div>
 
+      <!-- Search Section -->
       <div class="search-section">
-        <div class="search-wrapper">
-          <span class="search-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          </span>
-          <input type="text" placeholder="Search for KodyaKost" class="search-input" />
-        </div>
+        <BaseInput 
+          v-model="searchQuery" 
+          placeholder="Search for KodyaKost"
+          @keyup.enter="handleSearch"
+        >
+          <template #prepend>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+          </template>
+        </BaseInput>
       </div>
 
+      <!-- Navigation Actions -->
       <div class="nav-actions">
+        <!-- Menu Links -->
         <ul class="nav-links">
           <li v-for="item in menuItems" :key="item.name">
-            <router-link :to="item.link">{{ item.name }}</router-link>
+            <router-link :to="item.link" class="nav-link">
+              {{ item.name }}
+            </router-link>
           </li>
         </ul>
 
         <div class="separator"></div>
 
-        <div v-if="!isLoggedIn" class="auth-action">
-          <button class="btn-login" @click="showRoleModal = true">
+        <!-- Guest: Sign In Button -->
+        <div v-if="!isLoggedIn" class="auth-section">
+          <BaseButton 
+            variant="primary" 
+            size="md"
+            @click="showRoleModal = true"
+          >
             Sign In
-          </button>
+          </BaseButton>
         </div>
 
-        <div v-else class="user-action">
-          <div class="icon-wrapper">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        <!-- Logged In: User Actions -->
+        <div v-else class="user-section">
+          <!-- Favorites Icon -->
+          <button class="icon-btn">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
             <span class="badge">4</span>
-          </div>
+          </button>
 
-          <div class="relative">
-            <div class="avatar-wrapper" @click="toggleDropdown">
+          <!-- User Dropdown -->
+          <div class="user-dropdown">
+            <button class="avatar-btn" @click="toggleDropdown">
               <img 
                 :src="currentUser?.avatar || 'https://i.pravatar.cc/150?img=11'" 
                 alt="User Profile" 
                 class="avatar-img" 
               />
               <span class="user-name">{{ currentUser?.name }}</span>
-              <svg class="chevron-down" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </div>
+              <svg 
+                class="chevron" 
+                :class="{ 'is-open': isDropdownOpen }"
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
 
-            <div v-if="isDropdownOpen" class="dropdown-menu">
-              <router-link to="/profile" class="dropdown-item">
-                <span class="icon-box">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                </span>
-                Profile
-              </router-link>
-              <div class="dropdown-divider"></div>
-              <button @click="confirmLogout" class="dropdown-item text-red">
-                <span class="icon-box text-red">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                </span>
-                Logout
-              </button>
-            </div>
+            <!-- Dropdown Menu -->
+            <transition name="dropdown">
+              <div v-if="isDropdownOpen" class="dropdown-menu">
+                <router-link to="/profile" class="dropdown-item" @click="isDropdownOpen = false">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  <span>Profile</span>
+                </router-link>
+                
+                <div class="dropdown-divider"></div>
+                
+                <button @click="confirmLogout" class="dropdown-item logout-item">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                  <span>Logout</span>
+                </button>
+              </div>
+            </transition>
           </div>
         </div>
       </div>
     </nav>
 
+    <!-- Modals -->
     <RoleSelectionModal 
       :is-open="showRoleModal" 
       @close="showRoleModal = false"
@@ -129,256 +180,292 @@ const menuItems = [
 </template>
 
 <style scoped>
-/* Reset dasar untuk komponen ini */
-* {
-  box-sizing: border-box;
-}
-
+/* Container */
 .navbar-container {
   width: 100%;
-  font-family: 'Inter', sans-serif;
-  position: relative;
-  z-index: 50; /* Pastikan navbar di atas konten lain */
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
+/* Navbar */
 .navbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 2rem;
-  background-color: white;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 0.875rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  gap: 2rem;
   height: 80px;
 }
 
-/* --- 1. Logo --- */
+/* Logo Section */
 .logo-section {
   flex-shrink: 0;
 }
 
-.logo-img {
-  height: 90px;
-  display: block;
+.logo-link {
+  display: flex;
+  align-items: center;
 }
 
-/* --- 2. Search Bar --- */
+.logo-img {
+  height: 70px;
+  width: auto;
+}
+
+/* Search Section */
 .search-section {
   flex-grow: 1;
-  max-width: 600px;
-  margin-right: 2rem;
+  max-width: 500px;
 }
 
-.search-wrapper {
-  position: relative;
-  width: 100%;
+/* Override BaseInput margin untuk navbar */
+.search-section :deep(.input-group) {
+  margin-bottom: 0;
 }
 
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #888;
-  display: flex;
+.search-section :deep(.input-wrapper) {
+  border-radius: 9999px; /* Pill shape untuk search */
 }
 
-.search-input {
-  width: 100%;
-  padding: 10px 10px 10px 40px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
+.search-section :deep(.form-input) {
+  font-size: 0.9rem;
+  padding: 0.625rem 1rem;
 }
 
-.search-input:focus {
-  border-color: #f97316;
+.search-section :deep(.icon-left) {
+  left: 0.875rem;
 }
 
-/* --- 3. Nav Actions --- */
+.search-section :deep(.form-input.has-prepend) {
+  padding-left: 2.5rem;
+}
+
+/* Navigation Actions */
 .nav-actions {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  flex-shrink: 0;
 }
 
+/* Nav Links */
 .nav-links {
   display: flex;
   list-style: none;
   margin: 0;
   padding: 0;
-  gap: 20px;
+  gap: 1.5rem;
 }
 
-.nav-links a {
+.nav-link {
   text-decoration: none;
-  color: #556;
-  font-size: 14px;
+  color: #000000;
+  font-size: 0.9rem;
   font-weight: 500;
+  transition: color 0.2s ease;
+  white-space: nowrap;
 }
 
-.nav-links a:hover {
-  color: #f97316;
+.nav-link:hover {
+  color: #00897b;
 }
 
-.separator {
-  height: 24px;
-  width: 1px;
-  background-color: #eee;
-}
-
-/* State: Belum Login */
-.btn-login {
-  background-color: white;
-  border: 1px solid #0f172a;
-  color: #0f172a;
-  padding: 8px 24px;
-  border-radius: 6px;
+.nav-link.router-link-active {
+  color: #000000;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
+}
+.nav-link.router-link-active:hover {
+  color: #00897b;
+  font-weight: 600;
 }
 
-.btn-login:hover {
-  background-color: #0f172a;
-  color: white;
+/* Separator */
+.separator {
+  height: 28px;
+  width: 1px;
+  background-color: #e5e7eb;
 }
 
-/* State: Sudah Login */
-.user-action {
+/* Auth Section */
+.auth-section {
+  display: flex;
+}
+
+/* User Section */
+.user-section {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 1rem;
 }
 
-.icon-wrapper {
+/* Icon Button (Favorites) */
+.icon-btn {
   position: relative;
-  cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+  background-color: #f1f5f9;
+  color: #00897b;
 }
 
 .badge {
   position: absolute;
-  top: -5px;
-  right: -6px;
-  background-color: #dc2626;
-  color: white;
-  font-size: 10px;
-  font-weight: bold;
-  height: 16px;
-  width: 16px;
-  border-radius: 50%;
+  top: 2px;
+  right: 2px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid white;
+  padding: 0 4px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.relative {
+/* User Dropdown */
+.user-dropdown {
   position: relative;
 }
 
-.avatar-wrapper {
+.avatar-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.625rem;
+  padding: 0.375rem 0.75rem 0.375rem 0.375rem;
+  border: none;
+  background: transparent;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 8px;
-  transition: background-color 0.2s;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
 }
 
-.avatar-wrapper:hover {
-  background-color: #f5f5f5;
+.avatar-btn:hover {
+  background-color: #f1f5f9;
 }
 
 .avatar-img {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid #eee;
+  border: 2px solid #e5e7eb;
 }
 
 .user-name {
   font-size: 0.9rem;
-  font-weight: 500;
-  color: #333;
-  display: none; /* Sembunyikan nama di layar kecil */
+  font-weight: 600;
+  color: #1e293b;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-@media (min-width: 1024px) {
-  .user-name {
-    display: block;
-  }
+.chevron {
+  color: #64748b;
+  transition: transform 0.2s ease;
 }
 
-.chevron-down {
-  color: #666;
+.chevron.is-open {
+  transform: rotate(180deg);
 }
 
-/* Dropdown Menu Styles */
+/* Dropdown Menu */
 .dropdown-menu {
   position: absolute;
   right: 0;
-  top: 100%;
-  margin-top: 0.5rem;
-  width: 12rem;
-  background-color: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f0f0f0;
+  top: calc(100% + 0.5rem);
+  min-width: 200px;
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
   overflow: hidden;
   z-index: 100;
 }
 
-.dropdown-header {
-  padding: 0.75rem 1rem;
-  background-color: #f9fafb;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.dropdown-header p {
-  margin: 0;
-  color: #374151;
-}
-
-.dropdown-items {
-  padding: 0.5rem 0;
-}
-
 .dropdown-item {
-  display: block;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: #334155;
   text-decoration: none;
-  transition: background-color 0.15s;
+  transition: background-color 0.15s ease;
   width: 100%;
   text-align: left;
   border: none;
   background: none;
   cursor: pointer;
+  font-weight: 500;
 }
 
 .dropdown-item:hover {
-  background-color: #f3f4f6;
+  background-color: #f8fafc;
+}
+
+.dropdown-item svg {
+  flex-shrink: 0;
 }
 
 .dropdown-divider {
-  border-top: 1px solid #f0f0f0;
-  margin: 0.5rem 0;
+  border-top: 1px solid #e5e7eb;
+  margin: 0.25rem 0;
 }
 
-.text-red-600 {
-  color: #dc2626;
+.logout-item {
+  color: #ef4444;
 }
 
-/* Responsiveness Basic */
-@media (max-width: 768px) {
-  .nav-links, .search-section {
+.logout-item:hover {
+  background-color: #fef2f2;
+}
+
+/* Dropdown Animation */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .user-name {
+    display: none;
+  }
+  
+  .nav-links {
+    display: none;
+  }
+  
+  .separator {
     display: none;
   }
 }
