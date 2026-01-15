@@ -37,18 +37,21 @@ const handleRoleSelect = (role) => {
   router.push({ path: '/login', query: { role: role } });
 };
 
+// --- UPDATE 1: Fungsi Search Diaktifkan ---
 const handleSearch = () => {
   if (searchQuery.value.trim()) {
     console.log("Searching:", searchQuery.value);
-    // router.push({ path: '/properties', query: { q: searchQuery.value } });
+    // Redirect ke halaman properties dengan query param (opsional, nanti bisa ditangkap di PropertiesView)
+    router.push({ name: 'properties', query: { q: searchQuery.value } });
   }
 };
 
+// --- UPDATE 2: Link Menu Disambungkan ---
 const menuItems = [
   { name: 'Home', link: '/' },
-  { name: 'Help Center', link: '#' },
-  { name: 'Terms and Conditions', link: '#' },
-  { name: 'About Us', link: '#' }
+  { name: 'Help Center', link: '/help' },        // <-- Sudah connect ke /help
+  { name: 'Terms and Conditions', link: '/terms' }, // <-- Sudah connect ke /terms
+  { name: 'About Us', link: '/about' }           // <-- Sudah connect ke /about
 ];
 </script>
 

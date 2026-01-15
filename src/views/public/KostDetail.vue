@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRoute } from 'vue-router';
+// 1. PERBAIKAN: Tambahkan 'useRouter' di sini
+import { useRoute, useRouter } from 'vue-router'; 
+
 import kostService from '@/services/kostService';
 import { useAuthStore } from '@/stores/auth';
 import BaseButton from '@/components/common/BaseButton.vue';
@@ -8,8 +10,18 @@ import BaseInput from '@/components/common/BaseInput.vue';
 import Navbar from '@/components/navigation/Navbar.vue';
 import Footer from '@/components/navigation/Footer.vue';
 
+// 2. PERBAIKAN: Definisikan router dan route
 const route = useRoute();
+const router = useRouter(); // <-- Ini yang tadi kurang
 const authStore = useAuthStore();
+
+// 3. Fungsi navigasi sekarang bisa berjalan karena 'router' sudah ada
+const goToGallery = () => {
+  router.push({ 
+    name: 'kost-photos', 
+    params: { id: route.params.id } 
+  });
+};
 
 const kost = ref(null);
 const loading = ref(true);
@@ -62,7 +74,7 @@ const handleBooking = () => {
   }
   console.log("Booking:", { 
     date: bookingDate.value, 
-    duration: bookingDuration.value,
+    duration: bookingDuration.value, 
     unit: durationUnit.value 
   });
   alert("Melanjutkan ke halaman pembayaran...");
@@ -113,7 +125,7 @@ onMounted(() => {
           <div class="main-image">
             <img :src="kost.mainImage || 'https://placehold.co/1000x600'" :alt="kost.name" />
             <div class="image-overlay">
-              <button class="gallery-btn">
+              <button class="gallery-btn" @click="goToGallery">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="3" width="7" height="7"></rect>
                   <rect x="14" y="3" width="7" height="7"></rect>
