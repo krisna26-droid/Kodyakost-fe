@@ -17,36 +17,47 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    // --- LOGIN ---
+    // --- LOGIN (Tetap sama) ---
     async login(email, password, targetRole) {
       this.loading = true;
       this.error = null;
-
       try {
-        const response = await apiClient.post('/login', { 
-          email: email, 
-          password: password 
-        });
-
+        const response = await apiClient.post('/login', { email, password });
         const user = response.data.user || response.data.data?.user;
         const token = response.data.token || response.data.data?.token || response.data.access_token;
 
-        if (!user || !token) {
-            throw new Error('Format respon server tidak dikenali.');
-        }
-
+        if (!user || !token) throw new Error('Format respon server tidak dikenali.');
         if (targetRole && user.role !== targetRole) {
           throw new Error(`Akun ini terdaftar sebagai ${user.role.toUpperCase()}, bukan ${targetRole.toUpperCase()}.`);
         }
 
         this.setUserData(user, token);
         return true;
-
       } catch (err) {
-        if (err.response) {
-          this.error = err.response.data.message || 'Email atau password salah';
+        this.error = err.response?.data?.message || err.message || 'Login gagal';
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // --- REGISTER (Tetap sama) ---
+    async register(name, email, password, role, phone) {
+      this.loading = true;
+      this.error = null;
+      try {
+        await apiClient.post('/register', {
+          name, email, password, 
+          password_confirmation: password, 
+          role, 
+          phone_whatsapp: phone 
+        });
+        return true; 
+      } catch (err) {
+        if (err.response?.data?.errors) {
+           this.error = Object.values(err.response.data.errors).flat()[0];
         } else {
-          this.error = err.message || 'Gagal menghubungi server';
+           this.error = err.response?.data?.message || 'Registrasi gagal';
         }
         return false;
       } finally {
@@ -54,39 +65,39 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // --- REGISTER (SUDAH DIPERBAIKI VALIDASINYA) ---
-    async register(name, email, password, role, phone) {
+    // --- UPDATE PROFILE (LANGSUNG KE LARAVEL) ---
+    async updateProfile(formData) {
       this.loading = true;
       this.error = null;
 
       try {
-        await apiClient.post('/register', {
-          name: name,
-          email: email,
-          password: password,
-          password_confirmation: password,
-          role: role,
-          phone_whatsapp: phone 
+        // 1. Kirim Request ke API Laravel
+        // Pastikan endpoint di Laravel routes/api.php adalah POST atau jika PUT tambahkan _method di formData
+        const response = await apiClient.post('/update-profile', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data', 
+          },
         });
 
-        return true; 
+        // 2. Ambil data user terbaru dari response server
+        // Sesuaikan 'response.data.data' dengan JSON Resource Laravel kamu
+        const updatedUser = response.data.data || response.data.user;
+
+        // 3. Update State & LocalStorage dengan data bersih dari server
+        if (updatedUser) {
+          this.setUserData(updatedUser, this.token);
+        }
+
+        return true;
 
       } catch (err) {
-        if (err.response) {
-          // --- LOGIKA UTAMA PERBAIKAN ---
-          // Cek apakah ada objek 'errors' yang berisi detail validasi Laravel
-          if (err.response.data.errors) {
-             // Kita ambil pesan error paling pertama yang ditemukan
-             // Contoh: { email: ["The email has already been taken."] } 
-             // Kode ini akan mengambil string di dalamnya agar tampil di layar
-             const firstError = Object.values(err.response.data.errors).flat()[0];
-             this.error = firstError;
-          } else {
-             // Jika tidak ada detail error, baru pakai pesan umum (biasanya "Validation Error")
-             this.error = err.response.data.message || 'Registrasi gagal';
-          }
+        console.error("API Error:", err);
+        
+        // Tangkap Error Validasi Laravel (Misal: Email sudah ada, File terlalu besar)
+        if (err.response?.data?.errors) {
+           this.error = Object.values(err.response.data.errors).flat()[0];
         } else {
-          this.error = 'Gagal menghubungi server';
+           this.error = err.response?.data?.message || 'Gagal menyimpan profil';
         }
         return false;
       } finally {
@@ -98,19 +109,15 @@ export const useAuthStore = defineStore('auth', {
     setUserData(user, token) {
         this.user = user;
         this.token = token;
-        
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('token', token);
-        
         apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     },
 
     // --- LOGOUT ---
     async logout() {
       try {
-        if (this.token) {
-           await apiClient.post('/logout'); 
-        }
+        if (this.token) await apiClient.post('/logout'); 
       } catch (error) {
         console.error('Logout error', error);
       } finally {
@@ -118,9 +125,7 @@ export const useAuthStore = defineStore('auth', {
         this.token = null;
         localStorage.removeItem('user');
         localStorage.removeItem('token');
-        
         delete apiClient.defaults.headers.common['Authorization'];
-        
         router.push('/'); 
       }
     }

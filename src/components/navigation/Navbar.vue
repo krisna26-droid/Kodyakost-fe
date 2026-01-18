@@ -37,40 +37,41 @@ const handleRoleSelect = (role) => {
   router.push({ path: '/login', query: { role: role } });
 };
 
-// --- UPDATE 1: Fungsi Search Diaktifkan ---
+// --- FIX: FUNGSI SEARCH ---
 const handleSearch = () => {
   if (searchQuery.value.trim()) {
     console.log("Searching:", searchQuery.value);
-    // Redirect ke halaman properties dengan query param (opsional, nanti bisa ditangkap di PropertiesView)
-    router.push({ name: 'properties', query: { q: searchQuery.value } });
+    // Ubah 'q' menjadi 'search' agar sesuai standar backend
+    router.push({ 
+      name: 'properties', 
+      query: { search: searchQuery.value } 
+    });
+    // Opsional: Clear search bar setelah enter
+    // searchQuery.value = ''; 
   }
 };
 
-// --- UPDATE 2: Link Menu Disambungkan ---
 const menuItems = [
   { name: 'Home', link: '/' },
-  { name: 'Help Center', link: '/help' },        // <-- Sudah connect ke /help
-  { name: 'Terms and Conditions', link: '/terms' }, // <-- Sudah connect ke /terms
-  { name: 'About Us', link: '/about' }           // <-- Sudah connect ke /about
+  { name: 'Help Center', link: '/help' },
+  { name: 'Terms and Conditions', link: '/terms' },
+  { name: 'About Us', link: '/about' }
 ];
 </script>
 
 <template>
   <div class="navbar-container">
     <nav class="navbar">
-      
-      <!-- Logo Section -->
       <div class="logo-section">
         <router-link to="/" class="logo-link">
           <img src="@/assets/images/kodyakost-logo.png" alt="KodyaKost Logo" class="logo-img" />
         </router-link>
       </div>
 
-      <!-- Search Section -->
       <div class="search-section">
         <BaseInput 
           v-model="searchQuery" 
-          placeholder="Search for KodyaKost"
+          placeholder="Cari kost (misal: Renon)..."
           @keyup.enter="handleSearch"
         >
           <template #prepend>
@@ -82,9 +83,7 @@ const menuItems = [
         </BaseInput>
       </div>
 
-      <!-- Navigation Actions -->
       <div class="nav-actions">
-        <!-- Menu Links -->
         <ul class="nav-links">
           <li v-for="item in menuItems" :key="item.name">
             <router-link :to="item.link" class="nav-link">
@@ -95,20 +94,13 @@ const menuItems = [
 
         <div class="separator"></div>
 
-        <!-- Guest: Sign In Button -->
         <div v-if="!isLoggedIn" class="auth-section">
-          <BaseButton 
-            variant="primary" 
-            size="md"
-            @click="showRoleModal = true"
-          >
+          <BaseButton variant="primary" size="md" @click="showRoleModal = true">
             Sign In
           </BaseButton>
         </div>
 
-        <!-- Logged In: User Actions -->
         <div v-else class="user-section">
-          <!-- Favorites Icon -->
           <button class="icon-btn">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -116,48 +108,21 @@ const menuItems = [
             <span class="badge">4</span>
           </button>
 
-          <!-- User Dropdown -->
           <div class="user-dropdown">
             <button class="avatar-btn" @click="toggleDropdown">
-              <img 
-                :src="currentUser?.avatar || 'https://i.pravatar.cc/150?img=11'" 
-                alt="User Profile" 
-                class="avatar-img" 
-              />
+              <img :src="currentUser?.avatar || 'https://i.pravatar.cc/150?img=11'" alt="User Profile" class="avatar-img" />
               <span class="user-name">{{ currentUser?.name }}</span>
-              <svg 
-                class="chevron" 
-                :class="{ 'is-open': isDropdownOpen }"
-                width="16" 
-                height="16" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                stroke-width="2"
-              >
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              <svg class="chevron" :class="{ 'is-open': isDropdownOpen }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
-
-            <!-- Dropdown Menu -->
             <transition name="dropdown">
               <div v-if="isDropdownOpen" class="dropdown-menu">
                 <router-link to="/profile" class="dropdown-item" @click="isDropdownOpen = false">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
-                  </svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   <span>Profile</span>
                 </router-link>
-                
                 <div class="dropdown-divider"></div>
-                
                 <button @click="confirmLogout" class="dropdown-item logout-item">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                    <polyline points="16 17 21 12 16 7"/>
-                    <line x1="21" y1="12" x2="9" y2="12"/>
-                  </svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                   <span>Logout</span>
                 </button>
               </div>
@@ -166,19 +131,8 @@ const menuItems = [
         </div>
       </div>
     </nav>
-
-    <!-- Modals -->
-    <RoleSelectionModal 
-      :is-open="showRoleModal" 
-      @close="showRoleModal = false"
-      @select="handleRoleSelect"
-    />
-
-    <LogoutModal 
-      :is-open="showLogoutModal" 
-      @close="showLogoutModal = false"
-      @confirm="handleLogout"
-    />
+    <RoleSelectionModal :is-open="showRoleModal" @close="showRoleModal = false" @select="handleRoleSelect"/>
+    <LogoutModal :is-open="showLogoutModal" @close="showLogoutModal = false" @confirm="handleLogout"/>
   </div>
 </template>
 

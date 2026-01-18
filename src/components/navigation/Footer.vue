@@ -1,22 +1,22 @@
 <script setup>
 import { ref } from 'vue';
-// 1. Import komponen Icon dari Iconify
 import { Icon } from '@iconify/vue';
 
+// Data Link disesuaikan dengan route yang ada di router/index.js
 const quickLinks = ref([
-  { name: 'About Us', url: '#' },
-  { name: 'Properties', url: '#' },
-  { name: 'How It Works', url: '#' },
-  { name: 'FAQs', url: '#' },
-  { name: 'Blog', url: '#' },
+  { name: 'About Us', url: '/about' },       // Route: /about
+  { name: 'Properties', url: '/properties' }, // Route: /properties
+  { name: 'How It Works', url: '/help' },    // Arahkan ke Help dulu
+  { name: 'FAQs', url: '/help' },            // Arahkan ke Help
+  { name: 'Blog', url: '#' },                // Belum ada route
 ]);
 
 const supportLinks = ref([
-  { name: 'Contact Us', url: '#' },
-  { name: 'Terms of Service', url: '#' },
+  { name: 'Contact Us', url: '#' },          // Belum ada route
+  { name: 'Terms of Service', url: '/terms' },// Route: /terms
   { name: 'Privacy Policy', url: '#' },
   { name: 'Cookie Policy', url: '#' },
-  { name: 'Help Center', url: '#' },
+  { name: 'Help Center', url: '/help' },     // Route: /help
 ]);
 </script>
 
@@ -27,19 +27,20 @@ const supportLinks = ref([
         
         <div class="footer-col brand-col">
           <div class="logo-wrapper">
-             <img src="@/assets/images/kodyakost-logo-putih.png" alt="KodyaKost" class="logo-img" />
+             <img src="@/assets/images/kodyakost-logo.png" alt="KodyaKost" class="logo-img" />
           </div>
           <p class="description">
-            Your trusted partner for finding the perfect boarding house in Bali
+            Your trusted partner for finding the perfect boarding house in Bali.
+            Nyaman, Aman, dan Terjangkau.
           </p>
           <div class="social-links">
-            <a href="#" class="social-icon" aria-label="Facebook">
+            <a href="#" class="social-icon" aria-label="Facebook" target="_blank">
               <Icon icon="mdi:facebook" />
             </a>
-            <a href="#" class="social-icon" aria-label="Instagram">
+            <a href="#" class="social-icon" aria-label="Instagram" target="_blank">
               <Icon icon="mdi:instagram" />
             </a>
-            <a href="#" class="social-icon" aria-label="X (Twitter)">
+            <a href="#" class="social-icon" aria-label="X (Twitter)" target="_blank">
               <Icon icon="ri:twitter-x-fill" />
             </a>
           </div>
@@ -49,7 +50,8 @@ const supportLinks = ref([
           <h3>Quick Links</h3>
           <ul>
             <li v-for="link in quickLinks" :key="link.name">
-              <a :href="link.url">{{ link.name }}</a>
+              <a v-if="link.url.startsWith('#')" :href="link.url">{{ link.name }}</a>
+              <router-link v-else :to="link.url">{{ link.name }}</router-link>
             </li>
           </ul>
         </div>
@@ -58,7 +60,8 @@ const supportLinks = ref([
           <h3>Support</h3>
           <ul>
             <li v-for="link in supportLinks" :key="link.name">
-              <a :href="link.url">{{ link.name }}</a>
+              <a v-if="link.url.startsWith('#')" :href="link.url">{{ link.name }}</a>
+              <router-link v-else :to="link.url">{{ link.name }}</router-link>
             </li>
           </ul>
         </div>
@@ -70,7 +73,7 @@ const supportLinks = ref([
               <span class="icon">
                 <Icon icon="mdi:map-marker" />
               </span>
-              <span>Jl. Kalcer Banget Nih No. 15, Denpasar, Bali 80221</span>
+              <span>Jl. Tukad Batanghari No. 15, Panjer, Denpasar, Bali 80221</span>
             </li>
             <li>
               <span class="icon">
@@ -96,18 +99,13 @@ const supportLinks = ref([
 </template>
 
 <style scoped>
-/* Variabel Warna */
-:root {
-  --bg-color: #1f3a52; 
-  --text-color: #d1d5db;
-  --accent-color: #fca311;
-}
-
+/* Scoped Style tetap sama, saya hanya merapikan sedikit variabel root local */
 .footer-section {
   background-color: #1f3a52;
   color: #fff;
   padding: 60px 20px 30px;
   font-family: 'Poppins', sans-serif;
+  margin-top: auto; /* Agar footer selalu di bawah jika konten sedikit */
 }
 
 .container {
@@ -134,11 +132,13 @@ const supportLinks = ref([
 
 .logo-wrapper {
   display: inline-block;
-  margin-bottom: 15px; /* Sedikit spasi tambahan agar rapi */
+  margin-bottom: 15px;
 }
 
 .logo-img {
-  height: 90px;
+  height: 50px; /* Disesuaikan agar tidak terlalu besar */
+  object-fit: contain;
+  filter: brightness(0) invert(1); /* Trik CSS agar logo jadi putih jika aslinya berwarna */
 }
 
 .description {
@@ -146,12 +146,14 @@ const supportLinks = ref([
   margin-bottom: 20px;
   line-height: 1.6;
   max-width: 300px;
+  font-size: 0.95rem;
 }
 
 h3 {
   font-size: 18px;
   margin-bottom: 20px;
   font-weight: 600;
+  color: #fca311; /* Acent color pada judul */
 }
 
 ul {
@@ -163,31 +165,32 @@ ul li {
   margin-bottom: 12px;
 }
 
+/* Style untuk Router Link dan A tag */
 ul li a {
   color: #d1d5db;
   text-decoration: none;
   transition: 0.3s;
+  display: inline-block;
 }
 
 ul li a:hover {
   color: #fca311;
-  padding-left: 5px; /* Efek geser sedikit saat hover */
+  transform: translateX(5px);
 }
 
 /* Contact Specific */
 .contact-col ul li {
   display: flex;
   gap: 15px;
-  align-items: flex-start; /* Icon sejajar dengan baris pertama teks */
+  align-items: flex-start;
   color: #d1d5db;
   margin-bottom: 15px;
 }
 
 .contact-col .icon {
   color: #fca311;
-  font-size: 1.4rem; /* Ukuran icon contact */
-  display: flex;     /* Memastikan icon centering */
-  margin-top: 2px;   /* Minor adjustment agar sejajar mata dengan teks */
+  font-size: 1.4rem;
+  margin-top: 2px;
 }
 
 /* Social Icons */
@@ -207,13 +210,13 @@ ul li a:hover {
   color: white;
   text-decoration: none;
   transition: 0.3s;
-  font-size: 1.2rem; /* Mengatur ukuran icon di dalam lingkaran */
+  font-size: 1.2rem;
 }
 
 .social-icon:hover {
   background-color: #fca311;
-  color: #1f3a52; /* Icon berubah warna gelap saat background terang */
-  transform: translateY(-3px); /* Efek naik sedikit */
+  color: #1f3a52;
+  transform: translateY(-3px);
 }
 
 /* Footer Bottom */
@@ -229,6 +232,7 @@ ul li a:hover {
 @media (max-width: 768px) {
   .footer-content {
     flex-direction: column;
+    gap: 30px;
   }
 }
 </style>
