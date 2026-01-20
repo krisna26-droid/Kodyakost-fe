@@ -14,12 +14,13 @@
         <div class="profile-card identity-card">
           <div class="avatar-wrapper">
             <img 
-              :src="form.avatar || user?.avatar || 'https://i.pravatar.cc/150?img=11'" 
+              :src="previewAvatar || getAvatarUrl(user?.avatar) || defaultAvatar" 
+              @error="handleImageError"
               alt="User Avatar" 
               class="avatar-img"
             />
             
-            <button class="edit-avatar-btn" @click="triggerFileInput">
+            <button class="edit-avatar-btn" @click="triggerFileInput" title="Ubah Foto">
               <Icon icon="mdi:camera" />
             </button>
             
@@ -28,7 +29,7 @@
               ref="fileInput" 
               class="hidden-input" 
               @change="handleFileChange" 
-              accept="image/*" 
+              accept="image/png, image/jpeg, image/jpg" 
             />
           </div>
 
@@ -48,7 +49,7 @@
               <h3>Informasi Pribadi</h3>
               <button 
                 v-if="!isEditing" 
-                @click="isEditing = true" 
+                @click="enableEdit" 
                 class="edit-btn"
               >
                 <Icon icon="mdi:pencil" /> Edit Profil
@@ -66,6 +67,7 @@
                     :disabled="!isEditing"
                     :class="{ 'editable': isEditing }"
                     placeholder="Nama Lengkap"
+                    required
                   />
                 </div>
 
@@ -90,6 +92,7 @@
                     :disabled="!isEditing"
                     :class="{ 'editable': isEditing }"
                     placeholder="08xxxxxxxxxx"
+                    required
                   />
                 </div>
 
@@ -124,13 +127,12 @@
             <div class="card-header">
               <h3>Keamanan Akun</h3>
             </div>
-            
             <div class="password-row">
               <div class="pass-info">
                 <label>Password</label>
                 <p>••••••••••••</p>
               </div>
-              <button class="change-pass-btn">Ubah Password</button>
+              <button type="button" class="change-pass-btn">Ubah Password</button>
             </div>
           </div>
 
@@ -145,124 +147,131 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { Icon } from '@iconify/vue';
 
-// Init Store
 const authStore = useAuthStore();
 const user = computed(() => authStore.user);
+
+// --- KONFIGURASI URL BACKEND (PENTING!) ---
+// Jika pakai php artisan serve -> 'http://127.0.0.1:8000'
+// Jika pakai Laragon -> biasanya 'http://kodyakost-api.test' atau 'http://localhost/kodyakost-api/public'
+// Cek browser kamu saat buka API, copy base URL-nya ke sini:
+const API_BASE_URL = 'http://127.0.0.1:8000'; 
+
+const defaultAvatar = 'https://i.pravatar.cc/150?img=11';
 
 // State UI
 const isEditing = ref(false);
 const fileInput = ref(null);
-const selectedFile = ref(null); // Menyimpan file mentah (blob)
+const selectedFile = ref(null);
+const previewAvatar = ref(null);
 
 // State Form
 const form = ref({
   name: '',
   email: '',
   phone: '',
-  bio: '',
-  avatar: '' // URL Preview
+  bio: ''
 });
 
-// --- HELPER FUNCTIONS ---
+// --- HELPER METHODS ---
 
-// 1. Reset Form (Ambil data terbaru dari Store)
-const resetForm = () => {
-  if (user.value) {
-    form.value = {
-      name: user.value.name || '',
-      email: user.value.email || '',
-      // Cek field dari backend, biasanya 'phone_whatsapp' atau 'phone'
-      phone: user.value.phone_whatsapp || user.value.phone || '', 
-      bio: user.value.bio || '',
-      avatar: user.value.avatar || null // URL avatar dari backend
-    };
+// 1. Generate URL Avatar yang Benar
+const getAvatarUrl = (path) => {
+  if (!path) return null;
+  // Jika path sudah ada http-nya (misal dari Google), pakai langsung
+  if (path.startsWith('http')) return path;
+  
+  // Bersihkan path (hilangkan slash di depan jika ada)
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  
+  // Gabungkan Base URL + folder storage + path dari DB
+  const fullUrl = `${API_BASE_URL}/storage/${cleanPath}`;
+  
+  // Debugging: Cek di Console Browser (F12) > Console
+  // console.log("Generated Avatar URL:", fullUrl); 
+  
+  return fullUrl;
+};
+
+// 2. Handle Error (Kalau gambar 404, ganti ke default)
+const handleImageError = (e) => {
+  // Cegah loop (kalau default juga error)
+  if (e.target.src !== defaultAvatar) {
+    e.target.src = defaultAvatar;
   }
 };
 
-// 2. Format Role & Date
-const formatRole = (role) => {
-  if (!role) return 'Pengguna';
-  return role === 'owner' ? 'Pemilik Properti' : 'Pencari Kost';
-};
+const formatRole = (role) => (role === 'owner' ? 'Pemilik Properti' : 'Pencari Kost');
 
 const formatDate = (dateString) => {
-  if (!dateString) return 'Jan 2026';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+  if (!dateString) return '-';
+  return new Date(dateString).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 };
 
-// --- LIFECYCLE ---
+// 3. Reset Form
+const resetForm = () => {
+  if (user.value) {
+    form.value.name = user.value.name || '';
+    form.value.email = user.value.email || '';
+    form.value.phone = user.value.phone_whatsapp || '';
+    form.value.bio = user.value.bio || ''; 
+  }
+};
 
-onMounted(() => {
-  resetForm();
-});
+// --- HANDLERS ---
 
-// Watch: Jika user di store berubah (setelah save sukses), update form
-watch(user, () => {
-  resetForm();
-});
-
-// --- EVENT HANDLERS ---
-
-// 1. Klik tombol kamera -> Buka file explorer
 const triggerFileInput = () => {
+  isEditing.value = true;
   fileInput.value.click();
 };
 
-// 2. Saat File Dipilih
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
-    // Simpan file asli untuk dikirim ke API
     selectedFile.value = file;
-
-    // Buat Preview Gambar (agar user bisa lihat sebelum save)
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      form.value.avatar = e.target.result; 
-    };
-    reader.readAsDataURL(file);
-    
-    // Otomatis masuk mode edit supaya user ingat tekan tombol Simpan
-    isEditing.value = true;
+    previewAvatar.value = URL.createObjectURL(file); // Tampilkan preview lokal
   }
 };
 
-// 3. Simpan Profil (Kirim ke Store -> API)
+const enableEdit = () => { isEditing.value = true; };
+
+const cancelEdit = () => {
+  isEditing.value = false;
+  selectedFile.value = null;
+  previewAvatar.value = null; 
+  resetForm(); 
+};
+
 const handleSaveProfile = async () => {
-  // Gunakan FormData (Wajib untuk upload file)
   const formData = new FormData();
-  
   formData.append('name', form.value.name);
-  formData.append('phone_whatsapp', form.value.phone); // Sesuaikan key dengan backend Laravel
-  formData.append('bio', form.value.bio || ''); // Kirim string kosong jika null
+  formData.append('phone_whatsapp', form.value.phone);
   
-  // Hanya kirim avatar jika ada file baru yang dipilih
   if (selectedFile.value) {
     formData.append('avatar', selectedFile.value);
   }
 
-  // Jika route backend menggunakan method PUT, uncomment baris di bawah:
-  // formData.append('_method', 'PUT'); 
-
-  // Panggil Action di AuthStore
   const success = await authStore.updateProfile(formData);
 
   if (success) {
-    isEditing.value = false;
-    selectedFile.value = null; // Reset file temp
     alert("Profil berhasil diperbarui!");
+    isEditing.value = false;
+    selectedFile.value = null;
+    previewAvatar.value = null; // Hapus preview, pakai data user yang baru
   } else {
-    alert("Gagal memperbarui profil: " + (authStore.error || 'Terjadi kesalahan'));
+    alert("Gagal: " + (authStore.error || "Terjadi kesalahan server"));
   }
 };
 
-// 4. Batal Edit
-const cancelEdit = () => {
-  resetForm(); // Kembalikan ke data asli
-  selectedFile.value = null;
-  isEditing.value = false;
-};
+onMounted(() => {
+  if (!user.value) {
+    authStore.fetchUser();
+  }
+  resetForm();
+});
+
+watch(user, () => {
+  resetForm();
+});
 </script>
 
 <style scoped>

@@ -8,13 +8,15 @@ import PropertiesView from '../views/public/PropertiesView.vue'
 import KostDetail from '../views/public/KostDetail.vue'
 import KostPhotos from '../views/public/KostPhotos.vue'
 
-// --- 1. IMPORT PROFILE VIEW ---
+// --- PROFILE & TENANT VIEWS ---
 import ProfileView from '../views/ProfileView.vue' 
+import WishlistView from '../views/tenant/WishlistView.vue' // <--- 1. Import Wishlist
 
 // Info Views
 import HelpCenterView from '../views/info/HelpCenterView.vue'
 import TermsConditionsView from '../views/info/TermsConditionsView.vue'
 import AboutUsView from '../views/info/AboutUsView.vue'
+import CulturalCalendar from '../views/info/CulturalCalendar.vue'
 
 // Auth & Test Views
 import ApiTest from '../views/ApiTest.vue'
@@ -23,8 +25,8 @@ import Register from '../views/auth/Register.vue'
 
 // --- OWNER VIEWS ---
 import OwnerDashboard from '../views/owner/DashboardView.vue'
-import ManageKost from '../views/owner/ManageKost.vue' // <--- Import Baru
-import AddKost from '../views/owner/AddKost.vue'       // <--- Import Baru
+import ManageKost from '../views/owner/ManageKost.vue'
+import AddKost from '../views/owner/AddKost.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -44,15 +46,28 @@ const router = createRouter({
           component: PropertiesView,
         },
         
-        // Route Profile
+        // Route Profile (Butuh Login)
         {
           path: 'profile',
           name: 'profile',
           component: ProfileView,
           meta: { requiresAuth: true }
         },
+
+        // --- 2. ROUTE WISHLIST (Butuh Login) ---
+        {
+          path: 'wishlist',
+          name: 'wishlist',
+          component: WishlistView,
+          meta: { requiresAuth: true }
+        },
         
         // Info Routes
+        {
+          path: 'cultural-calendar',
+          name: 'cultural-calendar',
+          component: CulturalCalendar,
+        },
         {
           path: 'help',
           name: 'help-center',
@@ -77,7 +92,9 @@ const router = createRouter({
       ],
     },
 
-    // Route Detail (Full Page)
+    // Route Detail (Full Page - Tanpa Main Layout jika desainnya full width, 
+    // tapi biasanya tetap butuh Navbar. Jika ingin pakai navbar, pindahkan ke children di atas)
+    // Sesuai kode lama kamu, ini ada di luar MainLayout:
     {
       path: '/kost/:id',
       name: 'kost-detail',
@@ -108,7 +125,6 @@ const router = createRouter({
       component: AddKost,
       meta: { requiresAuth: true }
     },
-    // ---------------------
     
     // Auth Routes
     {

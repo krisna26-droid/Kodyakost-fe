@@ -17,7 +17,7 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    // --- LOGIN (Tetap sama) ---
+    // --- LOGIN ---
     async login(email, password, targetRole) {
       this.loading = true;
       this.error = null;
@@ -41,7 +41,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // --- REGISTER (Tetap sama) ---
+    // --- REGISTER ---
     async register(name, email, password, role, phone) {
       this.loading = true;
       this.error = null;
@@ -65,25 +65,23 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // --- UPDATE PROFILE (LANGSUNG KE LARAVEL) ---
+    // --- UPDATE PROFILE (BARU) ---
     async updateProfile(formData) {
       this.loading = true;
       this.error = null;
 
       try {
-        // 1. Kirim Request ke API Laravel
-        // Pastikan endpoint di Laravel routes/api.php adalah POST atau jika PUT tambahkan _method di formData
-        const response = await apiClient.post('/update-profile', formData, {
+        // Mengirim request ke endpoint Laravel
+        const response = await apiClient.post('/profile/update', formData, {
           headers: {
-            'Content-Type': 'multipart/form-data', 
+            'Content-Type': 'multipart/form-data', // Wajib untuk upload file
           },
         });
 
-        // 2. Ambil data user terbaru dari response server
-        // Sesuaikan 'response.data.data' dengan JSON Resource Laravel kamu
-        const updatedUser = response.data.data || response.data.user;
+        // Ambil data user terbaru dari response JSON Laravel
+        const updatedUser = response.data.data;
 
-        // 3. Update State & LocalStorage dengan data bersih dari server
+        // Update State & LocalStorage
         if (updatedUser) {
           this.setUserData(updatedUser, this.token);
         }
@@ -91,10 +89,11 @@ export const useAuthStore = defineStore('auth', {
         return true;
 
       } catch (err) {
-        console.error("API Error:", err);
+        console.error("Update Profile Error:", err);
         
-        // Tangkap Error Validasi Laravel (Misal: Email sudah ada, File terlalu besar)
+        // Handling Error Validasi Laravel
         if (err.response?.data?.errors) {
+           // Mengambil pesan error pertama dari validasi
            this.error = Object.values(err.response.data.errors).flat()[0];
         } else {
            this.error = err.response?.data?.message || 'Gagal menyimpan profil';

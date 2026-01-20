@@ -60,6 +60,13 @@
         </div>
       </div>
     </section>
+
+    <TrafficAlertModal 
+        v-if="activeEvent"
+        :show="showModal"
+        :event="activeEvent"
+        @close="showModal = false"
+    />
     
   </div>
 </template>
@@ -68,17 +75,23 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
+import api from '@/api/Axios'; // Untuk request ke cultural-events
 
 // Import Services & Components
 import kostService from '@/services/kostService';
 import KostCard from '@/components/common/KostCard.vue';
-import BaseButton from '@/components/common/BaseButton.vue'; // Hanya import BaseButton
+import BaseButton from '@/components/common/BaseButton.vue';
+import TrafficAlertModal from '@/components/modal/TrafficAlertModal.vue'; // <--- Import Komponen Modal
 
 const router = useRouter();
 
 // State Management
 const properties = ref([]);
 const isLoading = ref(true);
+
+// State untuk Pop-up Traffic Alert
+const showModal = ref(false);
+const activeEvent = ref(null);
 
 // Static Data
 const features = [
@@ -109,8 +122,37 @@ const goToAllProperties = () => {
   router.push('/properties');
 };
 
+// Function Cek Traffic Alert
+const checkTrafficAlerts = async () => {
+  try {
+    const response = await api.get('/cultural-events');
+    const allEvents = response.data.data || response.data;
+    
+    if (allEvents.length > 0) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        // Cari event yang tanggalnya >= hari ini
+        const upcomingEvents = allEvents
+            .map(e => ({ ...e, dateObj: new Date(e.event_date) }))
+            .filter(e => e.dateObj >= today) 
+            .sort((a, b) => a.dateObj - b.dateObj);
+
+        // Jika ada event mendatang, ambil yang paling dekat & tampilkan
+        if (upcomingEvents.length > 0) {
+            activeEvent.value = upcomingEvents[0];
+            showModal.value = true;
+        }
+    }
+  } catch (err) {
+    // Silent error (supaya user tidak terganggu jika API event gagal)
+    console.warn("Traffic alert check failed, skipping.");
+  }
+};
+
 // Fetch Data
 onMounted(async () => {
+  // 1. Ambil Data Featured Kost
   try {
     const data = await kostService.getFeaturedKost();
     properties.value = data;
@@ -119,6 +161,9 @@ onMounted(async () => {
   } finally {
     isLoading.value = false;
   }
+
+  // 2. Cek Traffic Alert (Jalan di background)
+  checkTrafficAlerts();
 });
 </script>
 

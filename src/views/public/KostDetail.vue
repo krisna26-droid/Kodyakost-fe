@@ -1,38 +1,33 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-// 1. PERBAIKAN: Tambahkan 'useRouter' di sini
-import { useRoute, useRouter } from 'vue-router'; 
-
-import kostService from '@/services/kostService';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import kostService from '@/services/kostService';
+import wishlistService from '@/services/wishlistService'; // Import service wishlist
 import BaseButton from '@/components/common/BaseButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
 import Navbar from '@/components/navigation/Navbar.vue';
 import Footer from '@/components/navigation/Footer.vue';
 
-// 2. PERBAIKAN: Definisikan router dan route
 const route = useRoute();
-const router = useRouter(); // <-- Ini yang tadi kurang
+const router = useRouter();
 const authStore = useAuthStore();
 
-// 3. Fungsi navigasi sekarang bisa berjalan karena 'router' sudah ada
-const goToGallery = () => {
-  router.push({ 
-    name: 'kost-photos', 
-    params: { id: route.params.id } 
-  });
-};
-
+// --- STATE ---
 const kost = ref(null);
 const loading = ref(true);
 const error = ref(null);
-const activeImageIndex = ref(0);
 
-// Form Booking
+// State Wishlist
+const isWishlisted = ref(false); 
+const loadingWishlist = ref(false);
+
+// State Booking
 const bookingDate = ref('');
 const bookingDuration = ref('1');
 const durationUnit = ref('Bulan');
 
+// --- HELPER FORMAT RUPIAH ---
 const formatRupiah = (number) => {
   if (!number) return 'Rp 0';
   return new Intl.NumberFormat('id-ID', {
@@ -48,13 +43,16 @@ const totalPrice = computed(() => {
   return kost.value.price * duration + 50000;
 });
 
+// --- 1. FETCH DETAIL KOST ---
 const fetchDetail = async () => {
   loading.value = true;
-  error.value = null;
   try {
     const id = route.params.id;
     const data = await kostService.getKostDetail(id);
     kost.value = data;
+    
+    // Setelah data kost dapat, cek status wishlist (kalau user login)
+    checkWishlistStatus(); 
   } catch (err) {
     console.error(err);
     error.value = 'Gagal memuat data kos.';
@@ -63,20 +61,67 @@ const fetchDetail = async () => {
   }
 };
 
+// --- 2. CEK STATUS WISHLIST (Saat Load) ---
+const checkWishlistStatus = async () => {
+  if (!authStore.isAuthenticated || !kost.value) return;
+
+  try {
+    const response = await wishlistService.getMyWishlist();
+    // Handle struktur data dari controller laravel (flat object array)
+    const myWishlist = response.data.data || response.data;
+    const currentId = parseInt(route.params.id);
+
+    // Cek apakah ID kost ini ada di list wishlist user
+    const exists = myWishlist.some(item => {
+        // Cek item.id (flat) atau item.kost.id (nested)
+        const itemId = item.kost?.id || item.id; 
+        return itemId === currentId;
+    });
+
+    isWishlisted.value = exists;
+  } catch (err) {
+    console.error("Gagal cek status wishlist", err);
+  }
+};
+
+// --- 3. HANDLE TOMBOL SIMPAN (Toggle) ---
+const handleWishlist = async () => {
+  // Cek Login
+  if (!authStore.isAuthenticated) {
+    alert("Silakan login terlebih dahulu untuk menyimpan kost!");
+    router.push({ name: 'login' });
+    return;
+  }
+
+  try {
+    loadingWishlist.value = true;
+    
+    // Panggil API Toggle
+    await wishlistService.toggleWishlist(kost.value.id);
+    
+    // Ubah tampilan tombol secara langsung (Optimistic UI)
+    isWishlisted.value = !isWishlisted.value;
+    
+  } catch (err) {
+    console.error("Gagal update wishlist:", err);
+    alert("Gagal menyimpan data.");
+  } finally {
+    loadingWishlist.value = false;
+  }
+};
+
+// --- NAVIGASI & LAINNYA ---
+const goToGallery = () => {
+  router.push({ name: 'kost-photos', params: { id: route.params.id } });
+};
+
 const handleBooking = () => {
   if (!authStore.isAuthenticated) {
-    alert("Silakan login terlebih dahulu untuk melakukan booking");
+    alert("Silakan login terlebih dahulu");
+    router.push({ name: 'login' });
     return;
   }
-  if (!bookingDate.value) {
-    alert("Pilih tanggal check-in terlebih dahulu");
-    return;
-  }
-  console.log("Booking:", { 
-    date: bookingDate.value, 
-    duration: bookingDuration.value, 
-    unit: durationUnit.value 
-  });
+  if (!bookingDate.value) return alert("Pilih tanggal check-in terlebih dahulu");
   alert("Melanjutkan ke halaman pembayaran...");
 };
 
@@ -111,71 +156,63 @@ onMounted(() => {
 
       <div v-else class="content-wrapper">
 
-        <!-- BREADCRUMB -->
         <nav class="breadcrumb">
-          <router-link to="/">Home</router-link>
-          <span>/</span>
-          <router-link to="/properties">Properties</router-link>
-          <span>/</span>
+          <router-link to="/">Home</router-link> <span>/</span>
+          <router-link to="/properties">Properties</router-link> <span>/</span>
           <span class="current">{{ kost.name }}</span>
         </nav>
 
-        <!-- GALLERY SECTION -->
         <div class="gallery-section">
           <div class="main-image">
-            <img :src="kost.mainImage || 'https://placehold.co/1000x600'" :alt="kost.name" />
+            <img :src="kost.mainImage" :alt="kost.name" />
             <div class="image-overlay">
               <button class="gallery-btn" @click="goToGallery">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="7" height="7"></rect>
-                  <rect x="14" y="3" width="7" height="7"></rect>
-                  <rect x="14" y="14" width="7" height="7"></rect>
-                  <rect x="3" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
                 Lihat Semua Foto
               </button>
             </div>
           </div>
           <div class="thumbnail-grid">
-            <div class="thumb-item">
-              <img :src="kost.rooms?.[0]?.images?.[0] || 'https://placehold.co/400x300'" alt="Room 1" />
-            </div>
-            <div class="thumb-item">
-              <img :src="kost.rooms?.[0]?.images?.[1] || 'https://placehold.co/400x300'" alt="Room 2" />
-            </div>
-            <div class="thumb-item">
-              <img :src="kost.rooms?.[0]?.images?.[2] || 'https://placehold.co/400x300'" alt="Room 3" />
-            </div>
-            <div class="thumb-item">
-              <img :src="kost.rooms?.[0]?.images?.[3] || 'https://placehold.co/400x300'" alt="Room 4" />
+            <div class="thumb-item" v-for="(img, i) in (kost.rooms?.[0]?.images?.slice(0,4) || [1,2,3,4])" :key="i">
+               <img :src="typeof img === 'string' ? img : kost.mainImage" />
             </div>
           </div>
         </div>
 
-        <!-- MAIN CONTENT -->
         <div class="main-content">
           
-          <!-- LEFT SECTION -->
           <div class="left-section">
-            
-            <!-- HEADER -->
             <div class="property-header">
               <div class="header-top">
                 <h1 class="property-title">{{ kost.name }}</h1>
                 <div class="header-actions">
-                  <button class="icon-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  
+                  <button 
+                    class="icon-btn" 
+                    @click="handleWishlist"
+                    :disabled="loadingWishlist"
+                    :class="{ 'wishlist-active': isWishlisted }"
+                  >
+                    <svg 
+                      width="20" height="20" viewBox="0 0 24 24" 
+                      :fill="isWishlisted ? 'currentColor' : 'none'" 
+                      stroke="currentColor" stroke-width="2"
+                      :class="isWishlisted ? 'text-red-500' : 'text-gray-500'"
+                    >
                       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                     </svg>
-                    Simpan
+                    <span :class="isWishlisted ? 'text-red-600 font-bold' : ''">
+                      {{ isWishlisted ? 'Tersimpan' : 'Simpan' }}
+                    </span>
                   </button>
+
                   <button class="icon-btn">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="18" cy="5" r="3"></circle>
-                      <circle cx="6" cy="12" r="3"></circle>
-                      <circle cx="18" cy="19" r="3"></circle>
-                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                      <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                     </svg>
                     Bagikan
                   </button>
@@ -183,139 +220,65 @@ onMounted(() => {
               </div>
 
               <div class="property-meta">
-                <span class="meta-item">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                  </svg>
-                  4.5 (28 Reviews)
-                </span>
-                <span class="meta-item">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                  </svg>
-                  {{ kost.district || 'Denpasar' }}, Bali
-                </span>
+                <span class="meta-item">⭐ {{ kost.rating || 4.5 }} ({{ kost.reviewCount || 10 }} Reviews)</span>
+                <span class="meta-item">📍 {{ kost.district || 'Denpasar' }}, Bali</span>
                 <span class="meta-badge">Kos Campur</span>
               </div>
             </div>
 
             <div class="divider"></div>
 
-            <!-- PROPERTY INFO -->
             <div class="info-section">
-              <h2 class="section-title">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                </svg>
-                Tentang Properti
-              </h2>
-              <p class="info-text">{{ kost.description || 'Kost nyaman dan strategis dengan fasilitas lengkap. Lokasi dekat dengan pusat kota, kampus, dan area perkantoran.' }}</p>
+              <h2 class="section-title">Tentang Properti</h2>
+              <p class="info-text">{{ kost.description }}</p>
             </div>
 
             <div class="divider"></div>
 
-            <!-- FACILITIES -->
             <div class="info-section">
-              <h2 class="section-title">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 11l3 3L22 4"></path>
-                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-                </svg>
-                Fasilitas & Amenitas
-              </h2>
+              <h2 class="section-title">Fasilitas</h2>
               <div class="facilities-grid">
-                <div v-for="fac in (kost.facilities || ['WiFi', 'AC', 'Kamar Mandi Dalam', 'Dapur Bersama', 'Parkir Motor', 'Laundry'])" :key="fac" class="facility-item">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  <span>{{ fac }}</span>
+                <div v-for="fac in kost.facilities" :key="fac" class="facility-item">
+                  <span>✅ {{ fac }}</span>
                 </div>
               </div>
             </div>
 
             <div class="divider"></div>
 
-            <!-- LOCATION -->
             <div class="info-section">
-              <h2 class="section-title">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                Lokasi
-              </h2>
+              <h2 class="section-title">Lokasi</h2>
               <div class="location-card">
                 <div class="location-info">
-                  <p class="location-address">{{ kost.address || 'Jl. Teuku Umar, Denpasar, Bali' }}</p>
-                  <p class="location-detail">{{ kost.district || 'Denpasar Barat' }} • {{ kost.city || 'Denpasar' }}</p>
+                  <p class="location-address">{{ kost.address }}</p>
+                  <p class="location-detail">{{ kost.district }} • {{ kost.city || 'Denpasar' }}</p>
                 </div>
-                <button class="view-map-btn">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
-                    <line x1="8" y1="2" x2="8" y2="18"></line>
-                    <line x1="16" y1="6" x2="16" y2="22"></line>
-                  </svg>
-                  Lihat Peta
-                </button>
+                <button class="view-map-btn">Lihat Peta</button>
               </div>
             </div>
-
           </div>
 
-          <!-- RIGHT SECTION (BOOKING CARD) -->
           <div class="right-section">
             <div class="booking-card">
-              
               <div class="price-header">
                 <div>
                   <div class="price-amount">{{ formatRupiah(kost.price) }}</div>
                   <div class="price-period">per bulan</div>
                 </div>
-                <div class="availability-badge">
-                  <span class="badge-dot"></span>
-                  Tersedia
-                </div>
+                <div class="availability-badge"><span class="badge-dot"></span> Tersedia</div>
               </div>
 
               <div class="divider-sm"></div>
 
-              <!-- BOOKING FORM -->
               <div class="booking-form">
                 <div class="form-group">
-                  <label class="form-label">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="16" y1="2" x2="16" y2="6"></line>
-                      <line x1="8" y1="2" x2="8" y2="6"></line>
-                      <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    Tanggal Mulai Kos
-                  </label>
-                  <BaseInput 
-                    v-model="bookingDate" 
-                    type="date" 
-                    placeholder="Pilih tanggal"
-                  />
+                  <label class="form-label">Tanggal Mulai Kos</label>
+                  <BaseInput v-model="bookingDate" type="date" />
                 </div>
-
                 <div class="form-group">
-                  <label class="form-label">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                    Durasi Sewa
-                  </label>
+                  <label class="form-label">Durasi Sewa</label>
                   <div class="duration-input-group">
-                    <BaseInput 
-                      v-model="bookingDuration" 
-                      type="number" 
-                      min="1"
-                      placeholder="1"
-                      class="duration-number"
-                    />
+                    <BaseInput v-model="bookingDuration" type="number" min="1" class="duration-number" />
                     <select v-model="durationUnit" class="duration-select">
                       <option>Bulan</option>
                       <option>Tahun</option>
@@ -324,69 +287,25 @@ onMounted(() => {
                 </div>
               </div>
 
-              <div class="divider-sm"></div>
-
-              <!-- PRICE BREAKDOWN -->
               <div class="price-breakdown">
-                <div class="breakdown-row">
-                  <span>{{ formatRupiah(kost.price) }} x {{ bookingDuration || 1 }} bulan</span>
-                  <span>{{ formatRupiah((kost.price || 0) * (parseInt(bookingDuration) || 1)) }}</span>
-                </div>
-                <div class="breakdown-row">
-                  <span>Biaya layanan</span>
-                  <span>{{ formatRupiah(50000) }}</span>
-                </div>
-                <div class="divider-sm"></div>
                 <div class="breakdown-row total">
                   <span>Total</span>
                   <span>{{ formatRupiah(totalPrice) }}</span>
                 </div>
               </div>
 
-              <!-- ACTION BUTTONS -->
               <div class="action-buttons">
-                <BaseButton 
-                  @click="handleBooking"
-                  variant="primary"
-                  class="btn-primary-custom"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                  Ajukan Booking
-                </BaseButton>
-                <BaseButton 
-                  @click="handleContactOwner"
-                  variant="outline"
-                  class="btn-outline-custom"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                  Hubungi Pemilik
-                </BaseButton>
+                <BaseButton @click="handleBooking" variant="primary" class="btn-primary-custom">Ajukan Booking</BaseButton>
+                <BaseButton @click="handleContactOwner" variant="outline" class="btn-outline-custom">Hubungi Pemilik</BaseButton>
               </div>
-
-              <p class="booking-note">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="16" x2="12" y2="12"></line>
-                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-                Anda belum akan dikenakan biaya
-              </p>
-
+              
+              <p class="booking-note">Anda belum akan dikenakan biaya</p>
             </div>
           </div>
 
         </div>
-
       </div>
     </div>
-
     <Footer />
   </div>
 </template>
@@ -633,6 +552,13 @@ onMounted(() => {
   transition: all 0.3s ease;
   font-family: 'Poppins', sans-serif;
   font-size: 0.9rem;
+}
+
+/* Style saat tombol 'Tersimpan' (Wishlisted) */
+.active-wishlist {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #ef4444;
 }
 
 .icon-btn:hover {
@@ -927,9 +853,19 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   color: #6b7280;
-  font-size: 0. nine5rem;
+  font-size: 0.9rem;
 }
 .booking-note svg {
   color: #fca311;
 }
+
+/* Style tambahan untuk tombol aktif */
+.wishlist-active {
+  background-color: #fef2f2 !important; /* Merah muda */
+  border-color: #fca5a5 !important;
+  color: #dc2626 !important;
+}
+
+.text-red-500 { color: #ef4444; }
+.text-red-600 { color: #dc2626; }
 </style>

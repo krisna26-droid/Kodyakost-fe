@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { useWishlistStore } from '@/stores/wishlist'; // Import Store Wishlist
 import { useRouter } from 'vue-router';
 import LogoutModal from '@/components/modal/LogoutModal.vue';
 import RoleSelectionModal from '@/components/modal/RoleSelectionModal.vue';
@@ -8,6 +9,7 @@ import BaseButton from '@/components/common/BaseButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
 
 const authStore = useAuthStore();
+const wishlistStore = useWishlistStore(); // Init Store
 const router = useRouter();
 
 // State
@@ -18,9 +20,23 @@ const showLogoutModal = ref(false);
 const showRoleModal = ref(false);
 const searchQuery = ref('');
 
-const toggleDropdown = () => {
-  isDropdownOpen.value = !isDropdownOpen.value;
+// --- URL HELPER (Avatar) ---
+const defaultAvatar = 'https://i.pravatar.cc/150?img=11';
+const API_BASE_URL = 'http://127.0.0.1:8000'; 
+
+const getAvatarUrl = (path) => {
+  if (!path) return defaultAvatar;
+  if (path.startsWith('http')) return path;
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return `${API_BASE_URL}/storage/${cleanPath}`;
 };
+
+const handleImageError = (e) => {
+  if (e.target.src !== defaultAvatar) e.target.src = defaultAvatar;
+};
+
+// --- HANDLERS ---
+const toggleDropdown = () => isDropdownOpen.value = !isDropdownOpen.value;
 
 const confirmLogout = () => {
   isDropdownOpen.value = false;
@@ -30,6 +46,8 @@ const confirmLogout = () => {
 const handleLogout = () => {
   showLogoutModal.value = false;
   authStore.logout();
+  wishlistStore.clearWishlist(); // Reset badge saat logout
+  router.push('/');
 };
 
 const handleRoleSelect = (role) => {
@@ -37,25 +55,38 @@ const handleRoleSelect = (role) => {
   router.push({ path: '/login', query: { role: role } });
 };
 
-// --- FIX: FUNGSI SEARCH ---
 const handleSearch = () => {
   if (searchQuery.value.trim()) {
-    console.log("Searching:", searchQuery.value);
-    // Ubah 'q' menjadi 'search' agar sesuai standar backend
-    router.push({ 
-      name: 'properties', 
-      query: { search: searchQuery.value } 
-    });
-    // Opsional: Clear search bar setelah enter
-    // searchQuery.value = ''; 
+    router.push({ name: 'properties', query: { search: searchQuery.value } });
   }
 };
+
+const goToWishlist = () => {
+  router.push({ name: 'wishlist' });
+};
+
+// --- DATA FETCHING (Wishlist Count) ---
+onMounted(() => {
+  if (isLoggedIn.value) {
+    wishlistStore.fetchWishlist();
+  }
+});
+
+// Watcher: Jika user login, ambil data wishlist. Jika logout, reset.
+watch(isLoggedIn, (newVal) => {
+  if (newVal) {
+    wishlistStore.fetchWishlist();
+  } else {
+    wishlistStore.clearWishlist();
+  }
+});
 
 const menuItems = [
   { name: 'Home', link: '/' },
   { name: 'Help Center', link: '/help' },
   { name: 'Terms and Conditions', link: '/terms' },
-  { name: 'About Us', link: '/about' }
+  { name: 'About Us', link: '/about' },
+  { name: 'Cultural Calendar', link: '/cultural-calendar' } 
 ];
 </script>
 
@@ -75,10 +106,7 @@ const menuItems = [
           @keyup.enter="handleSearch"
         >
           <template #prepend>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/>
-              <path d="m21 21-4.35-4.35"/>
-            </svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           </template>
         </BaseInput>
       </div>
@@ -86,9 +114,7 @@ const menuItems = [
       <div class="nav-actions">
         <ul class="nav-links">
           <li v-for="item in menuItems" :key="item.name">
-            <router-link :to="item.link" class="nav-link">
-              {{ item.name }}
-            </router-link>
+            <router-link :to="item.link" class="nav-link">{{ item.name }}</router-link>
           </li>
         </ul>
 
@@ -101,25 +127,39 @@ const menuItems = [
         </div>
 
         <div v-else class="user-section">
-          <button class="icon-btn">
+          
+          <button class="icon-btn" @click="goToWishlist" title="Lihat Wishlist">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
-            <span class="badge">4</span>
+            
+            <transition name="pop">
+              <span v-if="wishlistStore.count > 0" class="badge">
+                {{ wishlistStore.count }}
+              </span>
+            </transition>
           </button>
 
           <div class="user-dropdown">
             <button class="avatar-btn" @click="toggleDropdown">
-              <img :src="currentUser?.avatar || 'https://i.pravatar.cc/150?img=11'" alt="User Profile" class="avatar-img" />
+              <img :src="getAvatarUrl(currentUser?.avatar)" @error="handleImageError" alt="User" class="avatar-img" />
               <span class="user-name">{{ currentUser?.name }}</span>
               <svg class="chevron" :class="{ 'is-open': isDropdownOpen }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
+            
             <transition name="dropdown">
               <div v-if="isDropdownOpen" class="dropdown-menu">
                 <router-link to="/profile" class="dropdown-item" @click="isDropdownOpen = false">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   <span>Profile</span>
                 </router-link>
+                
+                <router-link to="/wishlist" class="dropdown-item" @click="isDropdownOpen = false">
+                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                   <span>Wishlist</span>
+                   <span v-if="wishlistStore.count > 0" class="dropdown-badge">{{ wishlistStore.count }}</span>
+                </router-link>
+
                 <div class="dropdown-divider"></div>
                 <button @click="confirmLogout" class="dropdown-item logout-item">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
