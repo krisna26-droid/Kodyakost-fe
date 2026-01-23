@@ -24,3 +24,23 @@ jobs:
 
       - name: Build
         run: npm run build
+
+
+        # --- TAMBAHKAN BAGIAN INI DI BAWAHNYA ---
+      - name: 📂 Sync files to Hostinger
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          
+          # Folder hasil build (Vue biasanya 'dist')
+          local-dir: ./dist/
+          
+          # Taruh di public_html
+          server-dir: /public_html/
+          
+          # PENTING: Lindungi Backend biar gak kehapus
+          exclude: |
+            apikodyakost/**
+            apikodyakost
