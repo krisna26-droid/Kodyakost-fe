@@ -1,0 +1,43 @@
+name: Deploy Vue to Hostinger
+
+on:
+  push:
+    branches:
+      - main  # <-- Pastikan ini sesuai nama branch kamu (main atau master)
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Ambil Kodingan Terbaru
+      - name: 🚚 Get latest code
+        uses: actions/checkout@v4
+
+      # 2. Siapkan Node.js 18
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # 3. Install Library (Bumbu Masak)
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      # 4. MASAK KODINGAN (Build) -> Jadi folder 'dist'
+      - name: 🏗️ Build Project
+        run: npm run build
+
+      # 5. Upload folder 'dist' (Makanan Matang) ke Hostinger
+      - name: 📂 Sync files to Hostinger
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          
+          # Upload HANYA hasil build
+          local-dir: ./dist/
+          
+          # Taruh di public_html
+          server-dir: /public_html/
