@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
-import { useWishlistStore } from '@/stores/wishlist'; // Import Store Wishlist
+import { useWishlistStore } from '@/stores/wishlist'; 
 import { useRouter } from 'vue-router';
 import LogoutModal from '@/components/modal/LogoutModal.vue';
 import RoleSelectionModal from '@/components/modal/RoleSelectionModal.vue';
@@ -9,7 +9,7 @@ import BaseButton from '@/components/common/BaseButton.vue';
 import BaseInput from '@/components/common/BaseInput.vue';
 
 const authStore = useAuthStore();
-const wishlistStore = useWishlistStore(); // Init Store
+const wishlistStore = useWishlistStore(); 
 const router = useRouter();
 
 // State
@@ -20,7 +20,7 @@ const showLogoutModal = ref(false);
 const showRoleModal = ref(false);
 const searchQuery = ref('');
 
-// --- URL HELPER (Avatar) ---
+// --- URL HELPER ---
 const defaultAvatar = 'https://i.pravatar.cc/150?img=11';
 const API_BASE_URL = 'http://127.0.0.1:8000'; 
 
@@ -46,7 +46,7 @@ const confirmLogout = () => {
 const handleLogout = () => {
   showLogoutModal.value = false;
   authStore.logout();
-  wishlistStore.clearWishlist(); // Reset badge saat logout
+  wishlistStore.clearWishlist(); 
   router.push('/');
 };
 
@@ -65,14 +65,13 @@ const goToWishlist = () => {
   router.push({ name: 'wishlist' });
 };
 
-// --- DATA FETCHING (Wishlist Count) ---
+// --- DATA FETCHING ---
 onMounted(() => {
   if (isLoggedIn.value) {
     wishlistStore.fetchWishlist();
   }
 });
 
-// Watcher: Jika user login, ambil data wishlist. Jika logout, reset.
 watch(isLoggedIn, (newVal) => {
   if (newVal) {
     wishlistStore.fetchWishlist();
@@ -132,7 +131,6 @@ const menuItems = [
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
-            
             <transition name="pop">
               <span v-if="wishlistStore.count > 0" class="badge">
                 {{ wishlistStore.count }}
@@ -149,6 +147,29 @@ const menuItems = [
             
             <transition name="dropdown">
               <div v-if="isDropdownOpen" class="dropdown-menu">
+                
+                <router-link 
+                  v-if="authStore.isAdmin" 
+                  to="/admin/dashboard" 
+                  class="dropdown-item admin-link" 
+                  @click="isDropdownOpen = false"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                  <span>Admin Panel</span>
+                </router-link>
+
+                <router-link 
+                  v-if="authStore.isOwner" 
+                  to="/owner/dashboard" 
+                  class="dropdown-item owner-link" 
+                  @click="isDropdownOpen = false"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                  <span>Dashboard Bisnis</span>
+                </router-link>
+
+                <div v-if="authStore.isAdmin || authStore.isOwner" class="dropdown-divider"></div>
+
                 <router-link to="/profile" class="dropdown-item" @click="isDropdownOpen = false">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   <span>Profile</span>
@@ -465,5 +486,35 @@ const menuItems = [
   .separator {
     display: none;
   }
+}
+/* 1. Admin Link Style (Navy Blue) */
+.admin-link { 
+  color: #1e3a8a; 
+  font-weight: 600; 
+  background-color: #f8fafc; 
+}
+.admin-link:hover { 
+  background-color: #eff6ff; /* Biru muda saat hover */
+}
+
+/* 2. Owner Link Style (Green) */
+.owner-link { 
+  color: #059669; 
+  font-weight: 600; 
+  background-color: #f0fdfa; 
+}
+.owner-link:hover { 
+  background-color: #ecfdf5; /* Hijau muda saat hover */
+}
+
+/* Animation */
+.dropdown-enter-active, .dropdown-leave-active { transition: all 0.2s ease; }
+.dropdown-enter-from, .dropdown-leave-to { opacity: 0; transform: translateY(-8px); }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .user-name { display: none; }
+  .nav-links { display: none; }
+  .separator { display: none; }
 }
 </style>

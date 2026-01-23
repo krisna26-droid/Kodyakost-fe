@@ -1,3 +1,51 @@
+<script setup>
+import { ref, onMounted } from 'vue';
+// 1. Import the service instead of axios directly
+import culturalService from '@/services/culturalServices'; 
+
+const events = ref([]);
+const loading = ref(true);
+const error = ref(null);
+
+const fetchEvents = async () => {
+  try {
+    loading.value = true;
+    
+    // 2. Call the function from the service
+    const data = await culturalService.getEvents();
+    
+    // 3. Directly assign data to state (service handles data extraction)
+    events.value = data;
+
+  } catch (err) {
+    console.error("Error:", err);
+    error.value = "Gagal memuat data. Periksa koneksi internet.";
+  } finally {
+    loading.value = false;
+  }
+};
+
+// --- Helper Functions ---
+
+const formatDate = (dateString) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('id-ID', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  }).format(date);
+};
+
+const getSeverityClass = (severity) => {
+  if (severity === 'high') return 'bg-red';
+  if (severity === 'medium') return 'bg-yellow';
+  return 'bg-blue';
+};
+
+onMounted(() => {
+  fetchEvents();
+});
+</script>
+
 <template>
   <div class="page-container">
     <div class="header-wrapper">
@@ -93,52 +141,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue';
-import api from '@/api/Axios'; 
-
-const events = ref([]);
-const loading = ref(true);
-const error = ref(null);
-
-const fetchEvents = async () => {
-  try {
-    loading.value = true;
-    const response = await api.get('/cultural-events');
-    if (response.data.success && response.data.data) {
-        events.value = response.data.data;
-    } else {
-        events.value = response.data; 
-    }
-  } catch (err) {
-    console.error("Error:", err);
-    error.value = "Gagal memuat data. Periksa koneksi internet.";
-  } finally {
-    loading.value = false;
-  }
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('id-ID', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-  }).format(date);
-};
-
-// Helper function for dynamic classes (pengganti logic di template)
-const getSeverityClass = (severity) => {
-  if (severity === 'high') return 'bg-red';
-  if (severity === 'medium') return 'bg-yellow';
-  return 'bg-blue';
-};
-
-onMounted(() => {
-  fetchEvents();
-});
-</script>
-
 <style scoped>
+/* Your existing styles... */
 /* --- UTAMA (Container) --- */
 .page-container {
   min-height: 100vh;

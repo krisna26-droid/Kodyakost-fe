@@ -14,6 +14,8 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => !!state.token,
     isOwner: (state) => state.user?.role === 'owner',
     isTenant: (state) => state.user?.role === 'tenant',
+    // Add isAdmin getter
+    isAdmin: (state) => state.user?.role === 'admin',
   },
 
   actions: {
@@ -27,6 +29,8 @@ export const useAuthStore = defineStore('auth', {
         const token = response.data.token || response.data.data?.token || response.data.access_token;
 
         if (!user || !token) throw new Error('Format respon server tidak dikenali.');
+
+        // Validate that the user's role matches the target role
         if (targetRole && user.role !== targetRole) {
           throw new Error(`Akun ini terdaftar sebagai ${user.role.toUpperCase()}, bukan ${targetRole.toUpperCase()}.`);
         }
@@ -41,6 +45,8 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    // ... (rest of the actions: register, updateProfile, setUserData, logout) ...
+    // ... Copy the rest of your existing actions here ...
     // --- REGISTER ---
     async register(name, email, password, role, phone) {
       this.loading = true;

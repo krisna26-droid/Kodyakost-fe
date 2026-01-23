@@ -40,11 +40,19 @@ const selectRole = (role) => {
 
       </div>
 
+      <div class="admin-link-wrapper">
+        <span class="text-muted">Staff KodyaKost?</span>
+        <button @click="selectRole('admin')" class="btn-link-admin">
+          Masuk Admin
+        </button>
+      </div>
+
     </div>
   </div>
 </template>
 
 <style scoped>
+/* ... (Existing styles) ... */
 .modal-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
@@ -126,5 +134,35 @@ const selectRole = (role) => {
 @keyframes popIn {
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+/* Admin Link Styles */
+.admin-link-wrapper {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #f3f4f6;
+  text-align: center;
+  font-size: 0.9rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+
+.text-muted {
+  color: #9ca3af;
+}
+
+.btn-link-admin {
+  background: none;
+  border: none;
+  color: #1e3a8a;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.9rem;
+}
+.btn-link-admin:hover {
+  color: #fca311;
 }
 </style>

@@ -147,13 +147,18 @@ const handleLogin = async () => {
     setTimeout(() => {
       showSuccessModal.value = false;
       
-      // --- PERBAIKAN DI SINI ---
-      // Cek role user dari response authStore
-      // Jika Owner -> Arahkan ke Dashboard Owner
-      if (authStore.user?.role === 'owner') {
+      // --- LOGIC REDIRECT DIPERBAIKI ---
+      
+      // 1. Cek apakah Admin?
+      if (authStore.isAdmin) {
+        router.push({ name: 'admin-verify' }); 
+      } 
+      // 2. Cek apakah Owner?
+      else if (authStore.isOwner) {
         router.push({ name: 'owner-dashboard' }); 
-      } else {
-        // Jika Tenant -> Arahkan ke Home
+      } 
+      // 3. Sisanya Tenant -> Home
+      else {
         router.push({ name: 'home' });
       }
       
