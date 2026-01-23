@@ -2,29 +2,29 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth' 
 
 // Layouts
-import MainLayout from '../layouts/MainLayout.vue'
+import MainLayout from '@/layouts/MainLayout.vue'
 import DashboardLayout from '@/layouts/DashboardLayout.vue' 
 
 // Public Views
-import HomeView from '../views/public/HomeView.vue'
-import PropertiesView from '../views/public/PropertiesView.vue' 
-import KostDetail from '../views/public/KostDetail.vue'
-import KostPhotos from '../views/public/KostPhotos.vue'
+import HomeView from '@/views/public/HomeView.vue'
+import PropertiesView from '@/views/public/PropertiesView.vue' 
+import KostDetail from '@/views/public/KostDetail.vue'
+import KostPhotos from '@/views/public/KostPhotos.vue'
 
 // Profile & Tenant Views
-import ProfileView from '../views/ProfileView.vue' 
-import WishlistView from '../views/tenant/WishlistView.vue' 
+import ProfileView from '@/views/ProfileView.vue' 
+import WishlistView from '@/views/tenant/WishlistView.vue' 
 
 // Info Views
-import HelpCenterView from '../views/info/HelpCenterView.vue'
-import TermsConditionsView from '../views/info/TermsConditionsView.vue'
-import AboutUsView from '../views/info/AboutUsView.vue'
-import CulturalCalendar from '../views/info/CulturalCalendar.vue'
+import HelpCenterView from '@/views/info/HelpCenterView.vue'
+import TermsConditionsView from '@/views/info/TermsConditionsView.vue'
+import AboutUsView from '@/views/info/AboutUsView.vue'
+import CulturalCalendar from '@/views/info/CulturalCalendar.vue'
 
 // Auth & Test Views
-import ApiTest from '../views/ApiTest.vue'
-import LoginView from '../views/auth/LoginView.vue'
-import Register from '../views/auth/Register.vue'
+import ApiTest from '@/views/ApiTest.vue'
+import LoginView from '@/views/auth/LoginView.vue'
+import Register from '@/views/auth/Register.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
