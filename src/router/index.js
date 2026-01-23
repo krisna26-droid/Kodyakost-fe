@@ -46,7 +46,7 @@ const router = createRouter({
       ],
     },
 
-    // --- DETAIL ROUTES ---
+    // --- DETAIL ROUTES --- detail kost dan foto kost
     { path: '/kost/:id', name: 'kost-detail', component: KostDetail },
     { path: '/kost/:id/photos', name: 'kost-photos', component: KostPhotos },
 
