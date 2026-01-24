@@ -146,13 +146,13 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { Icon } from '@iconify/vue';
+import { notify } from '@/utils/swal'; // [PENTING] Import helper notifikasi
 
 const authStore = useAuthStore();
 const user = computed(() => authStore.user);
 
-// --- [FIX] KONFIGURASI URL DINAMIS ---
+// --- KONFIGURASI URL DINAMIS ---
 const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
-// Hapus '/api' di akhir untuk base storage URL
 const BASE_STORAGE_URL = API_URL.replace(/\/api\/?$/, '');
 
 const defaultAvatar = 'https://i.pravatar.cc/150?img=11';
@@ -172,7 +172,6 @@ const form = ref({
 });
 
 // --- HELPER METHODS ---
-
 const getAvatarUrl = (path) => {
   if (!path) return null;
   if (path.startsWith('http')) return path;
@@ -201,7 +200,6 @@ const resetForm = () => {
 };
 
 // --- HANDLERS ---
-
 const triggerFileInput = () => {
   isEditing.value = true;
   fileInput.value.click();
@@ -210,25 +208,36 @@ const triggerFileInput = () => {
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
+    // Validasi ukuran file (Opsional, misal max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      return notify.error("Ukuran foto terlalu besar (Maks 2MB)");
+    }
     selectedFile.value = file;
     previewAvatar.value = URL.createObjectURL(file);
+    notify.success("Foto terpilih, klik Simpan untuk memperbarui");
   }
 };
 
-const enableEdit = () => { isEditing.value = true; };
+const enableEdit = () => { 
+  isEditing.value = true; 
+};
 
-const cancelEdit = () => {
-  isEditing.value = false;
-  selectedFile.value = null;
-  previewAvatar.value = null; 
-  resetForm(); 
+const cancelEdit = async () => {
+  // Tambahkan konfirmasi jika ingin lebih aman
+  const yakin = await notify.confirm("Batalkan perubahan?", "Data yang Anda masukkan tidak akan disimpan.");
+  if (yakin) {
+    isEditing.value = false;
+    selectedFile.value = null;
+    previewAvatar.value = null; 
+    resetForm();
+  }
 };
 
 const handleSaveProfile = async () => {
   const formData = new FormData();
   formData.append('name', form.value.name);
   formData.append('phone_whatsapp', form.value.phone);
-  if (form.value.bio) formData.append('bio', form.value.bio); // Kirim bio jika ada
+  if (form.value.bio) formData.append('bio', form.value.bio);
   
   if (selectedFile.value) {
     formData.append('avatar', selectedFile.value);
@@ -237,17 +246,19 @@ const handleSaveProfile = async () => {
   const success = await authStore.updateProfile(formData);
 
   if (success) {
-    alert("Profil berhasil diperbarui!");
+    // [UPDATE] Notifikasi sukses menggunakan Toast
+    notify.success("Profil Anda berhasil diperbarui!");
     isEditing.value = false;
     selectedFile.value = null;
     previewAvatar.value = null; 
   } else {
-    alert("Gagal: " + (authStore.error || "Terjadi kesalahan server"));
+    // [UPDATE] Notifikasi error menggunakan Toast
+    notify.error(authStore.error || "Gagal menyimpan perubahan profil.");
   }
 };
 
 onMounted(() => {
-  if (!user.value) authStore.fetchUser(); // Pastikan ada method ini di store atau gunakan fetchProfile
+  if (!user.value) authStore.fetchUser();
   resetForm();
 });
 
