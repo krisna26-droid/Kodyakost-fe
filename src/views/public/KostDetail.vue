@@ -5,7 +5,7 @@
       
       <div v-if="loading" class="loading-state">
         <div class="spinner"></div>
-        <p>Memuat detail properti...</p>
+        <p>Sedang memuat detail properti...</p>
       </div>
 
       <div v-else-if="error" class="error-state">
@@ -13,9 +13,9 @@
           <div class="error-icon">
              <Icon icon="mdi:alert-circle-outline" width="64" />
           </div>
-          <h3>Terjadi Kesalahan</h3>
+          <h3>Gagal Memuat Data</h3>
           <p>{{ error }}</p>
-          <BaseButton @click="fetchDetail" variant="primary">Coba Lagi</BaseButton>
+          <button class="btn-primary" @click="fetchDetail">Coba Lagi</button>
         </div>
       </div>
 
@@ -29,7 +29,7 @@
 
         <div class="gallery-section">
           <div class="main-image">
-            <img :src="kost.mainImage" :alt="kost.name" />
+            <img :src="getThumb(kost.main_image || kost.image)" :alt="kost.name" />
             <div class="image-overlay">
               <button class="gallery-btn" @click="goToGallery">
                 <Icon icon="mdi:image-multiple-outline" width="20" />
@@ -58,17 +58,20 @@
                     :disabled="loadingWishlist"
                     :class="{ 'wishlist-active': isWishlisted }"
                   >
-                    <Icon :icon="isWishlisted ? 'mdi:heart' : 'mdi:heart-outline'" width="20" :class="isWishlisted ? 'text-red-500' : 'text-gray-500'" />
-                    <span :class="isWishlisted ? 'text-red-600 font-bold' : ''">
-                      {{ isWishlisted ? 'Tersimpan' : 'Simpan' }}
-                    </span>
+                    <Icon :icon="isWishlisted ? 'mdi:heart' : 'mdi:heart-outline'" width="20" />
+                    <span>{{ isWishlisted ? 'Tersimpan' : 'Simpan' }}</span>
                   </button>
                 </div>
               </div>
 
               <div class="property-meta">
-                <span class="meta-item"><Icon icon="mdi:star" class="text-yellow-400" /> {{ kost.rating }} ({{ kost.reviewCount }} Ulasan)</span>
-                <span class="meta-item"><Icon icon="mdi:map-marker" /> {{ kost.district }}, Bali</span>
+                <span class="meta-item">
+                  <Icon icon="mdi:star" class="text-yellow" /> 
+                  {{ kost.rating || 'New' }} {{ kost.reviews_count ? `(${kost.reviews_count})` : '' }}
+                </span>
+                <span class="meta-item">
+                  <Icon icon="mdi:map-marker" /> {{ kost.district }}, {{ kost.city }}
+                </span>
                 <span class="meta-badge">{{ kost.type || 'Campur' }}</span>
               </div>
             </div>
@@ -76,17 +79,17 @@
             <div class="divider"></div>
 
             <div class="info-section">
-              <h2 class="section-title">Tentang Properti</h2>
+              <h2 class="section-title"><Icon icon="mdi:text-box-outline" />Tentang Properti</h2>
               <p class="info-text">{{ kost.description }}</p>
             </div>
 
             <div class="divider"></div>
 
             <div class="info-section">
-              <h2 class="section-title">Fasilitas Umum</h2>
+              <h2 class="section-title"><Icon icon="mdi:wifi" />Fasilitas Umum</h2>
               <div class="facilities-grid">
-                <div v-for="fac in kost.facilities" :key="fac" class="facility-item">
-                  <Icon icon="mdi:check-circle-outline" class="text-green-500" />
+                <div v-for="fac in parseFacilities(kost.facilities)" :key="fac" class="facility-item">
+                  <Icon icon="mdi:check-circle-outline" />
                   <span>{{ fac }}</span>
                 </div>
               </div>
@@ -95,10 +98,10 @@
             <div class="divider"></div>
 
             <div class="info-section" id="room-selection">
-              <h2 class="section-title">Pilih Tipe Kamar</h2>
+              <h2 class="section-title"><Icon icon="mdi:bed-outline" />Pilih Tipe Kamar</h2>
               
               <div v-if="rooms.length === 0" class="no-rooms">
-                <Icon icon="mdi:door-closed" width="40" class="text-gray-300" />
+                <Icon icon="mdi:door-closed" width="40" class="text-gray" />
                 <p>Belum ada info kamar untuk kost ini.</p>
               </div>
 
@@ -107,26 +110,29 @@
                   v-for="room in rooms" 
                   :key="room.id" 
                   class="room-card-item"
-                  :class="{ 'selected': selectedRoom?.id === room.id, 'disabled': room.available_rooms < 1 }"
+                  :class="{ 
+                    'selected': selectedRoom?.id === room.id, 
+                    'disabled': room.available_rooms < 1 
+                  }"
                   @click="selectRoom(room)"
                 >
                   <div class="room-card-info">
-                    <span class="room-type-name">{{ room.room_type }}</span>
+                    <span class="room-type-name">{{ room.name || room.room_type }}</span>
                     <span class="room-stock" :class="room.available_rooms > 0 ? 'text-green' : 'text-red'">
                       {{ room.available_rooms > 0 ? `Sisa ${room.available_rooms} kamar` : 'Penuh' }}
                     </span>
-                    <div class="room-specs" v-if="room.room_size">
-                      <span><Icon icon="mdi:ruler-square" width="14" /> {{ room.room_size }}</span>
-                    </div>
+                    <div class="room-specs">
+                      <span v-if="room.size"><Icon icon="mdi:ruler-square" width="14" /> {{ room.size }}</span>
+                      </div>
                   </div>
                   
                   <div class="room-card-right">
                     <div class="room-card-price">
-                      {{ formatRupiah(room.price_per_month) }}
+                      {{ formatRupiah(room.price) }}
                       <small>/bulan</small>
                     </div>
                     <div class="radio-icon">
-                      <Icon :icon="selectedRoom?.id === room.id ? 'mdi:radiobox-marked' : 'mdi:radiobox-blank'" width="24" :class="selectedRoom?.id === room.id ? 'text-blue-600' : 'text-gray-300'" />
+                      <Icon :icon="selectedRoom?.id === room.id ? 'mdi:radiobox-marked' : 'mdi:radiobox-blank'" width="24" />
                     </div>
                   </div>
                 </div>
@@ -136,14 +142,14 @@
             <div class="divider"></div>
 
             <div class="info-section">
-              <h2 class="section-title">Lokasi</h2>
+              <h2 class="section-title"><Icon icon="mdi:map-legend" />Lokasi</h2>
               <div class="location-card">
                 <div class="location-info">
                   <p class="location-address">{{ kost.address }}</p>
                   <p class="location-detail">{{ kost.district }} • {{ kost.city || 'Denpasar' }}</p>
                 </div>
-                <button class="view-map-btn">
-                  <Icon icon="mdi:map" /> Lihat Peta
+                <button class="view-map-btn" @click="openMap">
+                  <Icon icon="mdi:google-maps" /> Buka Google Maps
                 </button>
               </div>
             </div>
@@ -155,13 +161,12 @@
               <div class="price-header">
                 <div>
                   <div class="price-amount">
-                    {{ selectedRoom ? formatRupiah(selectedRoom.price_per_month) : formatRupiah(kost.price) }}
+                    {{ selectedRoom ? formatRupiah(selectedRoom.price) : formatRupiah(kost.price) }}
                   </div>
                   <div class="price-period">per bulan</div>
                 </div>
-                <div class="availability-badge">
-                  <span class="badge-dot" :class="selectedRoom ? 'bg-green-500' : 'bg-gray-400'"></span> 
-                  {{ selectedRoom ? 'Kamar Dipilih' : 'Mulai Dari' }}
+                <div class="availability-badge" :class="selectedRoom ? 'bg-green-light' : 'bg-gray-light'">
+                   {{ selectedRoom ? 'Kamar Dipilih' : 'Mulai Dari' }}
                 </div>
               </div>
 
@@ -170,13 +175,13 @@
               <div class="booking-form">
                 <div class="form-group">
                   <label class="form-label">Tanggal Masuk</label>
-                  <BaseInput v-model="bookingDate" type="date" />
+                  <input v-model="bookingDate" type="date" class="form-input" :min="todayDate" />
                 </div>
                 <div class="form-group">
                   <label class="form-label">Durasi Sewa</label>
                   <div class="duration-input-group">
-                    <BaseInput v-model="bookingDuration" type="number" min="1" class="duration-number" />
-                    <select v-model="durationUnit" class="duration-select">
+                    <input v-model="bookingDuration" type="number" min="1" class="form-input" />
+                    <select v-model="durationUnit" class="form-select">
                       <option value="Bulan">Bulan</option>
                       <option value="Tahun">Tahun</option>
                     </select>
@@ -186,7 +191,7 @@
 
               <div class="price-breakdown" v-if="selectedRoom">
                 <div class="breakdown-row">
-                  <span>{{ formatRupiah(selectedRoom.price_per_month) }} x {{ bookingDuration }} {{ durationUnit }}</span>
+                  <span>{{ formatRupiah(selectedRoom.price) }} x {{ bookingDuration }} {{ durationUnit }}</span>
                   <span>{{ formatRupiah(calculateSubtotal) }}</span>
                 </div>
                 <div class="breakdown-row total">
@@ -196,19 +201,22 @@
               </div>
 
               <div class="action-buttons">
-                <BaseButton 
+                <button 
                   @click="handleBooking" 
-                  variant="primary" 
                   class="btn-primary-custom"
-                  :disabled="!selectedRoom"
+                  :disabled="!selectedRoom || loading"
                 >
+                  <Icon icon="mdi:calendar-check" /> 
                   {{ selectedRoom ? 'Ajukan Sewa' : 'Pilih Kamar Dulu' }}
-                </BaseButton>
-                <BaseButton @click="handleContactOwner" variant="outline" class="btn-outline-custom">Hubungi Pemilik</BaseButton>
+                </button>
+                
+                <button @click="handleContactOwner" class="btn-outline-custom">
+                  <Icon icon="mdi:whatsapp" /> Chat Pemilik
+                </button>
               </div>
               
               <p class="booking-note" v-if="!authStore.isAuthenticated">
-                <Icon icon="mdi:lock-outline" width="14" /> Masuk sebagai <b>Penyewa</b> untuk memesan
+                <Icon icon="mdi:lock-outline" width="14" /> Login sebagai <b>Penyewa</b> untuk memesan
               </p>
             </div>
           </div>
@@ -226,8 +234,6 @@ import { useAuthStore } from '@/stores/auth';
 import { Icon } from '@iconify/vue';
 import kostService from '@/services/kostService';
 import wishlistService from '@/services/wishlistService';
-import BaseButton from '@/components/common/BaseButton.vue';
-import BaseInput from '@/components/common/BaseInput.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -235,741 +241,325 @@ const authStore = useAuthStore();
 
 // STATE
 const kost = ref(null);
-const rooms = ref([]); // Store list kamar
+const rooms = ref([]);
 const selectedRoom = ref(null);
 const loading = ref(true);
 const error = ref(null);
 const isWishlisted = ref(false);
 const loadingWishlist = ref(false);
 
-// Booking Form State
+// Form
+const todayDate = new Date().toISOString().split('T')[0];
 const bookingDate = ref('');
-const bookingDuration = ref('1');
+const bookingDuration = ref(1);
 const durationUnit = ref('Bulan');
 
-const API_BASE_URL = 'http://localhost:8000'; // Sebaiknya simpan di .env
+// [FIX] Update fallback URL ke Live Server agar aman
+const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
 
-// HELPER FORMAT
+// HELPER: Format Rupiah
 const formatRupiah = (number) => {
-  if (!number && number !== 0) return 'Rp -';
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number || 0);
 };
 
-// COMPUTED PROPERTIES
+// HELPER: Parse Fasilitas (String to Array)
+const parseFacilities = (fac) => {
+  if (!fac) return [];
+  if (Array.isArray(fac)) return fac;
+  return fac.split(',').map(f => f.trim());
+};
+
+// HELPER: Get Image
+const getThumb = (path) => {
+  if (!path) return 'https://placehold.co/800x600?text=No+Image';
+  if (path.startsWith('http')) return path;
+  // Hapus /api di akhir URL jika ada, lalu sambung /storage
+  const baseUrl = API_URL.replace(/\/api\/?$/, '');
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return `${baseUrl}/storage/${cleanPath}`;
+};
+
+// [FIX] FUNGSI NAVIGASI KE GALERI
+const goToGallery = () => {
+  router.push({ 
+    name: 'kost-photos', 
+    params: { id: kost.value.id } 
+  });
+};
+
+// COMPUTED: Gallery Preview
+const galleryPreview = computed(() => {
+   if (!kost.value) return [];
+   let images = [];
+   
+   // Prioritas 1: Gallery Kost
+   if (kost.value.images && kost.value.images.length) {
+     images = kost.value.images.map(img => getThumb(img.path));
+   }
+   
+   // Prioritas 2: Gambar Kamar
+   if (images.length < 4 && rooms.value.length) {
+     rooms.value.forEach(r => {
+       if (r.image) images.push(getThumb(r.image));
+     });
+   }
+
+   // Fallback
+   if (images.length === 0) images.push('https://placehold.co/400x300?text=Room');
+   
+   return images.slice(0, 4);
+});
+
+// COMPUTED: Subtotal
 const calculateSubtotal = computed(() => {
   if (!selectedRoom.value) return 0;
-  let duration = parseInt(bookingDuration.value) || 1;
-  if (durationUnit.value === 'Tahun') duration *= 12;
-  return selectedRoom.value.price_per_month * duration;
+  let multiplier = parseInt(bookingDuration.value) || 1;
+  if (durationUnit.value === 'Tahun') multiplier *= 12;
+  return selectedRoom.value.price * multiplier;
 });
-
-const galleryPreview = computed(() => {
-    if (!kost.value) return [];
-    let images = [];
-    
-    // 1. Ambil gambar dari kamar (jika ada)
-    if (kost.value.rooms && kost.value.rooms.length > 0) {
-         kost.value.rooms.forEach(room => {
-             if(room.image) images.push(getThumb(room.image));
-         });
-    }
-    
-    // 2. Isi sisanya dengan main image biar gridnya penuh
-    if (kost.value.thumbnail) {
-       images.unshift(getThumb(kost.value.thumbnail));
-    }
-    
-    // Pastikan minimal ada 1 gambar placeholder jika kosong
-    if (images.length === 0) images.push('https://placehold.co/600x400?text=No+Image');
-
-    return images.slice(0, 4);
-});
-
-// Helper Image URL
-const getThumb = (path) => {
-  if (!path) return 'https://placehold.co/600x400?text=No+Image';
-  if (path.startsWith('http')) return path;
-  return `${API_BASE_URL}/storage/${path}`;
-};
 
 // FETCH DATA
 const fetchDetail = async () => {
   loading.value = true;
   try {
-    const id = route.params.id;
+    const data = await kostService.getKostDetail(route.params.id);
+    kost.value = data;
     
-    // 1. Ambil Detail Kost (Termasuk Rooms)
-    const kostData = await kostService.getKostDetail(id);
-    kost.value = kostData;
+    // Set Rooms
+    rooms.value = data.rooms || [];
+    
+    // Auto-select kamar pertama yang available
+    const available = rooms.value.find(r => r.available_rooms > 0);
+    if (available) selectedRoom.value = available;
 
-    // --- PERBAIKAN 1: Ambil rooms langsung dari kostData ---
-    // Backend KostController@show sudah menyertakan 'rooms' via eager loading
-    if (kostData.rooms && Array.isArray(kostData.rooms)) {
-      rooms.value = kostData.rooms;
-      
-      // Auto-select kamar pertama yang available
-      const available = rooms.value.find(r => r.available_rooms > 0);
-      if (available) selectedRoom.value = available;
-    } else {
-      rooms.value = [];
-    }
+    // Cek Wishlist
+    if (authStore.isAuthenticated) checkWishlistStatus();
 
-    checkWishlistStatus();
   } catch (err) {
     console.error(err);
-    error.value = 'Gagal memuat data kos. Pastikan server backend menyala.';
+    error.value = "Terjadi kesalahan saat mengambil data.";
   } finally {
     loading.value = false;
   }
 };
 
 const checkWishlistStatus = async () => {
-  if (!authStore.isAuthenticated || !kost.value) return;
   try {
-    const response = await wishlistService.getMyWishlist();
-    // Sesuaikan struktur response backend
-    const myWishlist = response.data?.data || response.data || [];
-    const currentId = parseInt(route.params.id);
-    
-    // Cek apakah ID kost ini ada di list wishlist
-    const exists = myWishlist.some(item => item.id === currentId);
-    isWishlisted.value = exists;
-  } catch (err) {
-    console.error("Gagal cek wishlist", err);
-  }
+    const res = await wishlistService.getMyWishlist();
+    const list = res.data.data || res.data || [];
+    isWishlisted.value = list.some(item => item.id === kost.value.id);
+  } catch(e) { /* silent fail */ }
 };
 
 const handleWishlist = async () => {
-  if (!authStore.isAuthenticated) {
-    if(confirm("Silakan login untuk menyimpan properti ini.")) {
-       return router.push('/login');
-    }
-    return;
-  }
+  if (!authStore.isAuthenticated) return router.push('/login');
+  
+  loadingWishlist.value = true;
   try {
-    loadingWishlist.value = true;
     await wishlistService.toggleWishlist(kost.value.id);
     isWishlisted.value = !isWishlisted.value;
   } catch (err) {
-    alert("Gagal memperbarui wishlist");
+    alert("Gagal update wishlist");
   } finally {
     loadingWishlist.value = false;
   }
 };
 
 const selectRoom = (room) => {
-    if (room.available_rooms > 0) {
-        selectedRoom.value = room;
-    }
+  if (room.available_rooms < 1) return alert("Maaf, tipe kamar ini sudah penuh.");
+  selectedRoom.value = room;
 };
 
 const handleBooking = () => {
-  // 1. Cek Login
+  // 1. Auth Check
   if (!authStore.isAuthenticated) {
-    alert("Silakan masuk sebagai Penyewa untuk melanjutkan.");
-    router.push({ name: 'login', query: { redirect: route.fullPath } });
-    return;
+    return router.push({ name: 'login', query: { redirect: route.fullPath } });
   }
-  
-  // 2. Cek Role
   if (authStore.user.role !== 'tenant') {
-    alert("Akun Anda terdaftar sebagai Pemilik/Admin. Gunakan akun Penyewa untuk memesan.");
-    return;
+    return alert("Hanya akun Penyewa yang bisa melakukan booking.");
   }
 
-  // 3. Validasi Form
-  if (!selectedRoom.value) return alert("Pilih tipe kamar terlebih dahulu.");
-  if (!bookingDate.value) return alert("Pilih tanggal masuk.");
+  // 2. Validation
+  if (!selectedRoom.value) return alert("Pilih kamar terlebih dahulu.");
+  if (!bookingDate.value) return alert("Wajib isi tanggal masuk.");
 
-  // --- PERBAIKAN 2: Sesuaikan Nama Param dengan Step1Request.vue ---
+  // 3. Redirect to Booking Step 1
   router.push({
-    path: '/booking/request', // Gunakan path eksplisit agar aman
+    path: '/booking/request',
     query: {
-        kost_id: kost.value.id,
-        room_id: selectedRoom.value.id, // Dulu roomId, diubah jadi room_id
-        start_date: bookingDate.value,
-        duration: bookingDuration.value,
-        price: selectedRoom.value.price_per_month // Kirim harga untuk estimasi di step 1
+      kost_id: kost.value.id,
+      room_id: selectedRoom.value.id,
+      start_date: bookingDate.value,
+      duration: bookingDuration.value,
+      unit: durationUnit.value
     }
   });
 };
 
 const handleContactOwner = () => {
-    if(kost.value.user && kost.value.user.phone_whatsapp) {
-       let phone = kost.value.user.phone_whatsapp;
-       if(phone.startsWith('0')) phone = '62' + phone.slice(1);
-       window.open(`https://wa.me/${phone}?text=Halo, saya tertarik dengan kost ${kost.value.name}`, '_blank');
-    } else {
-       alert('Nomor pemilik tidak tersedia.');
-    }
+  const phone = kost.value.owner?.phone || kost.value.owner?.phone_whatsapp;
+  if (phone) {
+    const num = phone.startsWith('0') ? '62' + phone.slice(1) : phone;
+    window.open(`https://wa.me/${num}?text=Halo, saya lihat kost ${kost.value.name} di KodyaKost...`, '_blank');
+  } else {
+    alert("Nomor pemilik tidak tersedia.");
+  }
 };
 
-const goToGallery = () => {
-    // Opsional: Buat route gallery atau tampilkan modal
-    alert("Fitur galeri lengkap akan segera hadir!");
+const openMap = () => {
+  const query = encodeURIComponent(`${kost.value.name} ${kost.value.district} Bali`);
+  window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
 };
 
-onMounted(() => {
-  fetchDetail();
-});
+onMounted(() => fetchDetail());
 </script>
 
 <style scoped>
-/* GENERAL */
-.kost-detail-page {
-  font-family: 'Poppins', sans-serif;
-  background: #fafbfc;
-  min-height: 100vh;
-}
+/* GENERAL LAYOUT */
+.kost-detail-page { font-family: 'Poppins', sans-serif; background: #fafbfc; min-height: 100vh; color: #1e293b; }
+.page-container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
 
-.page-container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem;
-}
-
-/* LOADING & ERROR */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  gap: 1.5rem;
-}
-
-.spinner {
-  width: 60px;
-  height: 60px;
-  border: 4px solid #f0f0f0;
-  border-top: 4px solid #fca311;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.loading-state p {
-  color: #6b7280;
-  font-size: 1.1rem;
-  font-weight: 500;
-}
-
-.error-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 60vh;
-}
-
-.error-card {
-  background: white;
-  padding: 3rem;
-  border-radius: 24px;
-  text-align: center;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-  max-width: 500px;
-}
-
-.error-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-}
-
-.error-card h3 {
-  color: #1f3a52;
-  font-size: 1.75rem;
-  margin-bottom: 0.75rem;
-  font-weight: 700;
-}
-
-.error-card p {
-  color: #6b7280;
-  margin-bottom: 2rem;
-  font-size: 1.05rem;
-}
+/* LOADING */
+.loading-state, .error-state { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; }
+.spinner { width: 50px; height: 50px; border: 4px solid #f1f5f9; border-top: 4px solid #1e3a8a; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.error-card { background: white; padding: 2rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 
 /* BREADCRUMB */
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 2rem;
-  font-size: 0.9rem;
-}
-
-.breadcrumb a {
-  color: #6b7280;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.breadcrumb a:hover {
-  color: #fca311;
-}
-
-.breadcrumb span.current {
-  color: #1f3a52;
-  font-weight: 600;
-}
+.breadcrumb { font-size: 0.9rem; color: #64748b; margin-bottom: 1.5rem; }
+.breadcrumb a { text-decoration: none; color: inherit; }
+.breadcrumb a:hover { color: #1e3a8a; }
+.breadcrumb .current { color: #1e3a8a; font-weight: 600; }
 
 /* GALLERY */
-.gallery-section {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1rem;
-  margin-bottom: 3rem;
-  border-radius: 24px;
-  overflow: hidden;
-}
+.gallery-section { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 2rem; border-radius: 16px; overflow: hidden; height: 400px; }
+.main-image { position: relative; height: 100%; background: #e2e8f0; }
+.main-image img { width: 100%; height: 100%; object-fit: cover; }
+.image-overlay { position: absolute; bottom: 20px; right: 20px; }
+.gallery-btn { background: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.thumbnail-grid { display: grid; grid-template-rows: 1fr 1fr; gap: 1rem; }
+.thumb-item { height: 100%; overflow: hidden; background: #e2e8f0; }
+.thumb-item img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+.thumb-item:hover img { transform: scale(1.05); }
 
-.main-image {
-  position: relative;
-  height: 500px;
-  overflow: hidden;
-  border-radius: 20px;
-}
-
-.main-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.4s ease;
-}
-
-.main-image:hover img {
-  transform: scale(1.05);
-}
-
-.image-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.4));
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding: 1.5rem;
-}
-
-.gallery-btn {
-  background: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-  color: #1f3a52;
-  font-family: 'Poppins', sans-serif;
-}
-
-.gallery-btn:hover {
-  background: #fca311;
-  color: white;
-  transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(252, 163, 17, 0.4);
-}
-
-.thumbnail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.thumb-item {
-  height: 242px;
-  border-radius: 16px;
-  overflow: hidden;
-  cursor: pointer;
-  position: relative;
-}
-
-.thumb-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.thumb-item:hover img {
-  transform: scale(1.1);
-}
-
-/* MAIN CONTENT */
-.main-content {
-  display: grid;
-  grid-template-columns: 1.8fr 1fr;
-  gap: 3rem;
-  align-items: start;
-}
+/* CONTENT GRID */
+.main-content { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; }
 
 /* LEFT SECTION */
-.left-section {
-  background: white;
-  padding: 2.5rem;
-  border-radius: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-}
+.left-section { background: white; padding: 2rem; border-radius: 16px; border: 1px solid #e2e8f0; }
+.property-title { font-size: 1.8rem; font-weight: 700; margin-bottom: 1rem; color: #0f172a; }
+.header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.property-meta { display: flex; gap: 1rem; align-items: center; font-size: 0.95rem; color: #64748b; margin-top: 0.5rem; }
+.text-yellow { color: #fbbf24; }
+.meta-badge { background: #eff6ff; color: #1e3a8a; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
 
-.property-header {
-  margin-bottom: 2rem;
-}
-
-.header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.25rem;
-}
-
-.property-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1f3a52;
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: -0.5px;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.icon-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: white;
-  border: 2px solid #e5e7eb;
-  padding: 10px 18px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 600;
-  color: #1f3a52;
-  transition: all 0.3s ease;
-  font-family: 'Poppins', sans-serif;
-  font-size: 0.9rem;
-}
-
-/* Style saat tombol 'Tersimpan' (Wishlisted) */
-.active-wishlist {
-  background: #fef2f2;
-  border-color: #ef4444;
-  color: #ef4444;
-}
-
-.icon-btn:hover {
-  background: #fef3e2;
-  border-color: #fca311;
-  color: #fca311;
-  transform: translateY(-2px);
-}
-
-.property-meta {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #6b7280;
-  font-size: 0.95rem;
-  font-weight: 500;
-}
-
-.meta-item svg {
-  color: #fca311;
-}
-
-.meta-badge {
-  background: #fef3e2;
-  color: #fca311;
-  padding: 6px 14px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.divider {
-  height: 1px;
-  background: linear-gradient(to right, transparent, #e5e7eb, transparent);
-  margin: 2rem 0;
-}
-
-.info-section {
-  margin-bottom: 2.5rem;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #1f3a52;
-  margin-bottom: 1.5rem;
-}
-
-.section-title svg {
-  color: #fca311;
-}
-
-.info-text {
-  color: #6b7280;
-  line-height: 1.8;
-  font-size: 1rem;
-}
+.divider { height: 1px; background: #e2e8f0; margin: 2rem 0; }
+.section-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; color: #1e293b; }
+.info-text { line-height: 1.6; color: #475569; }
 
 /* FACILITIES */
-.facilities-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+.facilities-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+.facility-item { display: flex; align-items: center; gap: 8px; color: #475569; }
+.facility-item svg { color: #10b981; }
+
+/* ROOM CARD */
+.room-list { display: flex; flex-direction: column; gap: 1rem; }
+.room-card-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; display: flex; justify-content: space-between; cursor: pointer; transition: 0.2s; }
+.room-card-item:hover { border-color: #94a3b8; }
+.room-card-item.selected { border-color: #1e3a8a; background: #eff6ff; }
+.room-card-item.disabled { opacity: 0.6; cursor: not-allowed; background: #f8fafc; }
+
+.room-type-name { font-weight: 700; display: block; font-size: 1.1rem; }
+.room-stock { font-size: 0.8rem; font-weight: 600; }
+.text-green { color: #10b981; }
+.text-red { color: #ef4444; }
+.room-card-price { font-weight: 700; color: #1e3a8a; font-size: 1.1rem; }
+.room-card-price small { font-size: 0.8rem; color: #64748b; font-weight: normal; }
+
+/* BOOKING CARD (Sticky) */
+.booking-card { background: white; padding: 1.5rem; border-radius: 16px; border: 1px solid #e2e8f0; position: sticky; top: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+.price-amount { font-size: 1.5rem; font-weight: 700; color: #1e3a8a; }
+.availability-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin-top: 5px; }
+.bg-green-light { background: #dcfce7; color: #166534; }
+.bg-gray-light { background: #f1f5f9; color: #64748b; }
+
+.booking-form { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 1rem; }
+.form-label { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; display: block; }
+.form-input, .form-select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; }
+.duration-input-group { display: flex; gap: 8px; }
+
+.price-breakdown { background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; }
+.breakdown-row { display: flex; justify-content: space-between; font-size: 0.9rem; color: #64748b; margin-bottom: 6px; }
+.breakdown-row.total { font-weight: 700; color: #0f172a; border-top: 1px dashed #cbd5e1; padding-top: 8px; margin-top: 8px; font-size: 1rem; }
+
+.btn-primary-custom { width: 100%; padding: 12px; background: #1e3a8a; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.2s; }
+.btn-primary-custom:hover:not(:disabled) { background: #172554; }
+.btn-primary-custom:disabled { background: #94a3b8; cursor: not-allowed; }
+
+.btn-outline-custom { width: 100%; padding: 12px; background: white; border: 1px solid #1e3a8a; color: #1e3a8a; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 10px; display: flex; justify-content: center; align-items: center; gap: 8px; }
+.btn-outline-custom:hover { background: #eff6ff; }
+
+.icon-btn { border: 1px solid #e2e8f0; background: white; padding: 8px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 600; color: #64748b; transition: 0.2s; }
+.icon-btn:hover { border-color: #1e3a8a; color: #1e3a8a; }
+.wishlist-active { background: #fef2f2; border-color: #ef4444; color: #ef4444; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .main-content { grid-template-columns: 1fr; }
+  .gallery-section { grid-template-columns: 1fr; height: auto; }
+  .thumbnail-grid { display: none; } /* Hide thumbs on mobile */
+  .left-section { padding: 1.5rem; }
+}
+/* --- TAMBAHAN UX & POLISHING --- */
+
+/* 1. Efek Halus saat memilih kamar */
+.room-card-item {
+  transition: all 0.2s ease-in-out;
+}
+.room-card-item:active {
+  transform: scale(0.98); /* Efek tekan */
+}
+.room-card-item.selected {
+  background-color: #eff6ff;
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1); /* Ring focus effect */
 }
 
-.facility-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  background: #f9fafb;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  font-weight: 500;
-  color: #1f3a52;
+/* 2. Tombol Galeri di Tengah saat Mobile */
+/* Karena thumbnail hilang di HP, tombol harus lebih menonjol */
+@media (max-width: 900px) {
+  .image-overlay {
+    inset: 0; /* Full cover */
+    background: rgba(0,0,0,0.2); /* Gelapkan sedikit */
+    justify-content: center; /* Tengah horizontal */
+    align-items: center; /* Tengah vertikal */
+  }
+  
+  .gallery-btn {
+    padding: 10px 20px;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+  
+  /* 3. Tombol Booking Full Width di HP */
+  /* Agar mudah dipencet jempol */
+  .action-buttons {
+    flex-direction: column;
+  }
+  .btn-primary-custom, .btn-outline-custom {
+    width: 100%;
+    padding: 14px; /* Lebih tebal */
+  }
+  
+  /* Peta juga full width */
+  .location-card {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  .view-map-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
-
-.facility-item:hover {
-  background: #fef3e2;
-  transform: translateX(8px);
-  box-shadow: 0 4px 12px rgba(252, 163, 17, 0.15);
-}
-
-.facility-item svg {
-  color: #10b981;
-  flex-shrink: 0;
-}
-
-/* LOCATION */
-.location-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #f9fafb;
-  padding: 1.5rem;
-  border-radius: 16px;
-  border: 2px solid #e5e7eb;
-}
-
-.location-address {
-  font-weight: 600;
-  color: #1f3a52;
-  margin-bottom: 0.5rem;
-  font-size: 1.05rem;
-}
-
-.location-detail {
-  color: #6b7280;
-  font-size: 0.9rem;
-}
-
-.view-map-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #fca311;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: 'Poppins', sans-serif;
-}
-
-.view-map-btn:hover {
-  background: #e8940e;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(252, 163, 17, 0.4);
-}
-
-/* RIGHT SECTION (BOOKING CARD) */
-.right-section {
-  position: sticky;
-  top: 100px;
-}
-
-.booking-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 24px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-  border: 2px solid #f0f0f0;
-  transition: all 0.3s ease;
-}
-
-.booking-card:hover {
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.12);
-  transform: translateY(-5px);
-}
-
-.price-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
-}
-
-.price-amount {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1f3a52;
-}
-
-.price-period {
-  color: #6b7280;
-  font-size: 0.95rem;
-  margin-top: 0.25rem;
-}
-
-.availability-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #d1fae5;
-  color: #065f46;
-  padding: 8px 16px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-.badge-dot {
-  width: 8px;
-  height: 8px;
-  background: #10b981;
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.divider-sm {
-  height: 1px;
-  background: #e5e7eb;
-  margin: 1.5rem 0;
-}
-
-/* BOOKING FORM */
-.booking-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
-}
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.form-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #1f3a52;
-  font-size: 0.95rem;
-}
-.duration-input-group {
-  display: flex;
-  gap: 0.5rem;
-}
-.duration-number {
-  flex: 1;
-}
-.duration-select {
-  padding: 10px 14px;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 500;
-  color: #1f3a52;
-  background: white;
-  cursor: pointer;
-  transition: border-color 0.3s ease;
-}
-.duration-select:hover {
-  border-color: #fca311;
-}
-/* PRICE BREAKDOWN */
-.price-breakdown {
-  margin-bottom: 1.5rem;
-}
-.breakdown-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #6b7280;
-  font-size: 0.95rem;
-  margin-bottom: 0.75rem;
-}
-.breakdown-row.total {
-  font-weight: 700;
-  color: #1f3a52;
-  font-size: 1.1rem;
-}
-/* ACTION BUTTONS */
-.action-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-.btn-primary-custom {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  justify-content: center;
-}
-.btn-outline-custom {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  justify-content: center;
-}
-.booking-note {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #6b7280;
-  font-size: 0.9rem;
-}
-.booking-note svg {
-  color: #fca311;
-}
-
-/* Style tambahan untuk tombol aktif */
-.wishlist-active {
-  background-color: #fef2f2 !important; /* Merah muda */
-  border-color: #fca5a5 !important;
-  color: #dc2626 !important;
-}
-
-.text-red-500 { color: #ef4444; }
-.text-red-600 { color: #dc2626; }
 </style>

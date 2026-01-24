@@ -98,8 +98,20 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'admin' },
       children: [
         { path: 'dashboard', name: 'admin-dashboard', component: () => import('@/views/admin/DashboardView.vue') },
-        { path: 'verify', name: 'admin-verify', component: () => import('@/views/admin/KostVerificationView.vue') }
+        { path: 'verify', name: 'admin-verify', component: () => import('@/views/admin/KostVerificationView.vue') },
+        
+        // [FIX] INI DIA YANG KURANG TADI:
+        { path: 'users', name: 'admin-users', component: () => import('@/views/admin/UserManagement.vue') }
       ]
+    },
+    {
+      // Note: Jika kamu ingin detail kost tampil dengan Sidebar Admin, 
+      // sebaiknya pindahkan route ini ke dalam children '/admin' di atas.
+      // Tapi ditaruh di sini juga tidak apa-apa (tampil full page).
+      path: '/admin/kost-detail/:id', 
+      name: 'kost-detail-admin',
+      component: () => import('@/views/admin/KostDetailAdmin.vue'), // Fix path import
+      meta: { requiresAuth: true, role: 'admin' }
     },
 
     // F. AUTH & UTILS

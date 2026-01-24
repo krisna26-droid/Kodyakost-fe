@@ -1,97 +1,7 @@
-<script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { useAuthStore } from '@/stores/auth';
-import { useWishlistStore } from '@/stores/wishlist'; 
-import { useRouter } from 'vue-router';
-import LogoutModal from '@/components/modal/LogoutModal.vue';
-import RoleSelectionModal from '@/components/modal/RoleSelectionModal.vue';
-import BaseButton from '@/components/common/BaseButton.vue';
-import BaseInput from '@/components/common/BaseInput.vue';
-
-const authStore = useAuthStore();
-const wishlistStore = useWishlistStore(); 
-const router = useRouter();
-
-// State
-const isLoggedIn = computed(() => authStore.isAuthenticated);
-const currentUser = computed(() => authStore.user);
-const isDropdownOpen = ref(false);
-const showLogoutModal = ref(false); 
-const showRoleModal = ref(false);
-const searchQuery = ref('');
-
-// --- URL HELPER ---
-const defaultAvatar = 'https://i.pravatar.cc/150?img=11';
-const API_BASE_URL = 'http://127.0.0.1:8000'; 
-
-const getAvatarUrl = (path) => {
-  if (!path) return defaultAvatar;
-  if (path.startsWith('http')) return path;
-  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  return `${API_BASE_URL}/storage/${cleanPath}`;
-};
-
-const handleImageError = (e) => {
-  if (e.target.src !== defaultAvatar) e.target.src = defaultAvatar;
-};
-
-// --- HANDLERS ---
-const toggleDropdown = () => isDropdownOpen.value = !isDropdownOpen.value;
-
-const confirmLogout = () => {
-  isDropdownOpen.value = false;
-  showLogoutModal.value = true;
-};
-
-const handleLogout = () => {
-  showLogoutModal.value = false;
-  authStore.logout();
-  wishlistStore.clearWishlist(); 
-  router.push('/');
-};
-
-const handleRoleSelect = (role) => {
-  showRoleModal.value = false;
-  router.push({ path: '/login', query: { role: role } });
-};
-
-const handleSearch = () => {
-  if (searchQuery.value.trim()) {
-    router.push({ name: 'properties', query: { search: searchQuery.value } });
-  }
-};
-
-const goToWishlist = () => {
-  router.push({ name: 'wishlist' });
-};
-
-// --- DATA FETCHING ---
-onMounted(() => {
-  if (isLoggedIn.value) {
-    wishlistStore.fetchWishlist();
-  }
-});
-
-watch(isLoggedIn, (newVal) => {
-  if (newVal) {
-    wishlistStore.fetchWishlist();
-  } else {
-    wishlistStore.clearWishlist();
-  }
-});
-
-const menuItems = [
-  { name: 'Home', link: '/' },
-  { name: 'Help Center', link: '/help' },
-  { name: 'Terms and Conditions', link: '/terms' },
-  { name: 'About Us', link: '/about' },
-  { name: 'Cultural Calendar', link: '/cultural-calendar' } 
-];
-</script>
-
 <template>
   <div class="navbar-container">
     <nav class="navbar">
+      
       <div class="logo-section">
         <router-link to="/" class="logo-link">
           <img src="@/assets/images/kodyakost-logo.png" alt="KodyaKost Logo" class="logo-img" />
@@ -196,6 +106,99 @@ const menuItems = [
     <LogoutModal :is-open="showLogoutModal" @close="showLogoutModal = false" @confirm="handleLogout"/>
   </div>
 </template>
+
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import { useWishlistStore } from '@/stores/wishlist'; 
+import { useRouter } from 'vue-router';
+import LogoutModal from '@/components/modal/LogoutModal.vue';
+import RoleSelectionModal from '@/components/modal/RoleSelectionModal.vue';
+import BaseButton from '@/components/common/BaseButton.vue';
+import BaseInput from '@/components/common/BaseInput.vue';
+
+const authStore = useAuthStore();
+const wishlistStore = useWishlistStore(); 
+const router = useRouter();
+
+// State
+const isLoggedIn = computed(() => authStore.isAuthenticated);
+const currentUser = computed(() => authStore.user);
+const isDropdownOpen = ref(false);
+const showLogoutModal = ref(false); 
+const showRoleModal = ref(false);
+const searchQuery = ref('');
+
+// --- [FIX] KONFIGURASI URL DINAMIS ---
+const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
+// Hapus '/api' di akhir
+const BASE_STORAGE_URL = API_URL.replace(/\/api\/?$/, '');
+const defaultAvatar = 'https://i.pravatar.cc/150?img=11';
+
+const getAvatarUrl = (path) => {
+  if (!path) return defaultAvatar;
+  if (path.startsWith('http')) return path;
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return `${BASE_STORAGE_URL}/storage/${cleanPath}`;
+};
+
+const handleImageError = (e) => {
+  if (e.target.src !== defaultAvatar) e.target.src = defaultAvatar;
+};
+
+// --- HANDLERS ---
+const toggleDropdown = () => isDropdownOpen.value = !isDropdownOpen.value;
+
+const confirmLogout = () => {
+  isDropdownOpen.value = false;
+  showLogoutModal.value = true;
+};
+
+const handleLogout = () => {
+  showLogoutModal.value = false;
+  authStore.logout();
+  wishlistStore.clearWishlist(); 
+  router.push('/');
+};
+
+const handleRoleSelect = (role) => {
+  showRoleModal.value = false;
+  router.push({ path: '/login', query: { role: role } });
+};
+
+const handleSearch = () => {
+  if (searchQuery.value.trim()) {
+    router.push({ name: 'properties', query: { search: searchQuery.value } });
+  }
+};
+
+const goToWishlist = () => {
+  router.push({ name: 'wishlist' });
+};
+
+// --- DATA FETCHING ---
+onMounted(() => {
+  if (isLoggedIn.value) {
+    wishlistStore.fetchWishlist();
+  }
+});
+
+watch(isLoggedIn, (newVal) => {
+  if (newVal) {
+    wishlistStore.fetchWishlist();
+  } else {
+    wishlistStore.clearWishlist();
+  }
+});
+
+const menuItems = [
+  { name: 'Home', link: '/' },
+  { name: 'Help Center', link: '/help' },
+  { name: 'Terms and Conditions', link: '/terms' },
+  { name: 'About Us', link: '/about' },
+  { name: 'Cultural Calendar', link: '/cultural-calendar' } 
+];
+</script>
 
 <style scoped>
 /* Container */

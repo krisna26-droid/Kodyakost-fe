@@ -150,11 +150,10 @@ import { Icon } from '@iconify/vue';
 const authStore = useAuthStore();
 const user = computed(() => authStore.user);
 
-// --- KONFIGURASI URL BACKEND (PENTING!) ---
-// Jika pakai php artisan serve -> 'http://127.0.0.1:8000'
-// Jika pakai Laragon -> biasanya 'http://kodyakost-api.test' atau 'http://localhost/kodyakost-api/public'
-// Cek browser kamu saat buka API, copy base URL-nya ke sini:
-const API_BASE_URL = 'http://127.0.0.1:8000'; 
+// --- [FIX] KONFIGURASI URL DINAMIS ---
+const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
+// Hapus '/api' di akhir untuk base storage URL
+const BASE_STORAGE_URL = API_URL.replace(/\/api\/?$/, '');
 
 const defaultAvatar = 'https://i.pravatar.cc/150?img=11';
 
@@ -174,30 +173,15 @@ const form = ref({
 
 // --- HELPER METHODS ---
 
-// 1. Generate URL Avatar yang Benar
 const getAvatarUrl = (path) => {
   if (!path) return null;
-  // Jika path sudah ada http-nya (misal dari Google), pakai langsung
   if (path.startsWith('http')) return path;
-  
-  // Bersihkan path (hilangkan slash di depan jika ada)
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  
-  // Gabungkan Base URL + folder storage + path dari DB
-  const fullUrl = `${API_BASE_URL}/storage/${cleanPath}`;
-  
-  // Debugging: Cek di Console Browser (F12) > Console
-  // console.log("Generated Avatar URL:", fullUrl); 
-  
-  return fullUrl;
+  return `${BASE_STORAGE_URL}/storage/${cleanPath}`;
 };
 
-// 2. Handle Error (Kalau gambar 404, ganti ke default)
 const handleImageError = (e) => {
-  // Cegah loop (kalau default juga error)
-  if (e.target.src !== defaultAvatar) {
-    e.target.src = defaultAvatar;
-  }
+  if (e.target.src !== defaultAvatar) e.target.src = defaultAvatar;
 };
 
 const formatRole = (role) => (role === 'owner' ? 'Pemilik Properti' : 'Pencari Kost');
@@ -207,7 +191,6 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 };
 
-// 3. Reset Form
 const resetForm = () => {
   if (user.value) {
     form.value.name = user.value.name || '';
@@ -228,7 +211,7 @@ const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
     selectedFile.value = file;
-    previewAvatar.value = URL.createObjectURL(file); // Tampilkan preview lokal
+    previewAvatar.value = URL.createObjectURL(file);
   }
 };
 
@@ -245,6 +228,7 @@ const handleSaveProfile = async () => {
   const formData = new FormData();
   formData.append('name', form.value.name);
   formData.append('phone_whatsapp', form.value.phone);
+  if (form.value.bio) formData.append('bio', form.value.bio); // Kirim bio jika ada
   
   if (selectedFile.value) {
     formData.append('avatar', selectedFile.value);
@@ -256,275 +240,82 @@ const handleSaveProfile = async () => {
     alert("Profil berhasil diperbarui!");
     isEditing.value = false;
     selectedFile.value = null;
-    previewAvatar.value = null; // Hapus preview, pakai data user yang baru
+    previewAvatar.value = null; 
   } else {
     alert("Gagal: " + (authStore.error || "Terjadi kesalahan server"));
   }
 };
 
 onMounted(() => {
-  if (!user.value) {
-    authStore.fetchUser();
-  }
+  if (!user.value) authStore.fetchUser(); // Pastikan ada method ini di store atau gunakan fetchProfile
   resetForm();
 });
 
-watch(user, () => {
-  resetForm();
-});
+watch(user, () => resetForm());
 </script>
 
 <style scoped>
-/* --- STYLES SAMA SEPERTI SEBELUMNYA --- */
-.profile-view {
-  background-color: #f3f4f6;
-  min-height: 100vh;
-  padding: 40px 0;
-  font-family: 'Poppins', sans-serif;
-  color: #333;
-}
-
-.container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
+/* GENERAL STYLES */
+.profile-view { background-color: #f3f4f6; min-height: 100vh; padding: 40px 0; font-family: 'Poppins', sans-serif; color: #333; }
+.container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
 
 /* HEADER */
-.page-header {
-  margin-bottom: 30px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
+.page-header { margin-bottom: 30px; display: flex; align-items: center; gap: 20px; }
 .page-header h1 { font-size: 1.8rem; font-weight: 700; color: #1f3a52; }
-
-.back-btn {
-  background: white;
-  border: 1px solid #ddd;
-  padding: 8px 16px;
-  border-radius: 50px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-weight: 500;
-  transition: all 0.2s;
-}
+.back-btn { background: white; border: 1px solid #ddd; padding: 8px 16px; border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-weight: 500; transition: all 0.2s; }
 .back-btn:hover { background: #e5e7eb; }
 
-/* GRID LAYOUT */
-.profile-grid {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 30px;
-}
+/* GRID */
+.profile-grid { display: grid; grid-template-columns: 300px 1fr; gap: 30px; }
 
-/* CARDS COMMON STYLE */
-.profile-card {
-  background: white;
-  border-radius: 16px;
-  padding: 30px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-  border: 1px solid #f1f5f9;
-}
+/* CARDS */
+.profile-card { background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid #f1f5f9; }
 
-/* IDENTITY CARD (LEFT) */
-.identity-card {
-  text-align: center;
-  height: fit-content;
-}
-
-.avatar-wrapper {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 20px;
-}
-
-.avatar-img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 4px solid #f0fbfb;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
-
-.edit-avatar-btn {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  background: #fca311;
-  color: white;
-  border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  transition: transform 0.2s;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}
+/* IDENTITY CARD */
+.identity-card { text-align: center; height: fit-content; }
+.avatar-wrapper { position: relative; width: 120px; height: 120px; margin: 0 auto 20px; }
+.avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid #f0fbfb; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.edit-avatar-btn { position: absolute; bottom: 0; right: 0; background: #fca311; color: white; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: transform 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 .edit-avatar-btn:hover { transform: scale(1.1); }
 .hidden-input { display: none; }
-
 .user-name { font-size: 1.4rem; font-weight: 700; color: #1f3a52; margin-bottom: 5px; }
-.user-role { 
-  display: inline-block; 
-  background: #e0f2fe; 
-  color: #0369a1; 
-  padding: 5px 12px; 
-  border-radius: 20px; 
-  font-size: 0.85rem; 
-  font-weight: 600; 
-  margin-bottom: 20px;
-}
+.user-role { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 20px; }
+.joined-date { display: flex; align-items: center; justify-content: center; gap: 8px; color: #6b7280; font-size: 0.9rem; padding-top: 20px; border-top: 1px solid #f3f4f6; }
 
-.joined-date {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: #6b7280;
-  font-size: 0.9rem;
-  padding-top: 20px;
-  border-top: 1px solid #f3f4f6;
-}
-
-/* FORM CARD (RIGHT) */
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
-}
+/* FORM CARD */
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
 .card-header h3 { font-size: 1.2rem; font-weight: 700; color: #1f3a52; }
-
-.edit-btn {
-  background: none;
-  border: 1px solid #fca311;
-  color: #fca311;
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-}
+.edit-btn { background: none; border: 1px solid #fca311; color: #fca311; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
 .edit-btn:hover { background: #fff8e6; }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
 .form-group { display: flex; flex-direction: column; gap: 8px; }
 .form-group.full-width { grid-column: span 2; }
-
 .form-group label { font-size: 0.9rem; font-weight: 600; color: #4b5563; }
 
-input, textarea {
-  padding: 12px 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  background: #f9fafb;
-  color: #1f3a52;
-  transition: all 0.2s;
-  font-family: inherit;
-}
+input, textarea { padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 0.95rem; background: #f9fafb; color: #1f3a52; transition: all 0.2s; font-family: inherit; }
+input.editable, textarea.editable { background: white; border-color: #cbd5e1; }
+input.editable:focus, textarea.editable:focus { border-color: #fca311; outline: none; box-shadow: 0 0 0 3px rgba(252, 163, 17, 0.1); }
 
-/* State: Editable */
-input.editable, textarea.editable {
-  background: white;
-  border-color: #cbd5e1;
-}
-input.editable:focus, textarea.editable:focus {
-  border-color: #fca311;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(252, 163, 17, 0.1);
-}
-
-/* State: Locked/Disabled */
 .input-wrapper.locked { position: relative; }
 .input-wrapper.locked input { padding-right: 40px; cursor: not-allowed; opacity: 0.7; }
-.lock-icon {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #9ca3af;
-}
+.lock-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
 
-/* Buttons */
-.action-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 15px;
-  padding-top: 20px;
-  border-top: 1px solid #f3f4f6;
-}
-
-.btn-cancel {
-  background: white;
-  border: 1px solid #d1d5db;
-  padding: 10px 20px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 600;
-  color: #64748b;
-}
-
-.btn-save {
-  background: #1f3a52;
-  color: white;
-  border: none;
-  padding: 10px 25px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+.action-buttons { display: flex; justify-content: flex-end; gap: 15px; padding-top: 20px; border-top: 1px solid #f3f4f6; }
+.btn-cancel { background: white; border: 1px solid #d1d5db; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; color: #64748b; }
+.btn-save { background: #1f3a52; color: white; border: none; padding: 10px 25px; border-radius: 10px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .btn-save:disabled { background: #94a3b8; cursor: not-allowed; }
-
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
 /* SECURITY CARD */
 .security-card { margin-top: 30px; }
-
-.password-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 0;
-}
+.password-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; }
 .pass-info label { font-size: 0.9rem; font-weight: 600; color: #4b5563; }
 .pass-info p { letter-spacing: 2px; color: #9ca3af; margin-top: 5px; }
-
-.change-pass-btn {
-  background: #f3f4f6;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  color: #1f3a52;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.2s;
-}
+.change-pass-btn { background: #f3f4f6; border: none; padding: 8px 16px; border-radius: 8px; color: #1f3a52; font-weight: 600; cursor: pointer; transition: 0.2s; }
 .change-pass-btn:hover { background: #e5e7eb; }
 
-/* RESPONSIVE */
 @media (max-width: 768px) {
   .profile-grid { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }

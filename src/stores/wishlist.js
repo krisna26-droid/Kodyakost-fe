@@ -1,18 +1,21 @@
 import { defineStore } from 'pinia';
-import wishlistService from '@/services/wishlistService';
+import apiClient from '@/api/Axios'; // [FIX] Gunakan apiClient langsung
 
 export const useWishlistStore = defineStore('wishlist', {
   state: () => ({
     count: 0,
     items: [],
+    loading: false, // [ADD] Tambah loading state
     hasFetched: false
   }),
 
   actions: {
-    // Ambil data wishlist dari API
+    // Ambil data wishlist
     async fetchWishlist() {
+      this.loading = true;
       try {
-        const response = await wishlistService.getMyWishlist();
+        // Pastikan endpoint backend kamu benar, misal '/wishlists'
+        const response = await apiClient.get('/wishlists'); 
         const data = response.data.data || response.data;
         
         if (Array.isArray(data)) {
@@ -21,11 +24,14 @@ export const useWishlistStore = defineStore('wishlist', {
           this.hasFetched = true;
         }
       } catch (error) {
-        console.error("Gagal load wishlist count:", error);
+        // Error silent agar tidak mengganggu UI utama, cukup console log
+        console.error("Gagal load wishlist:", error);
+      } finally {
+        this.loading = false;
       }
     },
 
-    // Update manual (dipanggil saat tombol simpan diklik)
+    // Update manual
     async refreshWishlist() {
       await this.fetchWishlist();
     },

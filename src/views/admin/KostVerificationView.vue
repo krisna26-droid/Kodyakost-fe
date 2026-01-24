@@ -45,7 +45,7 @@
               <td>
                 <div class="kost-info">
                   <div class="img-wrapper">
-                    <img :src="getThumb(kost)" alt="Thumbnail" />
+                    <img :src="$storage(kost.main_image || kost.image_path)" alt="Thumbnail" />
                   </div>
                   <div class="text-info">
                     <h4 class="kost-name">{{ kost.name }}</h4>
@@ -112,7 +112,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Icon } from '@iconify/vue'; // Import Iconify
+import { Icon } from '@iconify/vue';
 import adminService from '@/services/adminService';
 
 const router = useRouter();
@@ -120,16 +120,15 @@ const kosts = ref([]);
 const loading = ref(true);
 const processing = ref(null); 
 
-const API_BASE_URL = 'http://127.0.0.1:8000'; 
-
 // --- FETCH DATA ---
 const fetchData = async () => {
   loading.value = true;
   try {
     const data = await adminService.getPendingKosts();
-    kosts.value = data;
+    // Pastikan data berupa array (handle jika backend return object)
+    kosts.value = Array.isArray(data) ? data : (data.data || []);
   } catch (err) {
-    // Silent error or toast
+    console.error("Gagal memuat data:", err);
   } finally {
     loading.value = false;
   }
@@ -137,31 +136,27 @@ const fetchData = async () => {
 
 // --- ACTION: VERIFIKASI ---
 const handleVerify = async (id) => {
-  if (!confirm("Yakin ingin menyetujui kost ini?")) return;
+  if (!confirm("Yakin ingin menyetujui kost ini agar tayang ke publik?")) return;
 
   processing.value = id;
   try {
     await adminService.verifyKost(id);
+    // Hapus item dari list secara lokal agar UI responsif
     kosts.value = kosts.value.filter(k => k.id !== id);
   } catch (err) {
-    alert("Gagal memproses verifikasi.");
+    console.error(err);
+    alert("Gagal memproses verifikasi. Cek koneksi atau server.");
   } finally {
     processing.value = null;
   }
 };
 
 const viewDetail = (id) => {
-  router.push({ name: 'kost-detail', params: { id } });
+  // Pastikan route detail kost admin sudah dibuat di router/index.js
+  router.push(`/admin/kost-detail/${id}`); 
 };
 
 // --- HELPERS ---
-const getThumb = (kost) => {
-  let path = kost.main_image || kost.image;
-  if (!path) return 'https://placehold.co/100?text=No+Img';
-  if (path.startsWith('http')) return path;
-  return `${API_BASE_URL}/storage/${path}`;
-};
-
 const getInitials = (name) => {
   if (!name) return 'U';
   return name.substring(0, 2).toUpperCase();
@@ -187,6 +182,7 @@ onMounted(() => {
   padding: 2rem;
   font-family: 'Poppins', sans-serif;
   color: #334155;
+  min-height: 80vh; /* Agar footer tidak naik saat loading */
 }
 
 .container { max-width: 1200px; margin: 0 auto; }
@@ -195,6 +191,7 @@ onMounted(() => {
 .page-header {
   display: flex; justify-content: space-between; align-items: flex-end;
   margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap; gap: 10px;
 }
 .page-title { font-size: 1.5rem; font-weight: 700; color: #1e3a8a; margin-bottom: 0.25rem; }
 .subtitle { color: #64748b; font-size: 0.95rem; }
@@ -208,14 +205,12 @@ onMounted(() => {
 }
 .badge-icon { font-size: 1.1rem; }
 
-/* STATES (Loading & Empty) */
+/* STATES */
 .state-container {
   background: white; border-radius: 16px; padding: 4rem 2rem;
   text-align: center; border: 1px dashed #cbd5e1;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-
-/* Loading */
 .loading .spinner { color: #1e3a8a; animation: spin 1s linear infinite; margin-bottom: 1rem; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
@@ -239,10 +234,11 @@ onMounted(() => {
 .table-card {
   background: white; border-radius: 16px; 
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  overflow: hidden; border: 1px solid #e2e8f0;
+  overflow-x: auto; /* Agar responsive di mobile */
+  border: 1px solid #e2e8f0;
 }
 
-.data-table { width: 100%; border-collapse: collapse; }
+.data-table { width: 100%; border-collapse: collapse; min-width: 800px; /* Mencegah tabel gepeng */ }
 
 .data-table th {
   background: #f8fafc; text-align: left; padding: 1.25rem 1.5rem;
@@ -255,18 +251,15 @@ onMounted(() => {
   padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
 }
-.data-table tr:last-child td { border-bottom: none; }
 .data-table tr:hover { background-color: #fafafa; }
 
-/* CONTENT COLUMNS */
-/* 1. Properti */
+/* COMPONENTS INSIDE TABLE */
 .kost-info { display: flex; gap: 1rem; align-items: center; }
-.img-wrapper { width: 60px; height: 60px; border-radius: 10px; overflow: hidden; flex-shrink: 0; border: 1px solid #e2e8f0; }
+.img-wrapper { width: 60px; height: 60px; border-radius: 10px; overflow: hidden; flex-shrink: 0; border: 1px solid #e2e8f0; background: #f1f5f9; }
 .img-wrapper img { width: 100%; height: 100%; object-fit: cover; }
 .kost-name { font-size: 0.95rem; font-weight: 600; color: #0f172a; margin-bottom: 4px; }
 .date-badge { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #94a3b8; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; width: fit-content; }
 
-/* 2. Owner */
 .owner-info { display: flex; gap: 10px; align-items: center; }
 .avatar-circle { 
   width: 36px; height: 36px; background: #eff6ff; color: #1e3a8a; 
@@ -277,10 +270,7 @@ onMounted(() => {
 .owner-text .name { font-size: 0.9rem; font-weight: 500; color: #334155; }
 .owner-text .role { font-size: 0.7rem; color: #64748b; }
 
-/* 3. Price */
 .price-badge { font-weight: 600; color: #059669; font-size: 0.9rem; }
-
-/* 4. Location */
 .location-text { display: flex; align-items: center; gap: 4px; color: #64748b; font-size: 0.9rem; }
 
 /* ACTIONS */
@@ -292,7 +282,6 @@ onMounted(() => {
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: all 0.2s;
 }
-
 .btn-icon.detail { background: #f1f5f9; color: #64748b; }
 .btn-icon.detail:hover { background: #e2e8f0; color: #1e293b; }
 
