@@ -1,142 +1,5 @@
-<script setup>
-import { ref, onMounted, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
-import kostService from '@/services/kostService';
-import wishlistService from '@/services/wishlistService'; // Import service wishlist
-import BaseButton from '@/components/common/BaseButton.vue';
-import BaseInput from '@/components/common/BaseInput.vue';
-import Navbar from '@/components/navigation/Navbar.vue';
-import Footer from '@/components/navigation/Footer.vue';
-
-const route = useRoute();
-const router = useRouter();
-const authStore = useAuthStore();
-
-// --- STATE ---
-const kost = ref(null);
-const loading = ref(true);
-const error = ref(null);
-
-// State Wishlist
-const isWishlisted = ref(false); 
-const loadingWishlist = ref(false);
-
-// State Booking
-const bookingDate = ref('');
-const bookingDuration = ref('1');
-const durationUnit = ref('Bulan');
-
-// --- HELPER FORMAT RUPIAH ---
-const formatRupiah = (number) => {
-  if (!number) return 'Rp 0';
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
-  }).format(number);
-};
-
-const totalPrice = computed(() => {
-  if (!kost.value) return 0;
-  const duration = parseInt(bookingDuration.value) || 1;
-  return kost.value.price * duration + 50000;
-});
-
-// --- 1. FETCH DETAIL KOST ---
-const fetchDetail = async () => {
-  loading.value = true;
-  try {
-    const id = route.params.id;
-    const data = await kostService.getKostDetail(id);
-    kost.value = data;
-    
-    // Setelah data kost dapat, cek status wishlist (kalau user login)
-    checkWishlistStatus(); 
-  } catch (err) {
-    console.error(err);
-    error.value = 'Gagal memuat data kos.';
-  } finally {
-    loading.value = false;
-  }
-};
-
-// --- 2. CEK STATUS WISHLIST (Saat Load) ---
-const checkWishlistStatus = async () => {
-  if (!authStore.isAuthenticated || !kost.value) return;
-
-  try {
-    const response = await wishlistService.getMyWishlist();
-    // Handle struktur data dari controller laravel (flat object array)
-    const myWishlist = response.data.data || response.data;
-    const currentId = parseInt(route.params.id);
-
-    // Cek apakah ID kost ini ada di list wishlist user
-    const exists = myWishlist.some(item => {
-        // Cek item.id (flat) atau item.kost.id (nested)
-        const itemId = item.kost?.id || item.id; 
-        return itemId === currentId;
-    });
-
-    isWishlisted.value = exists;
-  } catch (err) {
-    console.error("Gagal cek status wishlist", err);
-  }
-};
-
-// --- 3. HANDLE TOMBOL SIMPAN (Toggle) ---
-const handleWishlist = async () => {
-  // Cek Login
-  if (!authStore.isAuthenticated) {
-    alert("Silakan login terlebih dahulu untuk menyimpan kost!");
-    router.push({ name: 'login' });
-    return;
-  }
-
-  try {
-    loadingWishlist.value = true;
-    
-    // Panggil API Toggle
-    await wishlistService.toggleWishlist(kost.value.id);
-    
-    // Ubah tampilan tombol secara langsung (Optimistic UI)
-    isWishlisted.value = !isWishlisted.value;
-    
-  } catch (err) {
-    console.error("Gagal update wishlist:", err);
-    alert("Gagal menyimpan data.");
-  } finally {
-    loadingWishlist.value = false;
-  }
-};
-
-// --- NAVIGASI & LAINNYA ---
-const goToGallery = () => {
-  router.push({ name: 'kost-photos', params: { id: route.params.id } });
-};
-
-const handleBooking = () => {
-  if (!authStore.isAuthenticated) {
-    alert("Silakan login terlebih dahulu");
-    router.push({ name: 'login' });
-    return;
-  }
-  if (!bookingDate.value) return alert("Pilih tanggal check-in terlebih dahulu");
-  alert("Melanjutkan ke halaman pembayaran...");
-};
-
-const handleContactOwner = () => {
-  alert("Menghubungi pemilik kost...");
-};
-
-onMounted(() => {
-  fetchDetail();
-});
-</script>
-
 <template>
   <div class="kost-detail-page">
-    <Navbar />
 
     <div class="page-container">
       
@@ -147,7 +10,9 @@ onMounted(() => {
 
       <div v-else-if="error" class="error-state">
         <div class="error-card">
-          <div class="error-icon">⚠️</div>
+          <div class="error-icon">
+             <Icon icon="mdi:alert-circle-outline" width="64" />
+          </div>
           <h3>Terjadi Kesalahan</h3>
           <p>{{ error }}</p>
           <BaseButton @click="fetchDetail" variant="primary">Coba Lagi</BaseButton>
@@ -157,8 +22,8 @@ onMounted(() => {
       <div v-else class="content-wrapper">
 
         <nav class="breadcrumb">
-          <router-link to="/">Home</router-link> <span>/</span>
-          <router-link to="/properties">Properties</router-link> <span>/</span>
+          <router-link to="/">Beranda</router-link> <span>/</span>
+          <router-link to="/properties">Properti</router-link> <span>/</span>
           <span class="current">{{ kost.name }}</span>
         </nav>
 
@@ -167,17 +32,14 @@ onMounted(() => {
             <img :src="kost.mainImage" :alt="kost.name" />
             <div class="image-overlay">
               <button class="gallery-btn" @click="goToGallery">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect>
-                  <rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
-                </svg>
+                <Icon icon="mdi:image-multiple-outline" width="20" />
                 Lihat Semua Foto
               </button>
             </div>
           </div>
           <div class="thumbnail-grid">
-            <div class="thumb-item" v-for="(img, i) in (kost.rooms?.[0]?.images?.slice(0,4) || [1,2,3,4])" :key="i">
-               <img :src="typeof img === 'string' ? img : kost.mainImage" />
+            <div class="thumb-item" v-for="(img, i) in galleryPreview" :key="i">
+               <img :src="img" />
             </div>
           </div>
         </div>
@@ -188,41 +50,26 @@ onMounted(() => {
             <div class="property-header">
               <div class="header-top">
                 <h1 class="property-title">{{ kost.name }}</h1>
+                
                 <div class="header-actions">
-                  
                   <button 
                     class="icon-btn" 
                     @click="handleWishlist"
                     :disabled="loadingWishlist"
                     :class="{ 'wishlist-active': isWishlisted }"
                   >
-                    <svg 
-                      width="20" height="20" viewBox="0 0 24 24" 
-                      :fill="isWishlisted ? 'currentColor' : 'none'" 
-                      stroke="currentColor" stroke-width="2"
-                      :class="isWishlisted ? 'text-red-500' : 'text-gray-500'"
-                    >
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                    </svg>
+                    <Icon :icon="isWishlisted ? 'mdi:heart' : 'mdi:heart-outline'" width="20" :class="isWishlisted ? 'text-red-500' : 'text-gray-500'" />
                     <span :class="isWishlisted ? 'text-red-600 font-bold' : ''">
                       {{ isWishlisted ? 'Tersimpan' : 'Simpan' }}
                     </span>
-                  </button>
-
-                  <button class="icon-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
-                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                    </svg>
-                    Bagikan
                   </button>
                 </div>
               </div>
 
               <div class="property-meta">
-                <span class="meta-item">⭐ {{ kost.rating || 4.5 }} ({{ kost.reviewCount || 10 }} Reviews)</span>
-                <span class="meta-item">📍 {{ kost.district || 'Denpasar' }}, Bali</span>
-                <span class="meta-badge">Kos Campur</span>
+                <span class="meta-item"><Icon icon="mdi:star" class="text-yellow-400" /> {{ kost.rating }} ({{ kost.reviewCount }} Ulasan)</span>
+                <span class="meta-item"><Icon icon="mdi:map-marker" /> {{ kost.district }}, Bali</span>
+                <span class="meta-badge">{{ kost.type || 'Campur' }}</span>
               </div>
             </div>
 
@@ -236,10 +83,52 @@ onMounted(() => {
             <div class="divider"></div>
 
             <div class="info-section">
-              <h2 class="section-title">Fasilitas</h2>
+              <h2 class="section-title">Fasilitas Umum</h2>
               <div class="facilities-grid">
                 <div v-for="fac in kost.facilities" :key="fac" class="facility-item">
-                  <span>✅ {{ fac }}</span>
+                  <Icon icon="mdi:check-circle-outline" class="text-green-500" />
+                  <span>{{ fac }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="info-section" id="room-selection">
+              <h2 class="section-title">Pilih Tipe Kamar</h2>
+              
+              <div v-if="rooms.length === 0" class="no-rooms">
+                <Icon icon="mdi:door-closed" width="40" class="text-gray-300" />
+                <p>Belum ada info kamar untuk kost ini.</p>
+              </div>
+
+              <div v-else class="room-list">
+                <div 
+                  v-for="room in rooms" 
+                  :key="room.id" 
+                  class="room-card-item"
+                  :class="{ 'selected': selectedRoom?.id === room.id, 'disabled': room.available_rooms < 1 }"
+                  @click="selectRoom(room)"
+                >
+                  <div class="room-card-info">
+                    <span class="room-type-name">{{ room.room_type }}</span>
+                    <span class="room-stock" :class="room.available_rooms > 0 ? 'text-green' : 'text-red'">
+                      {{ room.available_rooms > 0 ? `Sisa ${room.available_rooms} kamar` : 'Penuh' }}
+                    </span>
+                    <div class="room-specs" v-if="room.room_size">
+                      <span><Icon icon="mdi:ruler-square" width="14" /> {{ room.room_size }}</span>
+                    </div>
+                  </div>
+                  
+                  <div class="room-card-right">
+                    <div class="room-card-price">
+                      {{ formatRupiah(room.price_per_month) }}
+                      <small>/bulan</small>
+                    </div>
+                    <div class="radio-icon">
+                      <Icon :icon="selectedRoom?.id === room.id ? 'mdi:radiobox-marked' : 'mdi:radiobox-blank'" width="24" :class="selectedRoom?.id === room.id ? 'text-blue-600' : 'text-gray-300'" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -253,26 +142,34 @@ onMounted(() => {
                   <p class="location-address">{{ kost.address }}</p>
                   <p class="location-detail">{{ kost.district }} • {{ kost.city || 'Denpasar' }}</p>
                 </div>
-                <button class="view-map-btn">Lihat Peta</button>
+                <button class="view-map-btn">
+                  <Icon icon="mdi:map" /> Lihat Peta
+                </button>
               </div>
             </div>
           </div>
 
           <div class="right-section">
             <div class="booking-card">
+              
               <div class="price-header">
                 <div>
-                  <div class="price-amount">{{ formatRupiah(kost.price) }}</div>
+                  <div class="price-amount">
+                    {{ selectedRoom ? formatRupiah(selectedRoom.price_per_month) : formatRupiah(kost.price) }}
+                  </div>
                   <div class="price-period">per bulan</div>
                 </div>
-                <div class="availability-badge"><span class="badge-dot"></span> Tersedia</div>
+                <div class="availability-badge">
+                  <span class="badge-dot" :class="selectedRoom ? 'bg-green-500' : 'bg-gray-400'"></span> 
+                  {{ selectedRoom ? 'Kamar Dipilih' : 'Mulai Dari' }}
+                </div>
               </div>
 
               <div class="divider-sm"></div>
 
               <div class="booking-form">
                 <div class="form-group">
-                  <label class="form-label">Tanggal Mulai Kos</label>
+                  <label class="form-label">Tanggal Masuk</label>
                   <BaseInput v-model="bookingDate" type="date" />
                 </div>
                 <div class="form-group">
@@ -280,35 +177,242 @@ onMounted(() => {
                   <div class="duration-input-group">
                     <BaseInput v-model="bookingDuration" type="number" min="1" class="duration-number" />
                     <select v-model="durationUnit" class="duration-select">
-                      <option>Bulan</option>
-                      <option>Tahun</option>
+                      <option value="Bulan">Bulan</option>
+                      <option value="Tahun">Tahun</option>
                     </select>
                   </div>
                 </div>
               </div>
 
-              <div class="price-breakdown">
+              <div class="price-breakdown" v-if="selectedRoom">
+                <div class="breakdown-row">
+                  <span>{{ formatRupiah(selectedRoom.price_per_month) }} x {{ bookingDuration }} {{ durationUnit }}</span>
+                  <span>{{ formatRupiah(calculateSubtotal) }}</span>
+                </div>
                 <div class="breakdown-row total">
-                  <span>Total</span>
-                  <span>{{ formatRupiah(totalPrice) }}</span>
+                  <span>Total Pembayaran</span>
+                  <span>{{ formatRupiah(calculateSubtotal) }}</span>
                 </div>
               </div>
 
               <div class="action-buttons">
-                <BaseButton @click="handleBooking" variant="primary" class="btn-primary-custom">Ajukan Booking</BaseButton>
+                <BaseButton 
+                  @click="handleBooking" 
+                  variant="primary" 
+                  class="btn-primary-custom"
+                  :disabled="!selectedRoom"
+                >
+                  {{ selectedRoom ? 'Ajukan Sewa' : 'Pilih Kamar Dulu' }}
+                </BaseButton>
                 <BaseButton @click="handleContactOwner" variant="outline" class="btn-outline-custom">Hubungi Pemilik</BaseButton>
               </div>
               
-              <p class="booking-note">Anda belum akan dikenakan biaya</p>
+              <p class="booking-note" v-if="!authStore.isAuthenticated">
+                <Icon icon="mdi:lock-outline" width="14" /> Masuk sebagai <b>Penyewa</b> untuk memesan
+              </p>
             </div>
           </div>
 
         </div>
       </div>
     </div>
-    <Footer />
   </div>
 </template>
+
+<script setup>
+import { ref, onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
+import { Icon } from '@iconify/vue';
+import kostService from '@/services/kostService';
+import wishlistService from '@/services/wishlistService';
+import BaseButton from '@/components/common/BaseButton.vue';
+import BaseInput from '@/components/common/BaseInput.vue';
+
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
+
+// STATE
+const kost = ref(null);
+const rooms = ref([]); // Store list kamar
+const selectedRoom = ref(null);
+const loading = ref(true);
+const error = ref(null);
+const isWishlisted = ref(false);
+const loadingWishlist = ref(false);
+
+// Booking Form State
+const bookingDate = ref('');
+const bookingDuration = ref('1');
+const durationUnit = ref('Bulan');
+
+const API_BASE_URL = 'http://localhost:8000'; // Sebaiknya simpan di .env
+
+// HELPER FORMAT
+const formatRupiah = (number) => {
+  if (!number && number !== 0) return 'Rp -';
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
+};
+
+// COMPUTED PROPERTIES
+const calculateSubtotal = computed(() => {
+  if (!selectedRoom.value) return 0;
+  let duration = parseInt(bookingDuration.value) || 1;
+  if (durationUnit.value === 'Tahun') duration *= 12;
+  return selectedRoom.value.price_per_month * duration;
+});
+
+const galleryPreview = computed(() => {
+    if (!kost.value) return [];
+    let images = [];
+    
+    // 1. Ambil gambar dari kamar (jika ada)
+    if (kost.value.rooms && kost.value.rooms.length > 0) {
+         kost.value.rooms.forEach(room => {
+             if(room.image) images.push(getThumb(room.image));
+         });
+    }
+    
+    // 2. Isi sisanya dengan main image biar gridnya penuh
+    if (kost.value.thumbnail) {
+       images.unshift(getThumb(kost.value.thumbnail));
+    }
+    
+    // Pastikan minimal ada 1 gambar placeholder jika kosong
+    if (images.length === 0) images.push('https://placehold.co/600x400?text=No+Image');
+
+    return images.slice(0, 4);
+});
+
+// Helper Image URL
+const getThumb = (path) => {
+  if (!path) return 'https://placehold.co/600x400?text=No+Image';
+  if (path.startsWith('http')) return path;
+  return `${API_BASE_URL}/storage/${path}`;
+};
+
+// FETCH DATA
+const fetchDetail = async () => {
+  loading.value = true;
+  try {
+    const id = route.params.id;
+    
+    // 1. Ambil Detail Kost (Termasuk Rooms)
+    const kostData = await kostService.getKostDetail(id);
+    kost.value = kostData;
+
+    // --- PERBAIKAN 1: Ambil rooms langsung dari kostData ---
+    // Backend KostController@show sudah menyertakan 'rooms' via eager loading
+    if (kostData.rooms && Array.isArray(kostData.rooms)) {
+      rooms.value = kostData.rooms;
+      
+      // Auto-select kamar pertama yang available
+      const available = rooms.value.find(r => r.available_rooms > 0);
+      if (available) selectedRoom.value = available;
+    } else {
+      rooms.value = [];
+    }
+
+    checkWishlistStatus();
+  } catch (err) {
+    console.error(err);
+    error.value = 'Gagal memuat data kos. Pastikan server backend menyala.';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const checkWishlistStatus = async () => {
+  if (!authStore.isAuthenticated || !kost.value) return;
+  try {
+    const response = await wishlistService.getMyWishlist();
+    // Sesuaikan struktur response backend
+    const myWishlist = response.data?.data || response.data || [];
+    const currentId = parseInt(route.params.id);
+    
+    // Cek apakah ID kost ini ada di list wishlist
+    const exists = myWishlist.some(item => item.id === currentId);
+    isWishlisted.value = exists;
+  } catch (err) {
+    console.error("Gagal cek wishlist", err);
+  }
+};
+
+const handleWishlist = async () => {
+  if (!authStore.isAuthenticated) {
+    if(confirm("Silakan login untuk menyimpan properti ini.")) {
+       return router.push('/login');
+    }
+    return;
+  }
+  try {
+    loadingWishlist.value = true;
+    await wishlistService.toggleWishlist(kost.value.id);
+    isWishlisted.value = !isWishlisted.value;
+  } catch (err) {
+    alert("Gagal memperbarui wishlist");
+  } finally {
+    loadingWishlist.value = false;
+  }
+};
+
+const selectRoom = (room) => {
+    if (room.available_rooms > 0) {
+        selectedRoom.value = room;
+    }
+};
+
+const handleBooking = () => {
+  // 1. Cek Login
+  if (!authStore.isAuthenticated) {
+    alert("Silakan masuk sebagai Penyewa untuk melanjutkan.");
+    router.push({ name: 'login', query: { redirect: route.fullPath } });
+    return;
+  }
+  
+  // 2. Cek Role
+  if (authStore.user.role !== 'tenant') {
+    alert("Akun Anda terdaftar sebagai Pemilik/Admin. Gunakan akun Penyewa untuk memesan.");
+    return;
+  }
+
+  // 3. Validasi Form
+  if (!selectedRoom.value) return alert("Pilih tipe kamar terlebih dahulu.");
+  if (!bookingDate.value) return alert("Pilih tanggal masuk.");
+
+  // --- PERBAIKAN 2: Sesuaikan Nama Param dengan Step1Request.vue ---
+  router.push({
+    path: '/booking/request', // Gunakan path eksplisit agar aman
+    query: {
+        kost_id: kost.value.id,
+        room_id: selectedRoom.value.id, // Dulu roomId, diubah jadi room_id
+        start_date: bookingDate.value,
+        duration: bookingDuration.value,
+        price: selectedRoom.value.price_per_month // Kirim harga untuk estimasi di step 1
+    }
+  });
+};
+
+const handleContactOwner = () => {
+    if(kost.value.user && kost.value.user.phone_whatsapp) {
+       let phone = kost.value.user.phone_whatsapp;
+       if(phone.startsWith('0')) phone = '62' + phone.slice(1);
+       window.open(`https://wa.me/${phone}?text=Halo, saya tertarik dengan kost ${kost.value.name}`, '_blank');
+    } else {
+       alert('Nomor pemilik tidak tersedia.');
+    }
+};
+
+const goToGallery = () => {
+    // Opsional: Buat route gallery atau tampilkan modal
+    alert("Fitur galeri lengkap akan segera hadir!");
+};
+
+onMounted(() => {
+  fetchDetail();
+});
+</script>
 
 <style scoped>
 /* GENERAL */

@@ -1,24 +1,27 @@
 import axios from 'axios'
 
+// Tentukan URL API berdasarkan environment
+// Jika sedang PRODUCTION (di Hostinger), pakai URL asli.
+// Jika sedang DEVELOPMENT (di Laptop), pakai '/api' (agar proxy Vite jalan).
+const baseURL = import.meta.env.PROD 
+  ? 'https://kodyakostapi.adityavisual.my.id/api' 
+  : '/api'
+
 const apiClient = axios.create({
-  baseURL: 'https://kodyakostapi.adityavisual.my.id/api', 
+  baseURL: baseURL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   }
 })
 
-// --- TAMBAHAN BARU: Interceptor untuk Token ---
+// Interceptor tetap sama (tidak perlu diubah)
 apiClient.interceptors.request.use(config => {
-  // Ambil token dari penyimpanan lokal browser
   const token = localStorage.getItem('token');
   if (token) {
-    // Tempelkan token ke header request
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-}, error => {
-  return Promise.reject(error);
-});
+}, error => Promise.reject(error));
 
 export default apiClient

@@ -6,19 +6,28 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 
-// [BARU] Import apiClient yang sudah kamu buat
-import apiClient from '@/api/Axios' 
-
 const app = createApp(App)
 
-// [LOGIC BARU] Cek LocalStorage saat aplikasi start/refresh
-const token = localStorage.getItem('token')
+// ---------------------------------------------------------
+// 1. SETUP HELPER GAMBAR GLOBAL ($storage)
+// ---------------------------------------------------------
+// Masukkan URL Backend kamu di sini (tanpa slash di akhir)
+const backendUrl = 'https://kodyakostapi.adityavisual.my.id'
 
-if (token) {
-  // Jika ada token tersimpan, pasang kembali ke Header apiClient
-  apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`
+app.config.globalProperties.$storage = (path) => {
+  // Jika path kosong, return string kosong
+  if (!path) return ''
+  
+  // Jika path sudah lengkap (ada https), biarkan saja
+  if (path.startsWith('http')) return path
+
+  // Gabungkan URL Backend + Path Gambar
+  return `${backendUrl}${path.startsWith('/') ? '' : '/'}${path}`
 }
 
+// ---------------------------------------------------------
+// 2. INITIALIZE PLUGINS
+// ---------------------------------------------------------
 app.use(createPinia())
 app.use(router)
 

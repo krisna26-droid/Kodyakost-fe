@@ -1,322 +1,330 @@
 <template>
-  <div class="dashboard-layout">
-    <OwnerSidebar />
-
-    <main class="main-content">
+  <div class="add-kost-page">
+    <div class="container">
       
-      <header class="topbar">
-        <button class="back-btn" @click="$router.back()">
-          <Icon icon="mdi:arrow-left" />
-        </button>
-        <div class="page-title">
-          <h1>Tambah Properti Baru</h1>
-          <p>Isi detail kost Anda selengkap mungkin.</p>
+      <div class="page-header">
+        <div>
+          <h1 class="title">Tambah Properti Baru</h1>
+          <p class="subtitle">Lengkapi data kost Anda agar bisa diverifikasi Admin.</p>
         </div>
-      </header>
+        <button class="btn-back" @click="$router.back()">
+          <Icon icon="mdi:arrow-left" /> Batal
+        </button>
+      </div>
 
-      <div class="content-wrapper">
-        <form @submit.prevent="handleSubmit" class="add-form">
-          
-          <div class="form-section">
-            <h2>Foto Utama</h2>
-            <div class="image-upload-box" @click="triggerFileInput">
-              <input 
-                type="file" 
-                ref="fileInput" 
-                class="hidden-input" 
-                accept="image/*"
-                @change="handleFileChange"
-              />
-              
-              <img v-if="previewImage" :src="previewImage" class="preview-img" />
-              
-              <div v-else class="placeholder">
-                <Icon icon="mdi:cloud-upload" class="upload-icon" />
-                <p>Klik untuk upload foto utama</p>
-                <span class="sub-text">Format JPG/PNG, Max 2MB</span>
-              </div>
-            </div>
-          </div>
+      <div v-if="errorMessage" class="alert-error">
+        <Icon icon="mdi:alert-circle" /> {{ errorMessage }}
+      </div>
+
+      <div class="form-wrapper">
+        <form @submit.prevent="handleSubmit">
 
           <div class="form-section">
-            <h2>Informasi Dasar</h2>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Nama Kost</label>
-                <input v-model="form.name" type="text" placeholder="Contoh: Kost Melati Executive" required />
-              </div>
-              
-              <div class="form-group">
-                <label>Tipe Kost</label>
-                <select v-model="form.type">
-                  <option value="campur">Campur (Putra/Putri)</option>
-                  <option value="putra">Khusus Putra</option>
-                  <option value="putri">Khusus Putri</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label>Harga per Bulan (Rp)</label>
-                <input v-model="form.price" type="number" placeholder="Contoh: 1500000" required />
-              </div>
-
-              <div class="form-group">
-                <label>Total Kamar</label>
-                <input v-model="form.total_rooms" type="number" placeholder="Jumlah kamar tersedia" required />
-              </div>
-            </div>
+            <h3 class="section-title">
+              <Icon icon="mdi:home-city-outline" class="icon" /> Data Umum
+            </h3>
             
-            <div class="form-group mt-3">
-              <label>Deskripsi Kost</label>
-              <textarea v-model="form.description" rows="4" placeholder="Ceritakan kelebihan kost Anda..."></textarea>
+            <div class="form-group">
+              <label>Nama Kost <span class="required">*</span></label>
+              <input 
+                v-model="form.name" 
+                type="text" 
+                placeholder="Contoh: Kost Griya Denpasar" 
+                required 
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Deskripsi <span class="required">*</span></label>
+              <textarea 
+                v-model="form.description" 
+                rows="4" 
+                placeholder="Jelaskan fasilitas umum, lingkungan sekitar, dll..." 
+                required
+              ></textarea>
             </div>
           </div>
 
           <div class="form-section">
-            <h2>Lokasi</h2>
-            <div class="form-group">
-              <label>Alamat Lengkap</label>
-              <textarea v-model="form.address" rows="2" placeholder="Jalan, Nomor, Kelurahan, Kecamatan..." required></textarea>
-            </div>
-            <div class="form-grid">
+            <h3 class="section-title">
+              <Icon icon="mdi:map-marker-radius" class="icon" /> Lokasi
+            </h3>
+
+            <div class="grid-2">
               <div class="form-group">
-                <label>Kecamatan (District)</label>
-                <select v-model="form.district">
-                  <option value="Denpasar Selatan">Denpasar Selatan</option>
-                  <option value="Denpasar Utara">Denpasar Utara</option>
+                <label>Kecamatan <span class="required">*</span></label>
+                <select v-model="form.district" required>
+                  <option value="" disabled>Pilih Kecamatan</option>
                   <option value="Denpasar Barat">Denpasar Barat</option>
                   <option value="Denpasar Timur">Denpasar Timur</option>
+                  <option value="Denpasar Utara">Denpasar Utara</option>
+                  <option value="Denpasar Selatan">Denpasar Selatan</option>
                 </select>
               </div>
+
               <div class="form-group">
-                <label>Link Google Maps (Opsional)</label>
-                <input v-model="form.maps_link" type="text" placeholder="https://goo.gl/maps/..." />
+                <label>Desa/Kelurahan <span class="required">*</span></label>
+                <input v-model="form.village" type="text" placeholder="Contoh: Sesetan" required />
               </div>
+            </div>
+
+            <div class="form-group">
+              <label>Alamat Lengkap <span class="required">*</span></label>
+              <textarea v-model="form.address" rows="2" placeholder="Jalan, No Rumah, Gang..." required></textarea>
+            </div>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Latitude <small>(Sementara isi manual/default)</small></label>
+                <input v-model="form.latitude" type="text" placeholder="-8.670458" required />
+              </div>
+              <div class="form-group">
+                <label>Longitude</label>
+                <input v-model="form.longitude" type="text" placeholder="115.212629" required />
+              </div>
+            </div>
+            <div class="map-placeholder">
+              <p>📍 Fitur Pin Peta akan ditambahkan di update berikutnya. Gunakan Google Maps untuk salin koordinat sementara.</p>
             </div>
           </div>
 
           <div class="form-section">
-            <h2>Fasilitas</h2>
-            <p class="section-desc">Pilih fasilitas yang tersedia di kost ini.</p>
+            <h3 class="section-title">
+              <Icon icon="mdi:image-area" class="icon" /> Foto Utama (Thumbnail)
+            </h3>
             
-            <div class="facilities-grid">
-              <label 
-                v-for="item in facilityOptions" 
-                :key="item.id" 
-                class="checkbox-card"
-                :class="{ 'selected': form.facilities.includes(item.id) }"
-              >
+            <div class="upload-area">
+              <div v-if="imagePreview" class="preview-box">
+                <img :src="imagePreview" alt="Preview" />
+                <button type="button" class="btn-remove" @click="removeImage">
+                  <Icon icon="mdi:close" /> Hapus
+                </button>
+              </div>
+
+              <div v-else class="upload-box" @click="triggerFileInput">
                 <input 
-                  type="checkbox" 
-                  :value="item.id" 
-                  v-model="form.facilities" 
-                  hidden
+                  type="file" 
+                  ref="fileInput" 
+                  @change="handleFileChange" 
+                  accept="image/*" 
+                  class="hidden-input" 
                 />
-                <Icon :icon="item.icon" class="fac-icon" />
-                <span>{{ item.name }}</span>
-              </label>
+                <div class="upload-placeholder">
+                  <Icon icon="mdi:cloud-upload" width="40" class="upload-icon" />
+                  <span>Klik untuk upload thumbnail kost</span>
+                  <small>Format: JPG, PNG (Max 2MB)</small>
+                </div>
+              </div>
             </div>
           </div>
 
           <div class="form-actions">
             <button type="button" class="btn-cancel" @click="$router.back()">Batal</button>
-            <button type="submit" class="btn-save" :disabled="isLoading">
-              <Icon v-if="isLoading" icon="mdi:loading" class="spin" />
-              {{ isLoading ? 'Menyimpan...' : 'Simpan Properti' }}
+            <button type="submit" class="btn-submit" :disabled="loading">
+              <Icon v-if="loading" icon="mdi:loading" class="spin" />
+              <span v-else>Simpan & Lanjut</span>
             </button>
           </div>
 
         </form>
       </div>
-    </main>
+
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue';
-import { useRouter } from 'vue-router'; // Perbaikan import
+import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
-import OwnerSidebar from '@/components/navigation/OwnerSidebar.vue';
+import ownerService from '@/services/ownerService';
 
-const router = useRouter(); // Inisialisasi router
-const isLoading = ref(false);
+const router = useRouter();
+const loading = ref(false);
+const errorMessage = ref(null);
 const fileInput = ref(null);
-const previewImage = ref(null);
+const imagePreview = ref(null);
+const imageFile = ref(null);
 
-// Form Data
+// Form Data Sesuai Controller Store
 const form = reactive({
   name: '',
-  type: 'campur',
-  price: '',
-  total_rooms: '',
   description: '',
   address: '',
-  district: 'Denpasar Selatan',
-  maps_link: '',
-  facilities: [], // Array ID fasilitas
-  image: null // File object
+  district: '',
+  village: '',
+  latitude: '-8.670458', // Default Denpasar
+  longitude: '115.212629', // Default Denpasar
 });
 
-// Pilihan Fasilitas (Dummy dulu)
-const facilityOptions = [
-  { id: 1, name: 'WiFi', icon: 'mdi:wifi' },
-  { id: 2, name: 'AC', icon: 'mdi:air-conditioner' },
-  { id: 3, name: 'K. Mandi Dalam', icon: 'mdi:toilet' },
-  { id: 4, name: 'Kasur', icon: 'mdi:bed' },
-  { id: 5, name: 'Lemari', icon: 'mdi:wardrobe' },
-  { id: 6, name: 'Parkir Motor', icon: 'mdi:motorbike' },
-  { id: 7, name: 'Parkir Mobil', icon: 'mdi:car' },
-  { id: 8, name: 'Dapur Umum', icon: 'mdi:chef-hat' },
-];
-
-// Handle File
+// File Handling
 const triggerFileInput = () => fileInput.value.click();
 
-const handleFileChange = (e) => {
-  const file = e.target.files[0];
+const handleFileChange = (event) => {
+  const file = event.target.files[0];
   if (file) {
-    form.image = file;
-    // Preview
-    const reader = new FileReader();
-    reader.onload = (e) => previewImage.value = e.target.result;
-    reader.readAsDataURL(file);
+    if (file.size > 2 * 1024 * 1024) { // 2MB Limit
+      alert("Ukuran file terlalu besar (Max 2MB)");
+      return;
+    }
+    imageFile.value = file;
+    imagePreview.value = URL.createObjectURL(file);
   }
 };
 
-// Handle Submit (Simulasi Dulu)
-const handleSubmit = async () => {
-  isLoading.value = true;
+const removeImage = () => {
+  imageFile.value = null;
+  imagePreview.value = null;
+  if (fileInput.value) fileInput.value.value = '';
+};
 
-  // Simulasi loading 1.5 detik
-  setTimeout(() => {
-    isLoading.value = false;
-    alert('Simulasi: Kost Berhasil Ditambahkan!');
-    console.log("Data yang dikirim:", form);
+// Submit Handling
+const handleSubmit = async () => {
+  loading.value = true;
+  errorMessage.value = null;
+
+  try {
+    const formData = new FormData();
+    // Append semua data text
+    Object.keys(form).forEach(key => {
+      formData.append(key, form[key]);
+    });
+
+    // Append file jika ada
+    if (imageFile.value) {
+      formData.append('thumbnail', imageFile.value);
+    }
+
+    // Kirim ke API
+    const response = await ownerService.createKost(formData);
     
-    // Redirect kembali ke halaman list
-    router.push('/owner/properties');
-  }, 1500);
+    // Sukses
+    if (response.success) {
+      const newKostId = response.data.id;
+      // Redirect ke halaman manajemen kamar atau list properti
+      // Karena backend menyarankan "silakan tambah Tipe Kamar", 
+      // idealnya kita redirect ke form tambah kamar dengan membawa ID Kost baru.
+      // Tapi untuk sekarang kita balik ke list properti dulu.
+      alert("Kost berhasil dibuat! Silakan tambahkan kamar di menu Kelola Properti.");
+      router.push({ name: 'owner-properties' });
+    }
+
+  } catch (error) {
+    console.error("Error submit:", error);
+    // Tangkap pesan error validasi dari Laravel
+    if (error.response && error.response.data && error.response.data.errors) {
+      // Ambil error pertama
+      const firstErrorKey = Object.keys(error.response.data.errors)[0];
+      errorMessage.value = error.response.data.errors[firstErrorKey][0];
+    } else {
+      errorMessage.value = "Terjadi kesalahan saat menyimpan data. Cek koneksi.";
+    }
+  } finally {
+    loading.value = false;
+  }
 };
 </script>
 
 <style scoped>
-/* Layout dasar sama */
-.dashboard-layout {
-  display: flex;
-  min-height: 100vh;
-  background-color: #f8f9fa;
-  font-family: 'Poppins', sans-serif;
-}
-.main-content { flex: 1; margin-left: 260px; }
-.content-wrapper { padding: 30px; max-width: 900px; margin: 0 auto; }
+.add-kost-page { padding: 40px; font-family: 'Poppins', sans-serif; background: #f8fafc; min-height: 100vh; }
+.container { max-width: 800px; margin: 0 auto; }
 
-/* Topbar */
-.topbar {
-  background: white;
-  padding: 20px 40px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  border-bottom: 1px solid #edf2f7;
-}
-.back-btn {
-  background: none; border: 1px solid #e2e8f0; border-radius: 50%; width: 40px; height: 40px;
-  cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
-  color: #4a5568; transition: all 0.2s;
-}
-.back-btn:hover { background: #cbd5e0; }
-.page-title h1 { font-size: 1.5rem; font-weight: 700; color: #1a202c; margin: 0; }
-.page-title p { color: #718096; font-size: 0.9rem; margin: 0; }
+/* HEADER */
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+.title { font-size: 1.8rem; font-weight: 700; color: #1e3a8a; margin-bottom: 5px; }
+.subtitle { color: #64748b; font-size: 0.95rem; }
 
-/* FORM STYLES */
-.add-form { display: flex; flex-direction: column; gap: 30px; }
-
-.form-section {
-  background: white;
-  padding: 25px;
-  border-radius: 16px;
-  border: 1px solid #f1f5f9;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+.btn-back {
+  display: flex; align-items: center; gap: 8px;
+  background: white; border: 1px solid #e2e8f0; padding: 10px 16px;
+  border-radius: 8px; cursor: pointer; font-weight: 600; color: #64748b;
+  transition: 0.2s;
 }
-.form-section h2 { font-size: 1.1rem; font-weight: 700; color: #2d3748; margin-bottom: 20px; border-bottom: 2px solid #f7fafc; padding-bottom: 10px; display: inline-block; }
+.btn-back:hover { background: #f1f5f9; color: #1e3a8a; }
 
-/* Image Upload */
-.image-upload-box {
-  width: 100%;
-  height: 250px;
-  border: 2px dashed #cbd5e0;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  background: #f7fafc;
-  overflow: hidden;
-  transition: all 0.2s;
-  position: relative;
+/* ALERT */
+.alert-error {
+  background: #fee2e2; color: #b91c1c; padding: 12px 16px; border-radius: 8px;
+  margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-weight: 500;
+  border: 1px solid #fecaca;
 }
-.image-upload-box:hover { border-color: #fca311; background: #fffaf0; }
-.preview-img { width: 100%; height: 100%; object-fit: cover; }
-.placeholder { text-align: center; color: #718096; }
-.upload-icon { font-size: 3rem; color: #cbd5e0; margin-bottom: 10px; }
-.sub-text { font-size: 0.8rem; color: #a0aec0; display: block; margin-top: 5px; }
+
+/* FORM STYLE */
+.form-wrapper {
+  background: white; border-radius: 16px; padding: 40px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;
+}
+
+.form-section { margin-bottom: 35px; border-bottom: 1px solid #f1f5f9; padding-bottom: 30px; }
+.form-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+.section-title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 1.1rem; font-weight: 700; color: #1e3a8a; margin-bottom: 20px;
+}
+.section-title .icon { color: #fca311; font-size: 1.3rem; }
+
+/* INPUTS */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+.form-group { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+.form-group label { font-weight: 600; font-size: 0.9rem; color: #334155; }
+.required { color: #ef4444; }
+
+input[type="text"], select, textarea {
+  width: 100%; padding: 12px 16px; border-radius: 10px;
+  border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.95rem;
+  transition: border-color 0.2s; outline: none; background: #fff;
+}
+input:focus, select:focus, textarea:focus { border-color: #1e3a8a; box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1); }
+textarea { resize: vertical; }
+
+/* MAP PLACEHOLDER */
+.map-placeholder {
+  background: #eff6ff; border: 1px dashed #bfdbfe; color: #1e40af;
+  padding: 15px; border-radius: 8px; font-size: 0.85rem; text-align: center;
+}
+
+/* UPLOAD AREA */
+.upload-area { margin-top: 10px; }
 .hidden-input { display: none; }
 
-/* Inputs */
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-.mt-3 { margin-top: 15px; }
+.upload-box {
+  border: 2px dashed #cbd5e1; border-radius: 12px; padding: 40px;
+  text-align: center; cursor: pointer; transition: 0.2s; background: #f8fafc;
+}
+.upload-box:hover { border-color: #1e3a8a; background: #eff6ff; }
 
-label { font-size: 0.9rem; font-weight: 600; color: #4a5568; }
-input, select, textarea {
-  padding: 12px;
+.upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #64748b; }
+.upload-icon { color: #94a3b8; }
+
+.preview-box {
+  position: relative; width: 100%; height: 250px; border-radius: 12px; overflow: hidden;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  outline: none;
-  font-family: inherit;
-  transition: border 0.2s;
 }
-input:focus, select:focus, textarea:focus { border-color: #fca311; }
+.preview-box img { width: 100%; height: 100%; object-fit: cover; }
+.btn-remove {
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(0,0,0,0.7); color: white; border: none;
+  padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  display: flex; align-items: center; gap: 5px; font-size: 0.8rem;
+}
+.btn-remove:hover { background: #ef4444; }
 
-/* Facilities Checkbox Grid */
-.facilities-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 15px;
+/* ACTIONS */
+.form-actions {
+  display: flex; justify-content: flex-end; gap: 15px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #f1f5f9;
 }
-.checkbox-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 15px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.checkbox-card:hover { border-color: #fca311; }
-.checkbox-card.selected { background: #fffaf0; border-color: #fca311; color: #d97706; }
-.fac-icon { font-size: 1.5rem; }
-
-/* Actions */
-.form-actions { display: flex; justify-content: flex-end; gap: 15px; margin-top: 10px; }
 .btn-cancel {
-  padding: 12px 25px; background: white; border: 1px solid #e2e8f0; border-radius: 8px;
-  font-weight: 600; color: #718096; cursor: pointer;
+  background: white; border: 1px solid #e2e8f0; color: #64748b;
+  padding: 12px 24px; border-radius: 10px; font-weight: 600; cursor: pointer;
 }
-.btn-save {
-  padding: 12px 30px; background: #1f3a52; border: none; border-radius: 8px;
-  font-weight: 600; color: white; cursor: pointer; display: flex; align-items: center; gap: 8px;
+.btn-submit {
+  background: #1e3a8a; color: white; border: none;
+  padding: 12px 30px; border-radius: 10px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 8px; transition: 0.2s;
 }
-.btn-save:hover { background: #2c5274; }
-.btn-save:disabled { background: #94a3b8; cursor: not-allowed; }
+.btn-submit:hover { background: #172554; }
+.btn-submit:disabled { background: #94a3b8; cursor: not-allowed; }
 .spin { animation: spin 1s linear infinite; }
-
-@media (max-width: 768px) {
-  .main-content { margin-left: 0; }
-  .form-grid { grid-template-columns: 1fr; }
-}
+@keyframes spin { 100% { transform: rotate(360deg); } }
 </style>
