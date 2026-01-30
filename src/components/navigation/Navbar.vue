@@ -2,7 +2,13 @@
   <div class="navbar-container">
     <nav class="navbar">
       
-      <div class="logo-section">
+      <div class="mobile-toggle show-mobile-only">
+        <button class="burger-btn" @click.stop="isMobileMenuOpen = !isMobileMenuOpen">
+          <Icon :icon="isMobileMenuOpen ? 'mdi:close' : 'mdi:menu'" width="28" />
+        </button>
+      </div>
+
+      <div class="logo-section hide-mobile">
         <router-link :to="{ name: 'home' }" class="logo-link">
           <img src="@/assets/images/kodyakost-logo.png" alt="KodyaKost Logo" class="logo-img" />
         </router-link>
@@ -23,13 +29,13 @@
       </div>
 
       <div class="nav-actions">
-        <ul class="nav-links">
+        <ul class="nav-links hide-mobile">
           <li v-for="item in menuItems" :key="item.name">
             <router-link :to="item.link" class="nav-link">{{ item.name }}</router-link>
           </li>
         </ul>
 
-        <div class="separator"></div>
+        <div class="separator hide-mobile"></div>
 
         <div v-if="!isLoggedIn" class="auth-section">
           <BaseButton variant="primary" size="md" @click="showRoleModal = true">
@@ -38,7 +44,6 @@
         </div>
 
         <div v-else class="user-section">
-          
           <button class="icon-btn" @click="goToWishlist" title="Lihat Wishlist">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -61,7 +66,6 @@
             
             <transition name="dropdown">
               <div v-if="isDropdownOpen" class="dropdown-menu" @click.stop>
-                
                 <router-link v-if="authStore.isAdmin" :to="{ name: 'admin-dashboard' }" class="dropdown-item admin-link" @click="isDropdownOpen = false">
                   <Icon icon="mdi:view-dashboard" width="18" /> <span>Admin Panel</span>
                 </router-link>
@@ -101,6 +105,21 @@
       </div>
     </nav>
 
+    <transition name="slide">
+      <div v-if="isMobileMenuOpen" class="mobile-drawer" @click.stop>
+        <div class="drawer-header">
+          <img src="@/assets/images/kodyakost-logo.png" alt="Logo" class="logo-img-drawer" />
+          <button @click="isMobileMenuOpen = false" class="close-btn"><Icon icon="mdi:close" width="24" /></button>
+        </div>
+        <ul class="drawer-links">
+          <li v-for="item in menuItems" :key="item.name">
+            <router-link :to="item.link" class="drawer-link-item" @click="isMobileMenuOpen = false">{{ item.name }}</router-link>
+          </li>
+        </ul>
+      </div>
+    </transition>
+    <div v-if="isMobileMenuOpen" class="drawer-overlay" @click="isMobileMenuOpen = false"></div>
+
     <RoleSelectionModal :is-open="showRoleModal" @close="showRoleModal = false" @select="handleRoleSelect"/>
     <LogoutModal :is-open="showLogoutModal" @close="showLogoutModal = false" @confirm="handleLogout"/>
   </div>
@@ -111,7 +130,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useWishlistStore } from '@/stores/wishlist'; 
 import { useRouter } from 'vue-router';
-import { Icon } from '@iconify/vue'; // Tambahkan Iconify
+import { Icon } from '@iconify/vue';
 import LogoutModal from '@/components/modal/LogoutModal.vue';
 import RoleSelectionModal from '@/components/modal/RoleSelectionModal.vue';
 import BaseButton from '@/components/common/BaseButton.vue';
@@ -122,6 +141,7 @@ const wishlistStore = useWishlistStore();
 const router = useRouter();
 
 const isDropdownOpen = ref(false);
+const isMobileMenuOpen = ref(false);
 const showLogoutModal = ref(false); 
 const showRoleModal = ref(false);
 const searchQuery = ref('');
@@ -130,9 +150,11 @@ const isLoggedIn = computed(() => authStore.isAuthenticated);
 const currentUser = computed(() => authStore.user);
 
 const toggleDropdown = () => isDropdownOpen.value = !isDropdownOpen.value;
-const closeDropdown = () => isDropdownOpen.value = false;
+const closeDropdown = () => {
+  isDropdownOpen.value = false;
+  isMobileMenuOpen.value = false;
+};
 
-// Klik Luar untuk Menutup Dropdown
 onMounted(() => { 
   window.addEventListener('click', closeDropdown);
   if (isLoggedIn.value) wishlistStore.fetchWishlist(); 
@@ -176,11 +198,6 @@ const handleSearch = () => {
 
 const goToWishlist = () => router.push({ name: 'wishlist' });
 
-watch(isLoggedIn, (newVal) => {
-  if (newVal) wishlistStore.fetchWishlist();
-  else wishlistStore.clearWishlist();
-});
-
 const menuItems = [
   { name: 'Home', link: '/' },
   { name: 'Cultural Calendar', link: '/cultural-calendar' },
@@ -191,7 +208,7 @@ const menuItems = [
 </script>
 
 <style scoped>
-/* --- NAVBAR CONTAINER & LAYOUT --- */
+/* STYLE ASLI 100% */
 .navbar-container { 
   width: 100%; 
   position: sticky; 
@@ -211,15 +228,12 @@ const menuItems = [
   height: 80px; 
 }
 
-/* --- LOGO: Kunci Ukuran --- */
 .logo-section { flex-shrink: 0; width: 180px; display: flex; align-items: center; }
 .logo-img { height: 55px !important; width: auto !important; object-fit: contain; }
 
-/* --- SEARCH SECTION --- */
 .search-section { flex: 1; max-width: 450px; padding-top: 27px; }
 .search-section :deep(.input-wrapper) { border-radius: 9999px; }
 
-/* --- NAVIGATION LINKS --- */
 .nav-actions { display: flex; align-items: center; gap: 1.5rem; }
 .nav-links { display: flex; list-style: none; gap: 1.5rem; padding: 0; margin: 0; }
 .nav-link { 
@@ -233,7 +247,6 @@ const menuItems = [
 
 .separator { height: 28px; width: 1px; background-color: var(--color-border); }
 
-/* --- USER SECTION --- */
 .user-section { display: flex; align-items: center; gap: 1rem; }
 .icon-btn { position: relative; width: 40px; height: 40px; border: none; background: transparent; color: #64748b; cursor: pointer; border-radius: 50%; }
 .badge { 
@@ -265,7 +278,6 @@ const menuItems = [
   text-overflow: ellipsis; 
 }
 
-/* --- DROPDOWN MENU: Compact & Aligned --- */
 .dropdown-menu { 
   position: absolute; 
   right: 0; 
@@ -294,22 +306,42 @@ const menuItems = [
   background: none; 
 }
 .dropdown-item:hover { background-color: var(--color-background-soft); }
-
-/* Role Highlights */
 .admin-link { color: #1e3a8a; background-color: #f0f7ff; font-weight: 700; }
 .owner-link { color: #059669; background-color: #f0fdf4; font-weight: 700; }
 .tenant-link { color: #ff6b35; background-color: #fffaf0; font-weight: 700; }
-
 .dropdown-divider { border-top: 1px solid var(--color-border); margin: 0.2rem 0; }
 .logout-item { color: #ef4444; }
-
 .chevron { transition: 0.2s; }
 .chevron.is-open { transform: rotate(180deg); }
 
-/* --- RESPONSIVE FIXES --- */
+/* --- PERBAIKAN RESPONSIVE (BURGER MENU) --- */
+.show-mobile-only { display: none; }
+
 @media (max-width: 1024px) {
-  .user-name, .nav-links, .separator { display: none; }
-  .navbar { padding: 0 1rem; }
-  .logo-section { width: 140px; }
+  .navbar { height: 70px; padding: 0 1rem; }
+  .logo-section.hide-mobile, .nav-links.hide-mobile, .separator.hide-mobile, .user-name { display: none; }
+  .show-mobile-only { display: block; }
+  .search-section { padding-top: 20px; margin: 0 0.5rem; max-width: none; }
+  .burger-btn { background: none; border: none; cursor: pointer; color: #1e3a8a; }
 }
+
+/* DRAWER STYLES */
+.mobile-drawer {
+  position: fixed; top: 0; left: 0; width: 280px; height: 100vh;
+  background: white; z-index: 100; padding: 1.5rem;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+}
+.drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+.logo-img-drawer { height: 40px; }
+.close-btn { background: none; border: none; cursor: pointer; color: #64748b; }
+.drawer-links { list-style: none; padding: 0; }
+.drawer-link-item { 
+  display: block; padding: 1rem 0; color: #1e3a8a; 
+  font-weight: 700; text-decoration: none; border-bottom: 1px solid #f1f5f9;
+}
+.drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+
+/* Transitions */
+.slide-enter-active, .slide-leave-active { transition: transform 0.3s ease; }
+.slide-enter-from, .slide-leave-to { transform: translateX(-100%); }
 </style>
