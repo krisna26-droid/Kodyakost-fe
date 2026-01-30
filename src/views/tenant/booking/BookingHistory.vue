@@ -106,7 +106,10 @@ import transactionService from '@/services/transactionService';
 const router = useRouter();
 const bookings = ref([]);
 const loading = ref(true);
-const API_BASE_URL = 'http://localhost:8000'; // Sesuaikan port backend
+
+// ✅ FIX: Gunakan dynamic API URL
+const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
+const BASE_STORAGE_URL = API_URL.replace(/\/api\/?$/, '');
 
 // --- FETCH DATA ---
 const fetchHistory = async () => {
@@ -114,8 +117,9 @@ const fetchHistory = async () => {
   try {
     const data = await transactionService.getMyBookings();
     bookings.value = data;
+    console.log('✅ [History] Loaded bookings:', data);
   } catch (error) {
-    console.error("Gagal load history:", error);
+    console.error("❌ [History] Gagal load history:", error);
   } finally {
     loading.value = false;
   }
@@ -133,18 +137,35 @@ const handleNavigate = (item) => {
   }
 };
 
-// --- HELPERS ---
+// ✅ FIX: Helper untuk handle image URL
 const getThumb = (path) => {
   if (!path) return 'https://placehold.co/100x100?text=Kost';
-  if (path.startsWith('http')) return path;
-  return `${API_BASE_URL}/storage/${path}`;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  
+  // Remove leading slash
+  const cleanPath = path.replace(/^\//, '');
+  
+  // Check if path already includes 'storage/'
+  if (cleanPath.startsWith('storage/')) {
+    return `${BASE_STORAGE_URL}/${cleanPath}`;
+  } else {
+    return `${BASE_STORAGE_URL}/storage/${cleanPath}`;
+  }
 };
 
-const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { 
+  style: 'currency', 
+  currency: 'IDR', 
+  minimumFractionDigits: 0 
+}).format(num || 0);
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(dateStr).toLocaleDateString('id-ID', { 
+    day: 'numeric', 
+    month: 'short', 
+    year: 'numeric' 
+  });
 };
 
 onMounted(() => {

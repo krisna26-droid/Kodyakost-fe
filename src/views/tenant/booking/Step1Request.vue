@@ -20,7 +20,7 @@
           <h2 class="title">Ajukan Sewa</h2>
         </div>
         
-        <p class="subtitle">Lengkapi data sewa untuk kamar yang Anda pilih.</p>
+        <p class="subtitle">Konfirmasi detail sewa untuk hunian pilihan Anda.</p>
 
         <div class="form-group">
           <label>Tanggal Masuk</label>
@@ -31,10 +31,16 @@
         </div>
 
         <div class="form-group">
-          <label>Durasi (Bulan)</label>
-          <div class="input-wrapper">
-            <Icon icon="mdi:clock-time-four-outline" class="input-icon" />
-            <input type="number" v-model="form.duration" min="1" max="12" class="input-field" placeholder="Contoh: 3" />
+          <label>Durasi Sewa</label>
+          <div class="duration-grid">
+            <div class="input-wrapper">
+              <Icon icon="mdi:clock-time-four-outline" class="input-icon" />
+              <input type="number" v-model="form.duration" min="1" class="input-field" />
+            </div>
+            <select v-model="form.unit" class="select-field">
+              <option value="Bulan">Bulan</option>
+              <option value="Tahun">Tahun</option>
+            </select>
           </div>
         </div>
 
@@ -43,10 +49,14 @@
             <span>Harga per bulan</span>
             <span>{{ formatRupiah(pricePerMonth) }}</span>
           </div>
+          <div class="row">
+            <span>Durasi</span>
+            <span>{{ form.duration }} {{ form.unit }}</span>
+          </div>
           <div class="divider"></div>
           <div class="row total">
             <span>Estimasi Total</span>
-            <strong>{{ formatRupiah(pricePerMonth * form.duration) }}</strong>
+            <strong>{{ formatRupiah(totalPrice) }}</strong>
           </div>
         </div>
 
@@ -70,45 +80,55 @@ const router = useRouter();
 const route = useRoute();
 
 const loading = ref(false);
-const minDate = new Date().toISOString().split('T')[0]; // Hari ini
+const minDate = new Date().toISOString().split('T')[0];
 
-// Ambil data dari Query Params (dikirim dari tombol 'Sewa' di halaman Detail)
+// Ambil data dari Query Params yang dikirim KostDetail
 const roomId = route.query.room_id;
-const pricePerMonth = route.query.price || 0; // Default 0 jika tidak ada
+const pricePerMonth = parseInt(route.query.price) || 0;
 
 const form = reactive({
   room_id: roomId,
-  start_date: '',
-  duration: 1
+  start_date: route.query.date || '',
+  duration: parseInt(route.query.duration) || 1,
+  unit: route.query.unit || 'Bulan'
 });
 
-// --- SUBMIT REAL DATA ---
+// Hitung total harga secara otomatis
+const totalPrice = computed(() => {
+  const durationInMonths = form.unit === 'Tahun' ? form.duration * 12 : form.duration;
+  return pricePerMonth * durationInMonths;
+});
+
 const submitBooking = async () => {
   if (!form.room_id) {
-    alert("Terjadi kesalahan: Data kamar tidak ditemukan. Silakan kembali ke halaman detail.");
+    alert("Data kamar tidak ditemukan. Silakan kembali ke halaman detail.");
     return;
   }
   if (!form.start_date) {
-    alert("Mohon pilih tanggal masuk.");
+    alert("Mohon tentukan tanggal masuk.");
     return;
   }
 
   loading.value = true;
   try {
-    // Panggil Service API
-    const response = await transactionService.createBooking(form);
+    // Siapkan data untuk dikirim ke API
+    const payload = {
+      room_id: form.room_id,
+      start_date: form.start_date,
+      duration: form.unit === 'Tahun' ? form.duration * 12 : form.duration // Konversi ke bulan
+    };
+
+    const response = await transactionService.createBooking(payload);
     
-    // Sukses! Ambil ID Booking baru dari response
-    const newBookingId = response.data.id;
+    // Sesuaikan dengan response API (biasanya response.data.id)
+    const newBookingId = response.data?.id || response.id;
     
-    // Lanjut ke Step 2 dengan membawa ID Booking
     router.push({ 
       name: 'booking-step-2', 
       query: { booking_id: newBookingId } 
     });
 
   } catch (error) {
-    console.error(error);
     const msg = error.response?.data?.message || "Gagal mengajukan sewa.";
     alert(msg);
   } finally {
@@ -120,8 +140,8 @@ const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency'
 
 onMounted(() => {
   if (!roomId) {
-    alert("Akses ilegal: Pilih kamar terlebih dahulu.");
-    router.push('/properties');
+    alert("Kamar belum dipilih. Kembali ke daftar kost.");
+    router.push({ name: 'properties' });
   }
 });
 </script>
@@ -134,27 +154,28 @@ onMounted(() => {
 .step.active { color: #1e3a8a; }
 .line { flex: 1; height: 2px; background: #e2e8f0; margin: 0 8px; }
 
-.card-content { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+.card-content { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
 .header-card { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
 .btn-back { border: none; background: none; cursor: pointer; color: #64748b; font-size: 1.2rem; display: flex; }
-.title { font-size: 1.4rem; font-weight: 700; color: #1e293b; margin: 0; }
+.title { font-size: 1.5rem; font-weight: 800; color: #1e293b; margin: 0; }
 .subtitle { color: #64748b; margin-bottom: 25px; font-size: 0.9rem; margin-left: 34px; }
 
 .form-group { margin-bottom: 20px; }
 .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #334155; font-size: 0.9rem; }
+
+.duration-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 10px; }
 .input-wrapper { position: relative; display: flex; align-items: center; }
-.input-icon { position: absolute; left: 12px; color: #94a3b8; font-size: 1.2rem; }
-.input-field { width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 10px; outline: none; font-size: 1rem; transition: 0.2s; }
-.input-field:focus { border-color: #1e3a8a; box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1); }
+.input-icon { position: absolute; left: 12px; color: #94a3b8; }
+.input-field, .select-field { width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #cbd5e1; border-radius: 12px; outline: none; font-size: 1rem; }
+.select-field { padding-left: 15px; background-color: #f8fafc; }
 
-.summary-box { background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 25px; border: 1px dashed #cbd5e1; }
-.row { display: flex; justify-content: space-between; font-size: 0.9rem; color: #64748b; }
+.summary-box { background: #f0f7ff; padding: 20px; border-radius: 15px; margin-bottom: 25px; border: 1px dashed #1e3a8a; }
+.row { display: flex; justify-content: space-between; font-size: 0.9rem; color: #475569; margin-bottom: 5px; }
 .divider { height: 1px; background: #cbd5e1; margin: 10px 0; }
-.row.total { color: #1e3a8a; font-size: 1.1rem; }
+.row.total { color: #1e3a8a; font-size: 1.15rem; font-weight: 800; }
 
-.btn-next { width: 100%; background: #1e3a8a; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; font-size: 1rem; }
-.btn-next:hover { background: #172554; }
-.btn-next:disabled { background: #94a3b8; cursor: not-allowed; }
+.btn-next { width: 100%; background: #1e3a8a; color: white; border: none; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; }
+.btn-next:hover { background: #1e40af; transform: translateY(-2px); }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 </style>

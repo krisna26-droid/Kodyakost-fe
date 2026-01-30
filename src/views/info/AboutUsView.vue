@@ -86,6 +86,17 @@
       </div>
     </section>
 
+    <section class="cta-section">
+      <div class="container">
+        <h3>Siap Menemukan Rumah Kedua Anda?</h3>
+        <p>Cari kost impian Anda di Denpasar sekarang juga.</p>
+        <BaseButton variant="primary" size="lg" @click="$router.push('/properties')">
+          Mulai Cari Kost
+          <template #icon-right><Icon icon="mdi:arrow-right" /></template>
+        </BaseButton>
+      </div>
+    </section>
+
   </div>
 </template>
 
@@ -97,7 +108,7 @@ import { Icon } from '@iconify/vue';
 /* --- GLOBAL --- */
 .about-view {
   font-family: 'Poppins', sans-serif;
-  color: #333;
+  color: var(--color-text); /* Gunakan Token */
   overflow-x: hidden;
 }
 
@@ -110,35 +121,22 @@ import { Icon } from '@iconify/vue';
 /* --- HERO SECTION --- */
 .about-hero {
   background: linear-gradient(135deg, #f0fbfb 0%, #e6f7ff 100%);
-  padding: 100px 0 80px;
+  padding: clamp(80px, 15vh, 120px) 0 80px; /* Fluid Padding */
   text-align: center;
   position: relative;
   overflow: hidden;
 }
 
-.about-hero::before {
-  content: "";
-  position: absolute;
-  top: -50px;
-  right: -50px;
-  width: 200px;
-  height: 200px;
-  background: rgba(252, 163, 17, 0.1);
-  border-radius: 50%;
-  filter: blur(50px);
-}
-
 .about-hero h1 {
-  font-size: 2.8rem;
+  font-size: var(--font-xl); /* Gunakan Token */
   font-weight: 800;
   color: #1f3a52;
   line-height: 1.2;
   margin-bottom: 20px;
-  position: relative;
 }
 
 .highlight {
-  color: #fca311;
+  color: #fca311; /* Kuning Ciri Khas Kodya */
   position: relative;
   display: inline-block;
 }
@@ -147,7 +145,7 @@ import { Icon } from '@iconify/vue';
   max-width: 600px;
   margin: 0 auto;
   color: #6b7280;
-  font-size: 1.15rem;
+  font-size: var(--font-base);
   line-height: 1.6;
 }
 
@@ -168,38 +166,16 @@ import { Icon } from '@iconify/vue';
   width: 100%;
   height: 400px;
   object-fit: cover;
-  border-radius: 24px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 20px 40px rgba(31, 58, 82, 0.1);
   transition: transform 0.3s ease;
 }
 
-.story-image img:hover {
-  transform: translateY(-5px);
-}
-
-.story-text .label {
-  color: #fca311;
-  font-weight: 700;
-  text-transform: uppercase;
-  font-size: 0.9rem;
-  letter-spacing: 1px;
-  display: block;
-  margin-bottom: 10px;
-}
-
 .story-text h2 {
-  font-size: 2.2rem;
+  font-size: var(--font-lg);
   color: #1f3a52;
   margin-bottom: 25px;
   font-weight: 700;
-  line-height: 1.3;
-}
-
-.story-text p {
-  color: #6b7280;
-  line-height: 1.8;
-  margin-bottom: 20px;
-  font-size: 1.05rem;
 }
 
 /* --- STATS SECTION --- */
@@ -216,40 +192,16 @@ import { Icon } from '@iconify/vue';
 }
 
 .stat-item h3 {
-  font-size: 3rem;
+  font-size: var(--font-xl);
   font-weight: 700;
   color: #fca311;
   margin-bottom: 5px;
-  line-height: 1;
-}
-
-.stat-item p {
-  font-size: 1.1rem;
-  color: #cbd5e1;
-  font-weight: 500;
 }
 
 /* --- VALUES SECTION --- */
 .values-section {
   padding: 100px 0;
   background-color: #fafbfc;
-}
-
-.section-header {
-  text-align: center;
-  margin-bottom: 60px;
-}
-
-.section-header h2 {
-  font-size: 2.2rem;
-  color: #1f3a52;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-
-.section-header p {
-  color: #6b7280;
-  font-size: 1.1rem;
 }
 
 .values-grid {
@@ -261,8 +213,8 @@ import { Icon } from '@iconify/vue';
 .value-card {
   background: white;
   padding: 40px 30px;
-  border-radius: 20px;
-  border: 1px solid #f1f5f9;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
   transition: all 0.3s ease;
   text-align: center;
@@ -270,7 +222,6 @@ import { Icon } from '@iconify/vue';
 
 .value-card:hover {
   transform: translateY(-10px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
   border-color: #fca311;
 }
 
@@ -283,67 +234,43 @@ import { Icon } from '@iconify/vue';
   align-items: center;
   justify-content: center;
   margin: 0 auto 25px;
-  transition: background 0.3s;
-}
-
-.value-card:hover .icon-wrapper {
-  background: #fca311;
 }
 
 .value-icon {
   font-size: 2.5rem;
   color: #fca311;
-  transition: color 0.3s;
 }
 
-.value-card:hover .value-icon {
-  color: white;
+/* --- CTA SECTION --- */
+.cta-section {
+  padding: 80px 0;
+  background: #f8fafc;
+  text-align: center;
 }
 
-.value-card h4 {
-  font-size: 1.3rem;
-  color: #1f3a52;
+.cta-section h3 {
+  font-size: var(--font-lg);
   margin-bottom: 15px;
   font-weight: 700;
 }
-
-.value-card p {
+.cta-section p {
   color: #6b7280;
-  line-height: 1.6;
+  margin-bottom: 30px;
+  font-size: var(--font-base);
 }
 
-/* --- RESPONSIVE MEDIA QUERIES --- */
+/* --- RESPONSIVE --- */
 @media (max-width: 992px) {
-  .story-grid {
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
-  .story-image img {
-    height: 300px;
-  }
-  .values-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+  .story-grid { grid-template-columns: 1fr; gap: 40px; }
+  .values-grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 768px) {
-  .about-hero h1 {
-    font-size: 2.2rem;
-  }
-  
-  /* Grid untuk Stats di HP agar 2 kolom baris */
   .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 30px;
   }
-  
-  .stat-item h3 {
-    font-size: 2.2rem;
-  }
-
-  .values-grid {
-    grid-template-columns: 1fr;
-  }
+  .values-grid { grid-template-columns: 1fr; }
 }
 </style>

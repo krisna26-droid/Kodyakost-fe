@@ -3,7 +3,7 @@
     <nav class="navbar">
       
       <div class="logo-section">
-        <router-link to="/" class="logo-link">
+        <router-link :to="{ name: 'home' }" class="logo-link">
           <img src="@/assets/images/kodyakost-logo.png" alt="KodyaKost Logo" class="logo-img" />
         </router-link>
       </div>
@@ -15,7 +15,9 @@
           @keyup.enter="handleSearch"
         >
           <template #prepend>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
           </template>
         </BaseInput>
       </div>
@@ -49,52 +51,48 @@
           </button>
 
           <div class="user-dropdown">
-            <button class="avatar-btn" @click="toggleDropdown">
+            <button class="avatar-btn" @click.stop="toggleDropdown">
               <img :src="getAvatarUrl(currentUser?.avatar)" @error="handleImageError" alt="User" class="avatar-img" />
               <span class="user-name">{{ currentUser?.name }}</span>
-              <svg class="chevron" :class="{ 'is-open': isDropdownOpen }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              <svg class="chevron" :class="{ 'is-open': isDropdownOpen }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
             </button>
             
             <transition name="dropdown">
-              <div v-if="isDropdownOpen" class="dropdown-menu">
+              <div v-if="isDropdownOpen" class="dropdown-menu" @click.stop>
                 
-                <router-link 
-                  v-if="authStore.isAdmin" 
-                  to="/admin/dashboard" 
-                  class="dropdown-item admin-link" 
-                  @click="isDropdownOpen = false"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                  <span>Admin Panel</span>
+                <router-link v-if="authStore.isAdmin" :to="{ name: 'admin-dashboard' }" class="dropdown-item admin-link" @click="isDropdownOpen = false">
+                  <Icon icon="mdi:view-dashboard" width="18" /> <span>Admin Panel</span>
                 </router-link>
 
-                <router-link 
-                  v-if="authStore.isOwner" 
-                  to="/owner/dashboard" 
-                  class="dropdown-item owner-link" 
-                  @click="isDropdownOpen = false"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                  <span>Dashboard Bisnis</span>
+                <router-link v-if="authStore.isOwner" :to="{ name: 'owner-dashboard' }" class="dropdown-item owner-link" @click="isDropdownOpen = false">
+                  <Icon icon="mdi:briefcase-check" width="18" /> <span>Bisnis Kost</span>
                 </router-link>
 
-                <div v-if="authStore.isAdmin || authStore.isOwner" class="dropdown-divider"></div>
-
-                <router-link to="/profile" class="dropdown-item" @click="isDropdownOpen = false">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  <span>Profile</span>
-                </router-link>
-                
-                <router-link to="/wishlist" class="dropdown-item" @click="isDropdownOpen = false">
-                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                   <span>Wishlist</span>
-                   <span v-if="wishlistStore.count > 0" class="dropdown-badge">{{ wishlistStore.count }}</span>
+                <router-link v-if="!authStore.isAdmin && !authStore.isOwner" :to="{ name: 'tenant-dashboard' }" class="dropdown-item tenant-link" @click="isDropdownOpen = false">
+                  <Icon icon="mdi:home-heart" width="18" /> <span>Kost Saya</span>
                 </router-link>
 
                 <div class="dropdown-divider"></div>
+
+                <router-link :to="{ name: 'profile' }" class="dropdown-item" @click="isDropdownOpen = false">
+                  <Icon icon="mdi:account-circle-outline" width="18" /> <span>Profil Saya</span>
+                </router-link>
+                
+                <router-link :to="{ name: 'wishlist' }" class="dropdown-item" @click="isDropdownOpen = false">
+                   <Icon icon="mdi:heart-outline" width="18" /> <span>Wishlist</span>
+                   <span v-if="wishlistStore.count > 0" class="dropdown-badge">{{ wishlistStore.count }}</span>
+                </router-link>
+
+                <router-link :to="{ name: 'booking-history' }" class="dropdown-item" @click="isDropdownOpen = false">
+                   <Icon icon="mdi:history" width="18" /> <span>Riwayat Sewa</span>
+                </router-link>
+
+                <div class="dropdown-divider"></div>
+
                 <button @click="confirmLogout" class="dropdown-item logout-item">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                  <span>Logout</span>
+                  <Icon icon="mdi:logout" width="18" /> <span>Keluar</span>
                 </button>
               </div>
             </transition>
@@ -102,16 +100,18 @@
         </div>
       </div>
     </nav>
+
     <RoleSelectionModal :is-open="showRoleModal" @close="showRoleModal = false" @select="handleRoleSelect"/>
     <LogoutModal :is-open="showLogoutModal" @close="showLogoutModal = false" @confirm="handleLogout"/>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useWishlistStore } from '@/stores/wishlist'; 
 import { useRouter } from 'vue-router';
+import { Icon } from '@iconify/vue'; // Tambahkan Iconify
 import LogoutModal from '@/components/modal/LogoutModal.vue';
 import RoleSelectionModal from '@/components/modal/RoleSelectionModal.vue';
 import BaseButton from '@/components/common/BaseButton.vue';
@@ -121,33 +121,35 @@ const authStore = useAuthStore();
 const wishlistStore = useWishlistStore(); 
 const router = useRouter();
 
-// State
-const isLoggedIn = computed(() => authStore.isAuthenticated);
-const currentUser = computed(() => authStore.user);
 const isDropdownOpen = ref(false);
 const showLogoutModal = ref(false); 
 const showRoleModal = ref(false);
 const searchQuery = ref('');
 
-// --- [FIX] KONFIGURASI URL DINAMIS ---
+const isLoggedIn = computed(() => authStore.isAuthenticated);
+const currentUser = computed(() => authStore.user);
+
+const toggleDropdown = () => isDropdownOpen.value = !isDropdownOpen.value;
+const closeDropdown = () => isDropdownOpen.value = false;
+
+// Klik Luar untuk Menutup Dropdown
+onMounted(() => { 
+  window.addEventListener('click', closeDropdown);
+  if (isLoggedIn.value) wishlistStore.fetchWishlist(); 
+});
+onUnmounted(() => window.removeEventListener('click', closeDropdown));
+
 const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
-// Hapus '/api' di akhir
 const BASE_STORAGE_URL = API_URL.replace(/\/api\/?$/, '');
 const defaultAvatar = 'https://i.pravatar.cc/150?img=11';
 
 const getAvatarUrl = (path) => {
   if (!path) return defaultAvatar;
   if (path.startsWith('http')) return path;
-  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  return `${BASE_STORAGE_URL}/storage/${cleanPath}`;
+  return `${BASE_STORAGE_URL}/storage/${path.replace(/^\//, '')}`;
 };
 
-const handleImageError = (e) => {
-  if (e.target.src !== defaultAvatar) e.target.src = defaultAvatar;
-};
-
-// --- HANDLERS ---
-const toggleDropdown = () => isDropdownOpen.value = !isDropdownOpen.value;
+const handleImageError = (e) => { e.target.src = defaultAvatar; };
 
 const confirmLogout = () => {
   isDropdownOpen.value = false;
@@ -172,352 +174,142 @@ const handleSearch = () => {
   }
 };
 
-const goToWishlist = () => {
-  router.push({ name: 'wishlist' });
-};
-
-// --- DATA FETCHING ---
-onMounted(() => {
-  if (isLoggedIn.value) {
-    wishlistStore.fetchWishlist();
-  }
-});
+const goToWishlist = () => router.push({ name: 'wishlist' });
 
 watch(isLoggedIn, (newVal) => {
-  if (newVal) {
-    wishlistStore.fetchWishlist();
-  } else {
-    wishlistStore.clearWishlist();
-  }
+  if (newVal) wishlistStore.fetchWishlist();
+  else wishlistStore.clearWishlist();
 });
 
 const menuItems = [
   { name: 'Home', link: '/' },
+  { name: 'Cultural Calendar', link: '/cultural-calendar' },
   { name: 'Help Center', link: '/help' },
-  { name: 'Terms and Conditions', link: '/terms' },
-  { name: 'About Us', link: '/about' },
-  { name: 'Cultural Calendar', link: '/cultural-calendar' } 
+  { name: 'T&C', link: '/terms' },
+  { name: 'About Us', link: '/about' }
 ];
 </script>
 
 <style scoped>
-/* Container */
-.navbar-container {
-  width: 100%;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background-color: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+/* --- NAVBAR CONTAINER & LAYOUT --- */
+.navbar-container { 
+  width: 100%; 
+  position: sticky; 
+  top: 0; 
+  z-index: 50; 
+  background-color: var(--color-background); 
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); 
+}
+.navbar { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  padding: 0 2rem; 
+  max-width: 1400px; 
+  margin: 0 auto; 
+  gap: 1.5rem; 
+  height: 80px; 
 }
 
-/* Navbar */
-.navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.875rem 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
-  gap: 2rem;
-  height: 80px;
-}
+/* --- LOGO: Kunci Ukuran --- */
+.logo-section { flex-shrink: 0; width: 180px; display: flex; align-items: center; }
+.logo-img { height: 55px !important; width: auto !important; object-fit: contain; }
 
-/* Logo Section */
-.logo-section {
-  flex-shrink: 0;
-}
+/* --- SEARCH SECTION --- */
+.search-section { flex: 1; max-width: 450px; padding-top: 27px; }
+.search-section :deep(.input-wrapper) { border-radius: 9999px; }
 
-.logo-link {
-  display: flex;
-  align-items: center;
-}
-
-.logo-img {
-  height: 70px;
-  width: auto;
-}
-
-/* Search Section */
-.search-section {
-  flex-grow: 1;
-  max-width: 500px;
-}
-
-/* Override BaseInput margin untuk navbar */
-.search-section :deep(.input-group) {
-  margin-bottom: 0;
-}
-
-.search-section :deep(.input-wrapper) {
-  border-radius: 9999px; /* Pill shape untuk search */
-}
-
-.search-section :deep(.form-input) {
-  font-size: 0.9rem;
-  padding: 0.625rem 1rem;
-}
-
-.search-section :deep(.icon-left) {
-  left: 0.875rem;
-}
-
-.search-section :deep(.form-input.has-prepend) {
-  padding-left: 2.5rem;
-}
-
-/* Navigation Actions */
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  flex-shrink: 0;
-}
-
-/* Nav Links */
-.nav-links {
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  gap: 1.5rem;
-}
-
-.nav-link {
-  text-decoration: none;
-  color: #000000;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: color 0.2s ease;
-  white-space: nowrap;
-}
-
-.nav-link:hover {
-  color: #00897b;
-}
-
-.nav-link.router-link-active {
-  color: #000000;
-  font-weight: 600;
-}
-.nav-link.router-link-active:hover {
-  color: #00897b;
-  font-weight: 600;
-}
-
-/* Separator */
-.separator {
-  height: 28px;
-  width: 1px;
-  background-color: #e5e7eb;
-}
-
-/* Auth Section */
-.auth-section {
-  display: flex;
-}
-
-/* User Section */
-.user-section {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-/* Icon Button (Favorites) */
-.icon-btn {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-}
-
-.icon-btn:hover {
-  background-color: #f1f5f9;
-  color: #00897b;
-}
-
-.badge {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: #ffffff;
-  font-size: 0.625rem;
-  font-weight: 700;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  border: 2px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* User Dropdown */
-.user-dropdown {
-  position: relative;
-}
-
-.avatar-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.375rem 0.75rem 0.375rem 0.375rem;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 9999px;
-  transition: background-color 0.2s ease;
-}
-
-.avatar-btn:hover {
-  background-color: #f1f5f9;
-}
-
-.avatar-img {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #e5e7eb;
-}
-
-.user-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #1e293b;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chevron {
-  color: #64748b;
-  transition: transform 0.2s ease;
-}
-
-.chevron.is-open {
-  transform: rotate(180deg);
-}
-
-/* Dropdown Menu */
-.dropdown-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.5rem);
-  min-width: 200px;
-  background-color: #ffffff;
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
-  overflow: hidden;
-  z-index: 100;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  font-size: 0.9rem;
-  color: #334155;
-  text-decoration: none;
-  transition: background-color 0.15s ease;
-  width: 100%;
-  text-align: left;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.dropdown-item:hover {
-  background-color: #f8fafc;
-}
-
-.dropdown-item svg {
-  flex-shrink: 0;
-}
-
-.dropdown-divider {
-  border-top: 1px solid #e5e7eb;
-  margin: 0.25rem 0;
-}
-
-.logout-item {
-  color: #ef4444;
-}
-
-.logout-item:hover {
-  background-color: #fef2f2;
-}
-
-/* Dropdown Animation */
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: all 0.2s ease;
-}
-
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-  .user-name {
-    display: none;
-  }
-  
-  .nav-links {
-    display: none;
-  }
-  
-  .separator {
-    display: none;
-  }
-}
-/* 1. Admin Link Style (Navy Blue) */
-.admin-link { 
-  color: #1e3a8a; 
+/* --- NAVIGATION LINKS --- */
+.nav-actions { display: flex; align-items: center; gap: 1.5rem; }
+.nav-links { display: flex; list-style: none; gap: 1.5rem; padding: 0; margin: 0; }
+.nav-link { 
+  text-decoration: none; 
+  color: var(--color-text); 
+  font-size: var(--font-sm); 
   font-weight: 600; 
-  background-color: #f8fafc; 
+  transition: 0.2s; 
 }
-.admin-link:hover { 
-  background-color: #eff6ff; /* Biru muda saat hover */
+.nav-link:hover, .nav-link.router-link-active { color: #00897b; }
+
+.separator { height: 28px; width: 1px; background-color: var(--color-border); }
+
+/* --- USER SECTION --- */
+.user-section { display: flex; align-items: center; gap: 1rem; }
+.icon-btn { position: relative; width: 40px; height: 40px; border: none; background: transparent; color: #64748b; cursor: pointer; border-radius: 50%; }
+.badge { 
+  position: absolute; 
+  top: 2px; 
+  right: 2px; 
+  background: #ef4444; 
+  color: white; 
+  font-size: 0.6rem; 
+  min-width: 18px; 
+  height: 18px; 
+  border-radius: 50%; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  border: 2px solid white; 
 }
 
-/* 2. Owner Link Style (Green) */
-.owner-link { 
-  color: #059669; 
-  font-weight: 600; 
-  background-color: #f0fdfa; 
-}
-.owner-link:hover { 
-  background-color: #ecfdf5; /* Hijau muda saat hover */
+.avatar-btn { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0.7rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md); transition: 0.2s; }
+.avatar-btn:hover { background-color: var(--color-background-soft); }
+.avatar-img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-border); }
+.user-name { 
+  font-size: var(--font-sm); 
+  font-weight: 700; 
+  color: var(--color-heading); 
+  max-width: 110px; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
 }
 
-/* Animation */
-.dropdown-enter-active, .dropdown-leave-active { transition: all 0.2s ease; }
-.dropdown-enter-from, .dropdown-leave-to { opacity: 0; transform: translateY(-8px); }
+/* --- DROPDOWN MENU: Compact & Aligned --- */
+.dropdown-menu { 
+  position: absolute; 
+  right: 0; 
+  top: calc(100% + 10px); 
+  width: 215px; 
+  background: var(--color-background); 
+  border-radius: var(--radius-md); 
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+  border: 1px solid var(--color-border); 
+  overflow: hidden; 
+  z-index: 1000; 
+}
 
-/* Responsive */
+.dropdown-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 0.75rem; 
+  padding: 0.75rem 1rem; 
+  font-size: var(--font-sm); 
+  color: var(--color-text); 
+  text-decoration: none; 
+  transition: 0.15s; 
+  cursor: pointer; 
+  border: none; 
+  width: 100%; 
+  background: none; 
+}
+.dropdown-item:hover { background-color: var(--color-background-soft); }
+
+/* Role Highlights */
+.admin-link { color: #1e3a8a; background-color: #f0f7ff; font-weight: 700; }
+.owner-link { color: #059669; background-color: #f0fdf4; font-weight: 700; }
+.tenant-link { color: #ff6b35; background-color: #fffaf0; font-weight: 700; }
+
+.dropdown-divider { border-top: 1px solid var(--color-border); margin: 0.2rem 0; }
+.logout-item { color: #ef4444; }
+
+.chevron { transition: 0.2s; }
+.chevron.is-open { transform: rotate(180deg); }
+
+/* --- RESPONSIVE FIXES --- */
 @media (max-width: 1024px) {
-  .user-name { display: none; }
-  .nav-links { display: none; }
-  .separator { display: none; }
+  .user-name, .nav-links, .separator { display: none; }
+  .navbar { padding: 0 1rem; }
+  .logo-section { width: 140px; }
 }
 </style>

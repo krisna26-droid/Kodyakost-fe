@@ -1,20 +1,26 @@
 import { defineStore } from 'pinia';
-import apiClient from '@/api/Axios'; // [FIX] Gunakan apiClient langsung
+import apiClient from '@/api/Axios';
 
 export const useWishlistStore = defineStore('wishlist', {
   state: () => ({
     count: 0,
     items: [],
-    loading: false, // [ADD] Tambah loading state
+    loading: false,
     hasFetched: false
   }),
+
+  getters: {
+    // ✅ ADD: Cek apakah kost ada di wishlist
+    isInWishlist: (state) => (kostId) => {
+      return state.items.some(item => Number(item.id) === Number(kostId));
+    }
+  },
 
   actions: {
     // Ambil data wishlist
     async fetchWishlist() {
       this.loading = true;
       try {
-        // Pastikan endpoint backend kamu benar, misal '/wishlists'
         const response = await apiClient.get('/wishlists'); 
         const data = response.data.data || response.data;
         
@@ -24,10 +30,58 @@ export const useWishlistStore = defineStore('wishlist', {
           this.hasFetched = true;
         }
       } catch (error) {
-        // Error silent agar tidak mengganggu UI utama, cukup console log
         console.error("Gagal load wishlist:", error);
       } finally {
         this.loading = false;
+      }
+    },
+
+    // ✅ ADD: Toggle wishlist (add/remove)
+    async toggleWishlist(kostId) {
+      try {
+        const response = await apiClient.post('/wishlists/toggle', {
+          kost_id: kostId
+        });
+        
+        // Refresh wishlist setelah toggle
+        await this.fetchWishlist();
+        
+        return response.data;
+      } catch (error) {
+        console.error("Error toggle wishlist:", error);
+        throw error;
+      }
+    },
+
+    // ✅ ADD: Tambah ke wishlist
+    async addToWishlist(kostId) {
+      try {
+        const response = await apiClient.post('/wishlists', {
+          kost_id: kostId
+        });
+        
+        // Refresh wishlist
+        await this.fetchWishlist();
+        
+        return response.data;
+      } catch (error) {
+        console.error("Error add wishlist:", error);
+        throw error;
+      }
+    },
+
+    // ✅ ADD: Hapus dari wishlist
+    async removeFromWishlist(kostId) {
+      try {
+        const response = await apiClient.delete(`/wishlists/${kostId}`);
+        
+        // Refresh wishlist
+        await this.fetchWishlist();
+        
+        return response.data;
+      } catch (error) {
+        console.error("Error remove wishlist:", error);
+        throw error;
       }
     },
 

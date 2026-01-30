@@ -1,28 +1,26 @@
 <template>
-  <div class="dashboard-container">
+  <div class="container dashboard-container mt-4">
     
     <div class="dashboard-header">
       <div>
-        <h1 class="page-title">Dashboard</h1>
+        <h1 class="page-title">Dashboard Admin</h1>
         <p class="page-subtitle">Selamat datang kembali, {{ userDisplayName }}.</p>
       </div>
-      <div class="date-display">
-        {{ currentDate }}
+      <div class="date-display hide-mobile">
+        <Icon icon="mdi:calendar-month" /> {{ currentDate }}
       </div>
     </div>
 
-    <div v-if="error" class="error-banner">
-      <Icon icon="mdi:alert-circle" width="20" />
-      <span>Gagal memuat data dashboard. Cek koneksi internet Anda.</span>
-    </div>
-
-    <div class="stats-row">
+    <div class="stats-grid mb-4">
       <template v-if="loading">
-        <div class="stat-card skeleton" v-for="i in 4" :key="i"></div>
+        <div class="stat-card skeleton-card" v-for="i in 4" :key="i">
+          <div class="card-top"><BaseSkeleton width="50%" height="20px" /></div>
+          <div class="card-bottom"><BaseSkeleton width="80%" height="40px" /></div>
+        </div>
       </template>
 
       <template v-else>
-        <div class="stat-card highlight" @click="$router.push('/admin/verify')">
+        <div class="stat-card highlight" @click="$router.push({ name: 'admin-verify' })">
           <div class="card-top">
             <span class="label">Perlu Verifikasi</span>
             <div class="icon-circle gold">
@@ -84,7 +82,7 @@
         </div>
         
         <div class="quick-actions">
-          <router-link to="/admin/verify" class="action-box primary">
+          <router-link :to="{ name: 'admin-verify' }" class="action-box primary">
             <div class="icon">
               <Icon icon="mdi:check-decagram" width="24" />
             </div>
@@ -95,7 +93,7 @@
             <Icon icon="mdi:arrow-right" class="arrow" />
           </router-link>
 
-          <router-link to="/admin/users" class="action-box secondary">
+          <router-link :to="{ name: 'admin-users' }" class="action-box secondary">
             <div class="icon">
               <Icon icon="mdi:account-cog" width="24" />
             </div>
@@ -146,25 +144,19 @@
 import { ref, onMounted, computed } from 'vue';
 import { Icon } from '@iconify/vue';
 import adminService from '@/services/adminService';
-import { useAuthStore } from '@/stores/auth'; // [FIX] Import Auth Store
+import { useAuthStore } from '@/stores/auth';
+import { notify } from '@/utils/swal';
 
-// State Management
 const authStore = useAuthStore();
 const stats = ref({ total_users: 0, total_kosts: 0, pending_kosts: 0, revenue: 0 });
-const loading = ref(true); // [FIX] Loading state
-const error = ref(null);   // [FIX] Error state
+const loading = ref(true); 
+const error = ref(null);   
 
-// Computed: Nama User
-const userDisplayName = computed(() => {
-  return authStore.user?.name || 'Admin';
-});
-
-// Computed: Tanggal
+const userDisplayName = computed(() => authStore.user?.name || 'Admin');
 const currentDate = computed(() => {
   return new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 });
 
-// Helper: Format Angka
 const formatNumber = (num) => {
   if (!num) return '0';
   if (num >= 1000000) return (num / 1000000).toFixed(1) + ' Jt';
@@ -172,21 +164,14 @@ const formatNumber = (num) => {
   return num.toString();
 };
 
-// Lifecycle: Fetch Data
 onMounted(async () => {
   try {
     loading.value = true;
-    error.value = null;
-    
-    // Pastikan endpoint backend mengembalikan data yang sesuai
-    const response = await adminService.getDashboardStats();
-    
-    // Jika response dibungkus "data", sesuaikan di sini
-    stats.value = response.data || response; 
-    
+    const data = await adminService.getDashboardStats();
+    stats.value = data; 
   } catch (err) {
-    console.error("Dashboard Error:", err);
     error.value = "Gagal memuat data.";
+    notify.error("Koneksi server terputus.");
   } finally {
     loading.value = false;
   }
@@ -194,99 +179,115 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.dashboard-container { font-family: 'Poppins', sans-serif; color: #1e293b; max-width: 1400px; margin: 0 auto; }
+.dashboard-container { padding-bottom: 40px; }
 
-/* HEADER */
-.dashboard-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 10px; }
-.page-title { font-size: 1.8rem; font-weight: 700; color: #1e3a8a; line-height: 1.2; }
-.page-subtitle { color: #64748b; font-size: 0.95rem; }
-.date-display { background: white; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; color: #1e3a8a; border: 1px solid #e2e8f0; white-space: nowrap; }
-
-/* ERROR BANNER */
-.error-banner {
-  background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
-  padding: 12px; border-radius: 8px; margin-bottom: 20px;
-  display: flex; align-items: center; gap: 10px; font-size: 0.9rem;
+.dashboard-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 2rem;
 }
 
-/* STATS ROW */
-.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 2rem; }
-
-.stat-card {
-  background: white; border-radius: 12px; padding: 20px;
-  border: 1px solid #f1f5f9; box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-  transition: transform 0.2s, box-shadow 0.2s;
-  display: flex; flex-direction: column; justify-content: space-between; height: 140px;
-  cursor: default;
+.page-title { 
+  font-size: var(--font-xl); 
+  font-weight: 800; 
+  color: var(--color-heading);
 }
-.stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
 
-/* Highlight Card & Colors */
-.stat-card.highlight { background: #1e3a8a; color: white; border: none; cursor: pointer; }
-.stat-card.highlight:hover { background: #172554; }
-.stat-card.highlight .label { color: #bfdbfe; }
-.stat-card.highlight .number { color: white; }
-.stat-card.highlight .desc { color: #93c5fd; }
+.date-display { 
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-background-soft); 
+  padding: 10px 20px; 
+  border-radius: var(--radius-md); 
+  font-size: var(--font-sm);
+  color: #1e3a8a;
+  border: 1px solid var(--color-border);
+}
+
+/* Menggunakan Grid Dinamis */
+.stats-grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+  gap: 20px; 
+}
+
+.stat-card { 
+  background: var(--color-background); 
+  border-radius: var(--radius-md); 
+  padding: 24px; 
+  border: 1px solid var(--color-border); 
+  display: flex; 
+  flex-direction: column; 
+  justify-content: space-between; 
+  min-height: 140px; 
+  transition: all 0.3s ease;
+}
+
+.stat-card.highlight { 
+  background: linear-gradient(135deg, #1e3a8a 0%, #172554 100%); 
+  color: white; 
+  border: none;
+}
 
 .card-top { display: flex; justify-content: space-between; align-items: flex-start; }
-.label { font-size: 0.85rem; font-weight: 500; color: #64748b; }
-.icon-circle { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-.icon-circle.navy { background: #f1f5f9; color: #1e3a8a; }
-.icon-circle.gold { background: rgba(255,255,255,0.2); color: #fca311; }
+.label { font-size: var(--font-xs); font-weight: 600; color: #64748b; }
+.stat-card.highlight .label { color: rgba(255,255,255,0.8); }
 
-.card-bottom .number { font-size: 1.8rem; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
-.card-bottom .desc { font-size: 0.8rem; color: #94a3b8; }
-.text-green { color: #10b981; font-weight: 600; }
-
-/* SKELETON LOADING */
-.stat-card.skeleton {
-  background: #f1f5f9; animation: pulse 1.5s infinite; border: none;
+.card-bottom .number { 
+  font-size: var(--font-lg); 
+  font-weight: 800; 
+  color: var(--color-heading);
+  margin-top: 10px;
 }
-@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+.stat-card.highlight .number { color: white; }
 
-/* CONTENT SPLIT */
-.content-split { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-.main-panel, .side-panel { background: white; border-radius: 12px; padding: 24px; border: 1px solid #f1f5f9; }
-.panel-header h3 { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 20px; }
-
-/* ACTION BOX */
-.quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-.action-box {
-  display: flex; align-items: center; gap: 15px; padding: 16px; border-radius: 10px;
-  text-decoration: none; transition: 0.2s; border: 1px solid #e2e8f0;
+.content-split { 
+  display: grid; 
+  grid-template-columns: 2fr 1fr; 
+  gap: 25px; 
 }
-.action-box:hover { transform: translateY(-2px); }
-.action-box .icon { width: 45px; height: 45px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-.action-box .text h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 2px; }
-.action-box .text p { font-size: 0.8rem; color: #64748b; margin: 0; }
-.action-box .arrow { margin-left: auto; font-size: 1.2rem; transition: transform 0.2s; }
 
-.action-box.primary { background: #eff6ff; border-color: #dbeafe; }
-.action-box.primary .icon { background: #1e3a8a; color: white; }
-.action-box.primary h4, .action-box.primary .arrow { color: #1e3a8a; }
+.main-panel, .side-panel { 
+  background: var(--color-background); 
+  border-radius: var(--radius-lg); 
+  padding: 25px; 
+  border: 1px solid var(--color-border); 
+}
 
-.action-box.secondary { background: #fffbeb; border-color: #fef3c7; }
-.action-box.secondary .icon { background: #fca311; color: white; }
-.action-box.secondary h4, .action-box.secondary .arrow { color: #b45309; }
+.quick-actions { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+  gap: 15px; 
+}
 
-/* SYSTEM STATUS */
-.system-status { display: flex; flex-direction: column; gap: 15px; }
-.status-header { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #1e293b; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
-.status-item { display: flex; align-items: center; font-size: 0.9rem; color: #64748b; }
-.status-item .dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 10px; }
-.status-item .dot.green { background: #10b981; box-shadow: 0 0 0 2px #d1fae5; }
-.status-item .dot.red { background: #ef4444; box-shadow: 0 0 0 2px #fee2e2; }
-.status-item .status-ok { margin-left: auto; font-size: 0.8rem; font-weight: 600; color: #10b981; }
-.status-item .status-ok.text-red { color: #ef4444; }
+.action-box { 
+  display: flex; 
+  align-items: center; 
+  gap: 15px; 
+  padding: 20px; 
+  border-radius: var(--radius-md); 
+  text-decoration: none; 
+  border: 1px solid var(--color-border);
+  background: var(--color-background-soft);
+  transition: 0.2s;
+}
 
-/* RESPONSIVE */
+.action-box:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+
+/* Status Dot Animation */
+.dot.green { background: #10b981; animation: blink 2s infinite; }
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+/* RESPONSIVE FIXES */
 @media (max-width: 1024px) {
-  .stats-row { grid-template-columns: repeat(2, 1fr); }
   .content-split { grid-template-columns: 1fr; }
 }
+
 @media (max-width: 640px) {
-  .stats-row { grid-template-columns: 1fr; }
-  .dashboard-header { flex-direction: column; align-items: flex-start; }
-  .date-display { width: 100%; text-align: center; }
+  .hide-mobile { display: none; }
+  .dashboard-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .page-title { font-size: 1.5rem; }
 }
 </style>

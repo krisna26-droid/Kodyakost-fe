@@ -1,5 +1,5 @@
 <script setup>
-import { useSlots, ref, computed } from 'vue';
+import { useSlots, ref } from 'vue';
 
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
@@ -13,48 +13,23 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue', 'focus', 'blur']);
-
 const slots = useSlots();
 const isFocused = ref(false);
 
-const handleInput = (event) => {
-  emit('update:modelValue', event.target.value);
-};
-
-const handleFocus = (event) => {
-  isFocused.value = true;
-  emit('focus', event);
-};
-
-const handleBlur = (event) => {
-  isFocused.value = false;
-  emit('blur', event);
-};
+const handleInput = (event) => emit('update:modelValue', event.target.value);
+const handleFocus = (event) => { isFocused.value = true; emit('focus', event); };
+const handleBlur = (event) => { isFocused.value = false; emit('blur', event); };
 </script>
 
 <template>
   <div class="input-group">
-    <!-- Label -->
     <label v-if="label" class="input-label">
-      {{ label }} 
-      <span v-if="required" class="required">*</span>
+      {{ label }} <span v-if="required" class="required">*</span>
     </label>
     
-    <!-- Input Wrapper -->
-    <div 
-      class="input-wrapper"
-      :class="{ 
-        'has-error': error,
-        'is-focused': isFocused,
-        'is-disabled': disabled
-      }"
-    >
-      <!-- Icon Kiri -->
-      <div v-if="slots.prepend" class="icon-left">
-        <slot name="prepend"></slot>
-      </div>
+    <div class="input-wrapper" :class="{ 'has-error': error, 'is-focused': isFocused, 'is-disabled': disabled }">
+      <div v-if="slots.prepend" class="icon-left"><slot name="prepend"></slot></div>
 
-      <!-- Input -->
       <input 
         :type="type"
         :value="modelValue"
@@ -64,19 +39,12 @@ const handleBlur = (event) => {
         :placeholder="placeholder"
         :disabled="disabled"
         class="form-input"
-        :class="{ 
-          'has-prepend': slots.prepend,
-          'has-append': slots.append
-        }"
+        :class="{ 'has-prepend': slots.prepend, 'has-append': slots.append }"
       />
       
-      <!-- Icon Kanan -->
-      <div v-if="slots.append" class="icon-right">
-        <slot name="append"></slot>
-      </div>
+      <div v-if="slots.append" class="icon-right"><slot name="append"></slot></div>
     </div>
 
-    <!-- Error/Hint Message -->
     <div v-if="error || hint" class="input-message">
       <span v-if="error" class="error-text">{{ error }}</span>
       <span v-else-if="hint" class="hint-text">{{ hint }}</span>
@@ -85,162 +53,58 @@ const handleBlur = (event) => {
 </template>
 
 <style scoped>
-/* Input Group Container */
-.input-group {
-  width: 100%;
-  margin-bottom: 1.25rem;
-}
+.input-group { width: 100%; margin-bottom: 1.5rem; }
 
-/* Label */
 .input-label {
   display: block;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 0.5rem;
+  font-size: var(--font-sm);
+  font-weight: 700;
+  color: var(--color-heading);
+  margin-bottom: 0.6rem;
 }
 
-.required { 
-  color: #ef4444; 
-}
-
-/* Input Wrapper */
 .input-wrapper {
   position: relative;
-  width: 100%;
   display: flex;
   align-items: center;
-  background-color: #f9fafb;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 0.625rem;
+  background-color: var(--color-background-soft);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
   transition: all 0.2s ease;
 }
 
-.input-wrapper:hover:not(.is-disabled) {
-  border-color: #d1d5db;
-  background-color: #ffffff;
-}
-
-.input-wrapper.is-focused {
-  border-color: #00897b;
-  background-color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
-}
-
-.input-wrapper.has-error {
-  border-color: #ef4444;
-  background-color: #fef2f2;
-}
-
-.input-wrapper.has-error.is-focused {
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-}
-
-.input-wrapper.is-disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background-color: #f3f4f6;
-}
-
-/* Input Element */
 .form-input {
   width: 100%;
-  padding: 0.875rem 1rem;
+  padding: 0.9rem 1.1rem;
   border: none;
   outline: none;
   background: transparent;
-  font-size: 0.95rem;
-  color: #1a1a1a;
+  font-size: var(--font-base); /* Menghindari zoom otomatis di Mobile */
+  color: var(--color-text);
   font-family: inherit;
 }
 
-.form-input::placeholder {
-  color: #9ca3af;
+/* Sinkronisasi Fokus */
+.input-wrapper.is-focused {
+  border-color: #00897b;
+  background-color: var(--color-background);
+  box-shadow: 0 0 0 4px rgba(0, 137, 123, 0.1);
 }
 
-.form-input:disabled {
-  cursor: not-allowed;
-  color: #6b7280;
-}
+.input-wrapper.has-error { border-color: #ef4444; background-color: #fff8f8; }
 
-/* Padding dengan icon */
-.form-input.has-prepend {
-  padding-left: 2.75rem;
-}
+/* Handling Icons */
+.icon-left { left: 1rem; position: absolute; display: flex; color: #94a3b8; }
+.icon-right { right: 1rem; position: absolute; display: flex; color: #94a3b8; }
+.form-input.has-prepend { padding-left: 2.8rem; }
+.form-input.has-append { padding-right: 2.8rem; }
 
-.form-input.has-append {
-  padding-right: 2.75rem;
-}
+.error-text { font-size: var(--font-xs); color: #ef4444; font-weight: 600; margin-top: 0.4rem; display: block; }
+.hint-text { font-size: var(--font-xs); color: #64748b; margin-top: 0.4rem; display: block; }
 
-/* Icon Positioning */
-.icon-left,
-.icon-right {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  color: #6b7280;
-  pointer-events: none;
-  transition: color 0.2s ease;
-}
-
-.icon-left {
-  left: 1rem;
-}
-
-.icon-right {
-  right: 1rem;
-}
-
-.is-focused .icon-left,
-.is-focused .icon-right {
-  color: #00897b;
-}
-
-.has-error .icon-left,
-.has-error .icon-right {
-  color: #ef4444;
-}
-
-/* Messages */
-.input-message {
-  margin-top: 0.375rem;
-  min-height: 1.25rem;
-}
-
-.error-text {
-  display: block;
-  font-size: 0.8125rem;
-  color: #ef4444;
-  font-weight: 500;
-}
-
-.hint-text {
-  display: block;
-  font-size: 0.8125rem;
-  color: #6b7280;
-}
-
-/* Responsive */
+/* Responsivitas mikro untuk HP */
 @media (max-width: 640px) {
-  .form-input {
-    font-size: 0.9375rem;
-    padding: 0.75rem 0.875rem;
-  }
-
-  .form-input.has-prepend {
-    padding-left: 2.5rem;
-  }
-
-  .form-input.has-append {
-    padding-right: 2.5rem;
-  }
-
-  .icon-left {
-    left: 0.875rem;
-  }
-
-  .icon-right {
-    right: 0.875rem;
-  }
+  .form-input { padding: 1rem 0.9rem; }
+  .input-group { margin-bottom: 1.25rem; }
 }
 </style>

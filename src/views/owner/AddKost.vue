@@ -1,59 +1,46 @@
 <template>
   <div class="add-kost-page">
     <div class="container">
-      
       <div class="page-header">
-        <div>
-          <h1 class="title">Tambah Properti Baru</h1>
-          <p class="subtitle">Lengkapi data kost Anda agar bisa diverifikasi Admin.</p>
+        <div class="header-text">
+          <h1 class="title">Pasang Iklan Kost</h1>
+          <p class="subtitle">Lengkapi data properti untuk mempercepat proses verifikasi.</p>
         </div>
         <button class="btn-back" @click="$router.back()">
-          <Icon icon="mdi:arrow-left" /> Batal
+          <Icon icon="mdi:arrow-left" /> Kembali
         </button>
-      </div>
-
-      <div v-if="errorMessage" class="alert-error">
-        <Icon icon="mdi:alert-circle" /> {{ errorMessage }}
       </div>
 
       <div class="form-wrapper">
         <form @submit.prevent="handleSubmit">
-
+          
           <div class="form-section">
             <h3 class="section-title">
-              <Icon icon="mdi:home-city-outline" class="icon" /> Data Umum
+              <div class="icon-circle"><Icon icon="mdi:home-city" /></div>
+              Detail Properti
             </h3>
             
             <div class="form-group">
               <label>Nama Kost <span class="required">*</span></label>
-              <input 
-                v-model="form.name" 
-                type="text" 
-                placeholder="Contoh: Kost Griya Denpasar" 
-                required 
-              />
+              <input v-model="form.name" type="text" placeholder="Contoh: Kost Eksklusif Renon" required />
             </div>
 
             <div class="form-group">
-              <label>Deskripsi <span class="required">*</span></label>
-              <textarea 
-                v-model="form.description" 
-                rows="4" 
-                placeholder="Jelaskan fasilitas umum, lingkungan sekitar, dll..." 
-                required
-              ></textarea>
+              <label>Deskripsi Kost <span class="required">*</span></label>
+              <textarea v-model="form.description" rows="5" placeholder="Jelaskan keunikan, akses jalan, dan lingkungan sekitar kost Anda..." required></textarea>
             </div>
           </div>
 
           <div class="form-section">
             <h3 class="section-title">
-              <Icon icon="mdi:map-marker-radius" class="icon" /> Lokasi
+              <div class="icon-circle"><Icon icon="mdi:map-marker-radius" /></div>
+              Lokasi & Alamat
             </h3>
-
+            
             <div class="grid-2">
               <div class="form-group">
                 <label>Kecamatan <span class="required">*</span></label>
-                <select v-model="form.district" required>
+                <select v-model="form.district" @change="handleDistrictChange" required>
                   <option value="" disabled>Pilih Kecamatan</option>
                   <option value="Denpasar Barat">Denpasar Barat</option>
                   <option value="Denpasar Timur">Denpasar Timur</option>
@@ -61,164 +48,175 @@
                   <option value="Denpasar Selatan">Denpasar Selatan</option>
                 </select>
               </div>
-
               <div class="form-group">
                 <label>Desa/Kelurahan <span class="required">*</span></label>
-                <input v-model="form.village" type="text" placeholder="Contoh: Sesetan" required />
+                <select v-model="form.village" :disabled="!form.district" required>
+                  <option value="" disabled>Pilih Desa</option>
+                  <option v-for="village in availableVillages" :key="village" :value="village">{{ village }}</option>
+                </select>
               </div>
             </div>
 
             <div class="form-group">
               <label>Alamat Lengkap <span class="required">*</span></label>
-              <textarea v-model="form.address" rows="2" placeholder="Jalan, No Rumah, Gang..." required></textarea>
+              <textarea v-model="form.address" rows="2" placeholder="Nama Jalan, Nomor Bangunan, Gang, Patokan..." required></textarea>
             </div>
 
-            <div class="grid-2">
-              <div class="form-group">
-                <label>Latitude <small>(Sementara isi manual/default)</small></label>
-                <input v-model="form.latitude" type="text" placeholder="-8.670458" required />
+            <div class="map-box">
+              <label class="inner-label">Tentukan Titik Koordinat (Geser pin ke lokasi tepat kost Anda)</label>
+              <div id="map" class="map-container"></div>
+              <div class="coord-display">
+                <span><b>Lat:</b> {{ form.latitude }}</span>
+                <span><b>Lng:</b> {{ form.longitude }}</span>
               </div>
-              <div class="form-group">
-                <label>Longitude</label>
-                <input v-model="form.longitude" type="text" placeholder="115.212629" required />
-              </div>
-            </div>
-            <div class="map-placeholder">
-              <p>📍 Fitur Pin Peta akan ditambahkan di update berikutnya. Gunakan Google Maps untuk salin koordinat sementara.</p>
             </div>
           </div>
 
           <div class="form-section">
             <h3 class="section-title">
-              <Icon icon="mdi:image-area" class="icon" /> Foto Utama (Thumbnail)
+              <div class="icon-circle"><Icon icon="mdi:camera" /></div>
+              Foto Utama Properti
             </h3>
             
-            <div class="upload-area">
-              <div v-if="imagePreview" class="preview-box">
-                <img :src="imagePreview" alt="Preview" />
-                <button type="button" class="btn-remove" @click="removeImage">
-                  <Icon icon="mdi:close" /> Hapus
-                </button>
-              </div>
-
-              <div v-else class="upload-box" @click="triggerFileInput">
-                <input 
-                  type="file" 
-                  ref="fileInput" 
-                  @change="handleFileChange" 
-                  accept="image/*" 
-                  class="hidden-input" 
-                />
-                <div class="upload-placeholder">
-                  <Icon icon="mdi:cloud-upload" width="40" class="upload-icon" />
-                  <span>Klik untuk upload thumbnail kost</span>
-                  <small>Format: JPG, PNG (Max 2MB)</small>
+            <div class="photo-upload">
+              <label class="inner-label">Foto Cover Kost <span class="required">*</span></label>
+              <p class="hint-text">Upload foto terbaik dari tampak depan kost Anda. Format: JPG, PNG. Maksimal 2MB.</p>
+              
+              <div class="drop-zone" @click="triggerFile" :class="{'has-img': mainPreview}">
+                <img v-if="mainPreview" :src="mainPreview" />
+                <div v-else class="drop-content">
+                  <Icon icon="mdi:image-plus" width="48" />
+                  <span>Klik untuk Upload Foto</span>
                 </div>
+                <input type="file" ref="mainInput" @change="onFileChange" hidden accept="image/*" />
               </div>
             </div>
           </div>
 
+          <div class="info-box">
+            <Icon icon="mdi:information-outline" width="24" />
+            <div class="info-content">
+              <h4>Langkah Selanjutnya</h4>
+              <p>Setelah properti kost berhasil dibuat, Anda akan diarahkan untuk <b>menambahkan Tipe Kamar</b> beserta harga dan fasilitasnya.</p>
+            </div>
+          </div>
+
           <div class="form-actions">
-            <button type="button" class="btn-cancel" @click="$router.back()">Batal</button>
+            <button type="button" class="btn-cancel" @click="$router.back()">Batalkan</button>
             <button type="submit" class="btn-submit" :disabled="loading">
               <Icon v-if="loading" icon="mdi:loading" class="spin" />
-              <span v-else>Simpan & Lanjut</span>
+              <span v-else>Lanjutkan ke Tambah Kamar</span>
             </button>
           </div>
 
         </form>
       </div>
-
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
+import { notify } from '@/utils/swal';
 import ownerService from '@/services/ownerService';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 const router = useRouter();
 const loading = ref(false);
-const errorMessage = ref(null);
-const fileInput = ref(null);
-const imagePreview = ref(null);
-const imageFile = ref(null);
 
-// Form Data Sesuai Controller Store
+const areaData = {
+  "Denpasar Selatan": ["Sesetan", "Panjer", "Sidakarya", "Sanur", "Renon", "Pedungan", "Serangan"],
+  "Denpasar Barat": ["Dauh Puri", "Pemecutan", "Padangsambian", "Tegal Kertha", "Tegal Harum"],
+  "Denpasar Utara": ["Peguyangan", "Ubung", "Pemecutan Kaja", "Tonja", "Dangin Puri Kaja"],
+  "Denpasar Timur": ["Kesiman", "Sumerta", "Penatih", "Dangin Puri Klod"]
+};
+
 const form = reactive({
   name: '',
   description: '',
-  address: '',
   district: '',
   village: '',
-  latitude: '-8.670458', // Default Denpasar
-  longitude: '115.212629', // Default Denpasar
+  address: '',
+  latitude: -8.670458,
+  longitude: 115.212629
 });
 
-// File Handling
-const triggerFileInput = () => fileInput.value.click();
+const availableVillages = computed(() => form.district ? areaData[form.district] : []);
+const handleDistrictChange = () => { form.village = ''; };
 
-const handleFileChange = (event) => {
-  const file = event.target.files[0];
+const mainPreview = ref(null);
+const mainFile = ref(null);
+const mainInput = ref(null);
+
+const triggerFile = () => mainInput.value.click();
+
+const onFileChange = (e) => {
+  const file = e.target.files[0];
   if (file) {
-    if (file.size > 2 * 1024 * 1024) { // 2MB Limit
-      alert("Ukuran file terlalu besar (Max 2MB)");
+    if (file.size > 2048000) {
+      notify.error("Ukuran file terlalu besar. Maksimal 2MB.");
       return;
     }
-    imageFile.value = file;
-    imagePreview.value = URL.createObjectURL(file);
+    mainFile.value = file;
+    mainPreview.value = URL.createObjectURL(file);
+    console.log("📸 [AddKost] File terpilih:", file.name);
   }
 };
 
-const removeImage = () => {
-  imageFile.value = null;
-  imagePreview.value = null;
-  if (fileInput.value) fileInput.value.value = '';
-};
+let map, marker;
+onMounted(() => {
+  map = L.map('map').setView([form.latitude, form.longitude], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  setTimeout(() => map.invalidateSize(), 400);
 
-// Submit Handling
+  marker = L.marker([form.latitude, form.longitude], { draggable: true }).addTo(map);
+  const updateCoords = (lat, lng) => {
+    form.latitude = parseFloat(lat.toFixed(6));
+    form.longitude = parseFloat(lng.toFixed(6));
+  };
+
+  map.on('click', (e) => {
+    marker.setLatLng(e.latlng);
+    updateCoords(e.latlng.lat, e.latlng.lng);
+  });
+
+  marker.on('dragend', () => {
+    const pos = marker.getLatLng();
+    updateCoords(pos.lat, pos.lng);
+  });
+});
+
 const handleSubmit = async () => {
+  if (!mainFile.value) {
+    notify.error("Foto utama kost wajib diunggah!");
+    return;
+  }
+  
   loading.value = true;
-  errorMessage.value = null;
-
   try {
-    const formData = new FormData();
-    // Append semua data text
-    Object.keys(form).forEach(key => {
-      formData.append(key, form[key]);
-    });
+    const fd = new FormData();
+    Object.keys(form).forEach(key => fd.append(key, form[key]));
+    fd.append('thumbnail', mainFile.value);
 
-    // Append file jika ada
-    if (imageFile.value) {
-      formData.append('thumbnail', imageFile.value);
-    }
-
-    // Kirim ke API
-    const response = await ownerService.createKost(formData);
+    console.log("📤 [AddKost] Mengirim data ke API...");
+    const res = await ownerService.createKost(fd);
+    console.log("🐞 [AddKost] Response API:", res);
     
-    // Sukses
-    if (response.success) {
-      const newKostId = response.data.id;
-      // Redirect ke halaman manajemen kamar atau list properti
-      // Karena backend menyarankan "silakan tambah Tipe Kamar", 
-      // idealnya kita redirect ke form tambah kamar dengan membawa ID Kost baru.
-      // Tapi untuk sekarang kita balik ke list properti dulu.
-      alert("Kost berhasil dibuat! Silakan tambahkan kamar di menu Kelola Properti.");
-      router.push({ name: 'owner-properties' });
-    }
+    const kostId = res.data?.data?.id || res.data?.id;
 
-  } catch (error) {
-    console.error("Error submit:", error);
-    // Tangkap pesan error validasi dari Laravel
-    if (error.response && error.response.data && error.response.data.errors) {
-      // Ambil error pertama
-      const firstErrorKey = Object.keys(error.response.data.errors)[0];
-      errorMessage.value = error.response.data.errors[firstErrorKey][0];
-    } else {
-      errorMessage.value = "Terjadi kesalahan saat menyimpan data. Cek koneksi.";
+    if (kostId) {
+      await notify.alertSuccess("Kost Berhasil!", "Lanjut tambah tipe kamar.");
+      router.push({ 
+        name: 'manage-rooms', 
+        params: { id: kostId } 
+      });
     }
+  } catch (error) {
+    console.error("❌ [AddKost] Error Simpan Kost:", error);
+    notify.error("Gagal simpan data.");
   } finally {
     loading.value = false;
   }
@@ -226,105 +224,57 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-.add-kost-page { padding: 40px; font-family: 'Poppins', sans-serif; background: #f8fafc; min-height: 100vh; }
-.container { max-width: 800px; margin: 0 auto; }
+.add-kost-page { padding: 40px 20px; background: #f8fafc; min-height: 100vh; font-family: 'Poppins', sans-serif; }
+.container { max-width: 900px; margin: 0 auto; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+.title { font-size: 2.2rem; font-weight: 800; color: #1e3a8a; margin: 0; }
+.subtitle { color: #64748b; font-size: 1rem; margin-top: 5px; }
+.btn-back { background: white; border: 1px solid #e2e8f0; padding: 10px 20px; border-radius: 12px; cursor: pointer; color: #1e3a8a; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
+.btn-back:hover { background: #1e3a8a; color: white; }
 
-/* HEADER */
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
-.title { font-size: 1.8rem; font-weight: 700; color: #1e3a8a; margin-bottom: 5px; }
-.subtitle { color: #64748b; font-size: 0.95rem; }
+.form-wrapper { background: white; border-radius: 24px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
+.form-section { margin-bottom: 45px; }
+.section-title { display: flex; align-items: center; gap: 12px; color: #1e3a8a; font-size: 1.3rem; font-weight: 700; margin-bottom: 25px; }
+.icon-circle { width: 38px; height: 38px; background: #eff6ff; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #1e3a8a; }
 
-.btn-back {
-  display: flex; align-items: center; gap: 8px;
-  background: white; border: 1px solid #e2e8f0; padding: 10px 16px;
-  border-radius: 8px; cursor: pointer; font-weight: 600; color: #64748b;
-  transition: 0.2s;
-}
-.btn-back:hover { background: #f1f5f9; color: #1e3a8a; }
-
-/* ALERT */
-.alert-error {
-  background: #fee2e2; color: #b91c1c; padding: 12px 16px; border-radius: 8px;
-  margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-weight: 500;
-  border: 1px solid #fecaca;
-}
-
-/* FORM STYLE */
-.form-wrapper {
-  background: white; border-radius: 16px; padding: 40px;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;
-}
-
-.form-section { margin-bottom: 35px; border-bottom: 1px solid #f1f5f9; padding-bottom: 30px; }
-.form-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-
-.section-title {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 1.1rem; font-weight: 700; color: #1e3a8a; margin-bottom: 20px;
-}
-.section-title .icon { color: #fca311; font-size: 1.3rem; }
-
-/* INPUTS */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-.form-group { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
-.form-group label { font-weight: 600; font-size: 0.9rem; color: #334155; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #334155; font-size: 0.95rem; }
+.inner-label { font-weight: 700; color: #1e293b; margin-bottom: 10px; display: block; }
+.hint-text { font-size: 0.85rem; color: #94a3b8; margin-bottom: 15px; }
 .required { color: #ef4444; }
 
-input[type="text"], select, textarea {
-  width: 100%; padding: 12px 16px; border-radius: 10px;
-  border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.95rem;
-  transition: border-color 0.2s; outline: none; background: #fff;
-}
-input:focus, select:focus, textarea:focus { border-color: #1e3a8a; box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1); }
-textarea { resize: vertical; }
+input, select, textarea { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1.5px solid #e2e8f0; font-family: inherit; transition: 0.2s; outline: none; background: #fcfdfe; font-size: 0.95rem; }
+input:focus, select:focus, textarea:focus { border-color: #1e3a8a; box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.08); background: white; }
 
-/* MAP PLACEHOLDER */
-.map-placeholder {
-  background: #eff6ff; border: 1px dashed #bfdbfe; color: #1e40af;
-  padding: 15px; border-radius: 8px; font-size: 0.85rem; text-align: center;
-}
+.map-box { margin-top: 25px; }
+.map-container { height: 380px; border-radius: 14px; border: 2px solid #e2e8f0; overflow: hidden; }
+.coord-display { margin-top: 10px; font-size: 0.85rem; color: #94a3b8; display: flex; gap: 20px; }
 
-/* UPLOAD AREA */
-.upload-area { margin-top: 10px; }
-.hidden-input { display: none; }
+.photo-upload { max-width: 500px; margin: 0 auto; }
+.drop-zone { height: 280px; border: 2.5px dashed #cbd5e1; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; background: #f8fafc; transition: 0.3s; position: relative; }
+.drop-zone:hover { border-color: #1e3a8a; background: #eff6ff; }
+.drop-zone.has-img { border-style: solid; border-color: #22c55e; }
+.drop-zone img { width: 100%; height: 100%; object-fit: cover; }
+.drop-content { display: flex; flex-direction: column; align-items: center; gap: 12px; color: #64748b; }
 
-.upload-box {
-  border: 2px dashed #cbd5e1; border-radius: 12px; padding: 40px;
-  text-align: center; cursor: pointer; transition: 0.2s; background: #f8fafc;
-}
-.upload-box:hover { border-color: #1e3a8a; background: #eff6ff; }
+.info-box { background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 12px; padding: 20px; display: flex; gap: 15px; margin-bottom: 30px; }
+.info-box svg { color: #1e3a8a; flex-shrink: 0; margin-top: 2px; }
+.info-content h4 { font-size: 1rem; font-weight: 600; color: #1e3a8a; margin: 0 0 6px 0; }
+.info-content p { font-size: 0.9rem; color: #475569; margin: 0; line-height: 1.6; }
 
-.upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #64748b; }
-.upload-icon { color: #94a3b8; }
+.form-actions { display: flex; justify-content: flex-end; gap: 15px; padding-top: 30px; border-top: 1px solid #f1f5f9; }
+.btn-cancel { background: #f1f5f9; color: #64748b; border: none; padding: 12px 28px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+.btn-cancel:hover { background: #e2e8f0; }
+.btn-submit { background: #1e3a8a; color: white; border: none; padding: 12px 35px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.3s; box-shadow: 0 8px 16px rgba(30, 58, 138, 0.25); display: flex; align-items: center; gap: 8px; }
+.btn-submit:hover:not(:disabled) { background: #1e40af; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(30, 58, 138, 0.3); }
+.btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.preview-box {
-  position: relative; width: 100%; height: 250px; border-radius: 12px; overflow: hidden;
-  border: 1px solid #e2e8f0;
-}
-.preview-box img { width: 100%; height: 100%; object-fit: cover; }
-.btn-remove {
-  position: absolute; top: 10px; right: 10px;
-  background: rgba(0,0,0,0.7); color: white; border: none;
-  padding: 6px 12px; border-radius: 6px; cursor: pointer;
-  display: flex; align-items: center; gap: 5px; font-size: 0.8rem;
-}
-.btn-remove:hover { background: #ef4444; }
-
-/* ACTIONS */
-.form-actions {
-  display: flex; justify-content: flex-end; gap: 15px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #f1f5f9;
-}
-.btn-cancel {
-  background: white; border: 1px solid #e2e8f0; color: #64748b;
-  padding: 12px 24px; border-radius: 10px; font-weight: 600; cursor: pointer;
-}
-.btn-submit {
-  background: #1e3a8a; color: white; border: none;
-  padding: 12px 30px; border-radius: 10px; font-weight: 600; cursor: pointer;
-  display: flex; align-items: center; gap: 8px; transition: 0.2s;
-}
-.btn-submit:hover { background: #172554; }
-.btn-submit:disabled { background: #94a3b8; cursor: not-allowed; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
+
+@media (max-width: 768px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .form-wrapper { padding: 25px; }
+}
 </style>

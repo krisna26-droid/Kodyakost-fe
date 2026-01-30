@@ -16,9 +16,21 @@ export const useKostStore = defineStore('kost', {
       this.error = null;
       try {
         const response = await apiClient.get('/owner/kosts');
-        this.kosts = response.data.data || response.data;
+        const rawData = response.data.data || response.data;
+        
+        // ✅ Process rooms untuk generate ID
+        this.kosts = rawData.map(kost => ({
+          ...kost,
+          rooms: (kost.rooms || []).map((room, index) => ({
+            ...room,
+            // Generate ID jika tidak ada
+            id: room.id || `${kost.id}_${room.type || room.room_type}_${index}`
+          }))
+        }));
+        
+        console.log('✅ [KostStore] Fetched kosts:', this.kosts.length);
       } catch (err) {
-        console.error("Error fetching kosts:", err);
+        console.error("❌ [KostStore] Error fetching kosts:", err);
         this.error = err.response?.data?.message || 'Gagal memuat data properti.';
       } finally {
         this.loading = false;
@@ -28,20 +40,14 @@ export const useKostStore = defineStore('kost', {
     // --- TAMBAH KOST ---
     async addKost(formData) {
       this.loading = true;
-      this.error = null;
       try {
-        await apiClient.post('/kosts', formData, {
+        await apiClient.post('/owner/kosts', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        await this.fetchMyKosts(); // Refresh list otomatis
+        await this.fetchMyKosts();
         return true;
       } catch (err) {
-        console.error("Error adding kost:", err);
-        if (err.response?.data?.errors) {
-          this.error = Object.values(err.response.data.errors).flat()[0];
-        } else {
-          this.error = err.response?.data?.message || 'Gagal menambahkan properti.';
-        }
+        this.error = err.response?.data?.message || 'Gagal menambah kos';
         return false;
       } finally {
         this.loading = false;
@@ -50,18 +56,13 @@ export const useKostStore = defineStore('kost', {
 
     // --- HAPUS KOST ---
     async deleteKost(id) {
-      this.loading = true;
       try {
-        await apiClient.delete(`/kosts/${id}`);
-        // [FIX] Gunakan != agar aman beda tipe data (string/int)
+        await apiClient.delete(`/owner/kosts/${id}`);
         this.kosts = this.kosts.filter(k => k.id != id);
         return true;
       } catch (err) {
-        console.error("Error deleting kost:", err);
-        alert(err.response?.data?.message || "Gagal menghapus properti");
+        alert(err.response?.data?.message || "Gagal menghapus");
         return false;
-      } finally {
-        this.loading = false;
       }
     },
 
@@ -71,10 +72,24 @@ export const useKostStore = defineStore('kost', {
       this.error = null;
       try {
         const response = await apiClient.get(`/kosts/${id}`);
-        this.currentKost = response.data.data || response.data;
+        const rawData = response.data.data || response.data;
+        
+        // ✅ Process rooms untuk generate ID
+        this.currentKost = {
+          ...rawData,
+          rooms: (rawData.rooms || []).map((room, index) => ({
+            ...room,
+            id: room.id || `${rawData.id}_${room.type || room.room_type}_${index}`,
+            room_type: room.type || room.room_type,
+            price_per_month: room.price || room.price_per_month,
+            available_rooms: room.available || room.available_rooms
+          }))
+        };
+        
+        console.log('✅ [KostStore] Fetched kost detail:', this.currentKost);
         return this.currentKost;
       } catch (err) {
-        console.error("Error fetching detail:", err);
+        console.error("❌ [KostStore] Error fetching detail:", err);
         this.error = "Gagal mengambil detail kost";
         return null;
       } finally {

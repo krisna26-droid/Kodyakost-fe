@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { Icon } from '@iconify/vue';
 
-// Menerima data properti dari parent
 const props = defineProps({
   data: {
     type: Object,
@@ -10,7 +9,6 @@ const props = defineProps({
   }
 });
 
-// Helper: Format Rupiah
 const formattedPrice = computed(() => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -20,7 +18,6 @@ const formattedPrice = computed(() => {
   }).format(props.data.price);
 });
 
-// Helper: Cek fasilitas untuk menampilkan icon
 const hasFacility = (fac) => {
   return props.data.facilities && props.data.facilities.includes(fac);
 };
@@ -31,21 +28,21 @@ const hasFacility = (fac) => {
     <div class="card-image">
       <img :src="data.mainImage" :alt="data.name" loading="lazy" />
       <div class="price-tag">
-        {{ formattedPrice }}/bln
+        {{ formattedPrice }}<span class="per-month">/bln</span>
       </div>
     </div>
 
     <div class="card-details">
       <div class="header-row">
         <h3 class="title">{{ data.name }}</h3>
-        <div class="rating">
+        <div class="rating-badge">
           <Icon icon="mdi:star" class="star-icon" />
           <span>{{ data.rating }}</span>
         </div>
       </div>
 
       <div class="location-row">
-        <Icon icon="mdi:map-marker" class="loc-icon" />
+        <Icon icon="mdi:map-marker-outline" class="loc-icon" />
         <span class="loc-text">{{ data.location }}</span>
       </div>
 
@@ -56,19 +53,19 @@ const hasFacility = (fac) => {
       <div class="facilities-row">
         <div v-if="hasFacility('wifi')" class="fac-item" title="WiFi">
           <Icon icon="mdi:wifi" /> 
-          <span>WiFi</span>
+          <span class="hide-mobile">WiFi</span>
         </div>
         <div v-if="hasFacility('ac')" class="fac-item" title="AC">
           <Icon icon="mdi:air-conditioner" /> 
-          <span>AC</span>
+          <span class="hide-mobile">AC</span>
         </div>
         <div v-if="hasFacility('bath')" class="fac-item" title="Kamar Mandi Dalam">
           <Icon icon="mdi:shower" /> 
-          <span>Bath</span>
+          <span class="hide-mobile">Bath</span>
         </div>
         <div v-if="hasFacility('parking')" class="fac-item" title="Parkir">
           <Icon icon="mdi:parking" /> 
-          <span>Parkir</span>
+          <span class="hide-mobile">Parkir</span>
         </div>
       </div>
     </div>
@@ -77,14 +74,15 @@ const hasFacility = (fac) => {
 
 <style scoped>
 .kost-card {
-  background: white;
-  border-radius: 20px;
+  background: var(--color-background);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-  border: none;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  border: 1px solid var(--color-border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
+  height: 100%; /* Memastikan kartu sama tinggi dalam grid */
 }
 
 .kost-card:hover {
@@ -92,107 +90,101 @@ const hasFacility = (fac) => {
   box-shadow: 0 12px 30px rgba(0,0,0,0.12);
 }
 
-/* Bagian Gambar */
 .card-image {
   position: relative;
-  height: 240px;
+  /* Tinggi gambar dinamis: lebih pendek di HP */
+  height: clamp(180px, 25vh, 220px);
   width: 100%;
-  background-color: #f5f5f5;
+  background-color: var(--color-background-soft);
+  overflow: hidden;
 }
 
 .card-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.5s ease;
 }
 
 .price-tag {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  background: white;
+  top: 12px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
   color: #ff6b35;
-  padding: 8px 16px;
-  border-radius: 25px;
-  font-weight: 700;
-  font-size: 0.9rem;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-weight: 800;
+  /* Font size dinamis untuk harga */
+  font-size: var(--font-sm);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-/* Bagian Detail */
 .card-details {
-  padding: 20px;
+  padding: clamp(15px, 3vw, 20px);
   display: flex;
   flex-direction: column;
   flex: 1;
 }
 
-.header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 6px;
-}
-
 .title {
-  font-size: 1.15rem;
+  font-size: var(--font-lg); /* Pakai Fluid Typography */
   font-weight: 700;
-  color: #2d3748;
-  margin: 0;
+  color: var(--color-heading);
   line-height: 1.3;
-  flex: 1;
-  padding-right: 10px;
 }
 
-.rating {
+.rating-badge {
   display: flex;
   align-items: center;
   font-weight: 700;
-  font-size: 0.95rem;
-  color: #2d3748;
-  flex-shrink: 0;
-}
-
-.star-icon {
-  color: #fbbf24;
-  margin-right: 4px;
-  font-size: 1.1rem;
+  font-size: var(--font-xs);
+  color: var(--color-text);
+  background: var(--color-background-soft);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
 }
 
 .location-row {
+  margin-top: 8px;
   display: flex;
   align-items: center;
-  gap: 5px;
-  color: #6b7280;
-  font-size: 0.9rem;
-  margin-bottom: 4px;
-}
-
-.loc-icon {
-  font-size: 1rem;
+  gap: 4px;
+  color: var(--vt-c-text-light-2);
+  font-size: var(--font-sm);
 }
 
 .review-row {
-  font-size: 0.8rem;
-  color: #9ca3af;
+  font-size: var(--font-xs);
+  opacity: 0.7;
   margin-bottom: 15px;
 }
 
-/* Fasilitas */
 .facilities-row {
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px dashed var(--color-border);
   padding-top: 15px;
   margin-top: auto;
   display: flex;
-  gap: 15px;
-  color: #ff6b35;
+  gap: clamp(10px, 2vw, 15px);
+  color: var(--vt-c-text-light-2);
 }
 
 .fac-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
-  font-weight: 500;
+  gap: 6px;
+  font-size: var(--font-xs);
+  font-weight: 600;
+}
+
+/* Sembunyikan teks fasilitas di layar sangat kecil agar tidak sumpek */
+@media (max-width: 480px) {
+  .hide-mobile {
+    display: none;
+  }
+  .fac-item svg {
+    font-size: 1.3rem; /* Perbesar icon di mobile */
+  }
 }
 </style>

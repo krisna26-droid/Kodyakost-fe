@@ -1,403 +1,374 @@
-<script setup>
-import { ref, onMounted } from 'vue';
-// 1. Import the service instead of axios directly
-import culturalService from '@/services/culturalServices'; 
+<template>
+  <div class="home-view">
+    <header class="hero-mini">
+      <div class="container hero-content">
+        <div class="header-text">
+          <h1>Kalender <span class="highlight">Budaya</span></h1>
+          <p>Pantau upacara adat dan prediksi lalu lintas Denpasar</p>
+        </div>
+        <BaseButton v-if="isAdmin" variant="primary" size="md" @click="openAddModal">
+          <template #icon-left><Icon icon="mdi:plus-circle" /></template>
+          Tambah Event
+        </BaseButton>
+      </div>
+    </header>
 
+    <section class="section container">
+      <div v-if="loading" class="property-grid">
+        <div v-for="i in 3" :key="i" class="event-card-skeleton">
+          <BaseSkeleton height="160px" border-radius="20px 20px 0 0" />
+          <div class="p-4">
+            <BaseSkeleton width="40%" height="15px" class="mb-2" />
+            <BaseSkeleton width="80%" height="25px" class="mb-4" />
+            <BaseSkeleton height="60px" />
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="events.length === 0" class="empty-state">
+        <div class="empty-box">
+          <Icon icon="mdi:calendar-search" width="64" color="#cbd5e1" />
+          <p>Belum ada jadwal upacara terdaftar.</p>
+          <BaseButton variant="outline" @click="fetchEvents" class="mt-4">Segarkan Halaman</BaseButton>
+        </div>
+      </div>
+
+      <div v-else class="property-grid">
+        <div v-for="event in events" :key="event.id" class="event-card">
+          
+          <div v-if="isAdmin" class="admin-overlay-tools">
+            <BaseButton variant="ghost" icon @click="openEditModal(event)" class="tool-btn" title="Edit">
+              <Icon icon="mdi:pencil-outline" />
+            </BaseButton>
+            <BaseButton variant="danger" icon @click="confirmDelete(event.id)" class="tool-btn" title="Hapus">
+              <Icon icon="mdi:trash-can-outline" />
+            </BaseButton>
+          </div>
+
+          <div class="card-image-static" :class="getSeverityClass(event.severity)">
+            <div class="severity-pill-left">
+              <Icon icon="mdi:traffic-light" width="14" />
+              {{ getSeverityText(event.severity) }}
+            </div>
+            <Icon icon="mdi:temple-hindu" class="bg-icon-watermark" />
+          </div>
+
+          <div class="card-details">
+            <div class="date-row">
+              <Icon icon="mdi:calendar-clock" />
+              <span>{{ formatDate(event.event_date) }}</span>
+            </div>
+            
+            <h3 class="title">{{ event.event_name }}</h3>
+            
+            <div class="type-row">
+              <span class="type-badge">{{ formatEventTypeName(event.event_type) }}</span>
+            </div>
+
+            <p class="event-desc">{{ event.description }}</p>
+
+            <div class="card-footer-action">
+              <a :href="`https://www.google.com/maps?q=${event.latitude},${event.longitude}`" target="_blank" class="btn-maps">
+                <Icon icon="mdi:google-maps" /> Lihat Lokasi
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <Transition name="modal">
+      <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>{{ isEditing ? 'Update Event Budaya' : 'Tambah Event Baru' }}</h3>
+            <BaseButton variant="ghost" icon @click="closeModal" class="text-white">
+              <Icon icon="mdi:close" />
+            </BaseButton>
+          </div>
+          
+          <form @submit.prevent="handleSubmit" class="modal-form">
+            <div class="form-grid">
+              <div class="input-side">
+                <div class="field">
+                  <label>Nama Upacara / Event</label>
+                  <input v-model="form.event_name" placeholder="Misal: Odalan Pura Jagatnatha" required />
+                </div>
+
+                <div class="field-row">
+                  <div class="field">
+                    <label>Kategori</label>
+                    <select v-model="form.event_type" required>
+                      <option value="" disabled>Pilih Tipe</option>
+                      <option value="upacara_adat">Upacara Adat</option>
+                      <option value="pawai">Pawai / Ngaben</option>
+                      <option value="festival">Festival</option>
+                      <option value="penutupan_jalan">Penutupan Jalan</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>Prediksi Lalu Lintas</label>
+                    <select v-model="form.severity" required>
+                      <option value="low">🟢 Lancar (Normal)</option>
+                      <option value="medium">🟡 Padat Merayap</option>
+                      <option value="high">🔴 Macet Total (Hindari)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label>Tanggal Pelaksanaan</label>
+                  <input v-model="form.event_date" type="date" required />
+                </div>
+
+                <div class="field">
+                  <label>Detail Keterangan</label>
+                  <textarea v-model="form.description" rows="3" placeholder="Informasi rute atau jam penutupan..."></textarea>
+                </div>
+              </div>
+
+              <div class="map-side">
+                <label>Pinpoint Lokasi (Klik atau Geser Marker)</label>
+                <div id="map-picker" class="map-box"></div>
+                <div class="coord-info">
+                  <span>Lat: {{ form.latitude }}</span>
+                  <span>Lng: {{ form.longitude }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <BaseButton variant="outline" type="button" @click="closeModal">Batal</BaseButton>
+              <BaseButton variant="primary" type="submit" :loading="processing">
+                {{ isEditing ? 'Update Event' : 'Simpan Event' }}
+              </BaseButton>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, computed, nextTick } from 'vue';
+import culturalService from '@/services/culturalServices'; 
+import { useAuthStore } from '@/stores/auth';
+import { notify } from '@/utils/swal';
+import { Icon } from '@iconify/vue';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+const authStore = useAuthStore();
 const events = ref([]);
 const loading = ref(true);
-const error = ref(null);
+const processing = ref(false);
+const isModalOpen = ref(false);
+const isEditing = ref(false);
+const currentId = ref(null);
+
+const form = ref({
+  event_name: '',
+  event_type: '', 
+  description: '',
+  event_date: '',
+  latitude: -8.65,
+  longitude: 115.21,
+  severity: 'low'
+});
+
+const isAdmin = computed(() => authStore.isAdmin);
+
+// --- MAP LOGIC ---
+let map = null;
+let marker = null;
+
+const initMap = () => {
+  nextTick(() => {
+    if (map) { map.remove(); map = null; }
+    const mapElement = document.getElementById('map-picker');
+    if (!mapElement) return;
+
+    map = L.map('map-picker').setView([form.value.latitude, form.value.longitude], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    marker = L.marker([form.value.latitude, form.value.longitude], { draggable: true }).addTo(map);
+
+    marker.on('dragend', (e) => {
+      const { lat, lng } = e.target.getLatLng();
+      updateCoords(lat, lng);
+    });
+
+    map.on('click', (e) => {
+      const { lat, lng } = e.latlng;
+      marker.setLatLng([lat, lng]);
+      updateCoords(lat, lng);
+    });
+    
+    setTimeout(() => { map.invalidateSize(); }, 300);
+  });
+};
+
+const updateCoords = (lat, lng) => {
+  form.value.latitude = parseFloat(lat.toFixed(6));
+  form.value.longitude = parseFloat(lng.toFixed(6));
+};
 
 const fetchEvents = async () => {
   try {
     loading.value = true;
-    
-    // 2. Call the function from the service
-    const data = await culturalService.getEvents();
-    
-    // 3. Directly assign data to state (service handles data extraction)
-    events.value = data;
-
+    events.value = await culturalService.getEvents();
   } catch (err) {
-    console.error("Error:", err);
-    error.value = "Gagal memuat data. Periksa koneksi internet.";
+    notify.error("Gagal sinkronisasi data event.");
   } finally {
     loading.value = false;
   }
 };
 
-// --- Helper Functions ---
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('id-ID', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-  }).format(date);
+const openAddModal = () => {
+  isEditing.value = false;
+  form.value = { event_name: '', event_type: '', description: '', event_date: '', latitude: -8.65, longitude: 115.21, severity: 'low' };
+  isModalOpen.value = true;
+  initMap();
 };
 
-const getSeverityClass = (severity) => {
-  if (severity === 'high') return 'bg-red';
-  if (severity === 'medium') return 'bg-yellow';
-  return 'bg-blue';
+const openEditModal = (event) => {
+  isEditing.value = true;
+  currentId.value = event.id;
+  form.value = { ...event, latitude: parseFloat(event.latitude), longitude: parseFloat(event.longitude) };
+  isModalOpen.value = true;
+  initMap();
 };
 
-onMounted(() => {
-  fetchEvents();
-});
+const handleSubmit = async () => {
+  processing.value = true;
+  try {
+    isEditing.value 
+      ? await culturalService.updateEvent(currentId.value, form.value) 
+      : await culturalService.createEvent(form.value);
+    
+    notify.success(isEditing.value ? "Data diperbarui!" : "Event berhasil masuk kalender!");
+    closeModal();
+    fetchEvents();
+  } catch (err) {
+    notify.error("Gagal menyimpan data.");
+  } finally {
+    processing.value = false;
+  }
+};
+
+const confirmDelete = async (id) => {
+  const ok = await notify.confirm("Hapus Event?", "Jadwal ini akan dihilangkan dari kalender publik.");
+  if (ok) {
+    try {
+      await culturalService.deleteEvent(id);
+      notify.success("Event terhapus.");
+      fetchEvents();
+    } catch (err) {
+      notify.error("Gagal menghapus.");
+    }
+  }
+};
+
+const closeModal = () => {
+  isModalOpen.value = false;
+  if (map) map.remove();
+  map = null;
+};
+
+// --- HELPERS ---
+const getSeverityClass = (s) => ({ 'tag-high': s === 'high', 'tag-medium': s === 'medium', 'tag-low': s === 'low' });
+const getSeverityText = (s) => ({ 'high': 'Macet Total', 'medium': 'Padat Merayap', 'low': 'Lancar' }[s] || 'Lancar');
+const formatEventTypeName = (t) => t ? t.replace(/_/g, ' ').toUpperCase() : '-';
+const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
+
+onMounted(fetchEvents);
 </script>
 
-<template>
-  <div class="page-container">
-    <div class="header-wrapper">
-      <div class="header-content">
-        <h1 class="title">Kalender Budaya</h1>
-        <p class="subtitle">Info kemacetan & upacara adat Denpasar</p>
-      </div>
-      <div class="header-decoration"></div>
-    </div>
-
-    <div class="content-container">
-      
-      <div v-if="loading" class="state-wrapper">
-        <svg class="spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p class="loading-text">Memuat data event...</p>
-      </div>
-
-      <div v-else-if="error" class="error-wrapper">
-        <p class="error-title">Terjadi Kesalahan</p>
-        {{ error }}
-      </div>
-
-      <div v-else-if="events.length === 0" class="empty-wrapper">
-        <div class="empty-icon-box">
-          <svg xmlns="http://www.w3.org/2000/svg" class="empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-        </div>
-        <p class="empty-text">Tidak ada event dalam waktu dekat.</p>
-        <p class="empty-subtext">Jalanan Denpasar terpantau aman.</p>
-      </div>
-
-      <div v-else class="event-list">
-        <div 
-          v-for="event in events" 
-          :key="event.id"
-          class="event-card fade-in-up"
-        >
-          <div 
-            class="severity-badge"
-            :class="getSeverityClass(event.severity)"
-          >
-            {{ event.severity === 'high' ? 'Macet Total' : event.severity }}
-          </div>
-
-          <div class="date-row">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon-small" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p class="date-text">
-              {{ formatDate(event.event_date) }}
-            </p>
-          </div>
-
-          <h3 class="event-title">
-            {{ event.event_name }}
-          </h3>
-          
-          <span class="type-badge">
-            {{ event.event_type ? event.event_type.replace('_', ' ') : 'Event' }}
-          </span>
-
-          <p class="event-desc">
-            {{ event.description }}
-          </p>
-
-          <div class="card-footer">
-             <div class="location-info">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon-pin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span>{{ event.district || 'Denpasar Area' }}</span>
-             </div>
-             
-             <a 
-               :href="`https://www.google.com/maps/search/?api=1&query=${event.latitude},${event.longitude}`" 
-               target="_blank" 
-               class="maps-link"
-             >
-               Buka Peta 
-               <svg xmlns="http://www.w3.org/2000/svg" class="icon-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-               </svg>
-             </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <style scoped>
-/* Your existing styles... */
-/* --- UTAMA (Container) --- */
-.page-container {
-  min-height: 100vh;
-  background-color: #f9fafb; /* gray-50 */
-  padding-bottom: 5rem;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+.home-view { font-family: 'Poppins', sans-serif; background-color: #f8fafc; min-height: 100vh; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+/* HERO MINI */
+.hero-mini { background: white; padding: 50px 0; border-bottom: 1px solid #e2e8f0; }
+.hero-content { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+.header-text h1 { font-size: var(--font-xl); color: #1f3a52; font-weight: 800; margin-bottom: 5px; }
+.highlight { color: #fca311; }
+
+/* GRID & CARDS */
+.property-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 30px; margin-top: 20px; }
+.event-card { 
+  background: white; border-radius: 20px; overflow: hidden; 
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: 0.3s; position: relative;
+  border: 1px solid #f1f5f9;
+}
+.event-card:hover { transform: translateY(-8px); box-shadow: 0 12px 30px rgba(0,0,0,0.1); }
+
+/* SEVERITY */
+.card-image-static { height: 160px; position: relative; display: flex; align-items: center; justify-content: center; }
+.bg-icon-watermark { font-size: 110px; color: rgba(255,255,255,0.25); position: absolute; }
+.tag-low { background: linear-gradient(135deg, #10b981, #059669); }
+.tag-medium { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.tag-high { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+
+.severity-pill-left {
+  position: absolute; top: 15px; left: 15px;
+  padding: 6px 14px; border-radius: 12px;
+  font-weight: 800; font-size: 0.7rem; z-index: 2;
+  color: white; background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex; align-items: center; gap: 6px; text-transform: uppercase;
 }
 
-/* --- HEADER SECTION --- */
-.header-wrapper {
-  background-color: #1e3a8a; /* blue-900 */
-  color: white;
-  padding: 1.5rem;
-  border-bottom-left-radius: 1.5rem;
-  border-bottom-right-radius: 1.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  position: relative;
-  overflow: hidden;
-}
+/* DETAILS */
+.card-details { padding: 25px; }
+.date-row { display: flex; align-items: center; gap: 8px; color: #fca311; font-weight: 700; font-size: 0.85rem; margin-bottom: 12px; }
+.title { font-size: 1.25rem; color: #1f3a52; font-weight: 800; margin-bottom: 10px; line-height: 1.3; }
+.type-badge { background: #f0fbfb; color: #1f3a52; padding: 5px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; border: 1px solid #e2f2f2; }
+.event-desc { color: #64748b; font-size: 0.85rem; line-height: 1.6; margin: 15px 0; height: 3.2em; overflow: hidden; display: -webkit-box;  -webkit-box-orient: vertical; }
 
-.header-content {
-  position: relative;
-  z-index: 10;
+.btn-maps { 
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  padding: 12px; border: 2px solid #f1f5f9; border-radius: 12px; text-decoration: none;
+  color: #1f3a52; font-weight: 700; font-size: 0.9rem; transition: 0.3s;
 }
+.btn-maps:hover { background: #1f3a52; color: white; border-color: #1f3a52; }
 
-.title {
-  font-size: 1.5rem;
-  font-weight: 700;
+/* ADMIN TOOLS */
+.admin-overlay-tools {
+  position: absolute; top: 15px; right: 15px;
+  display: flex; gap: 10px; z-index: 10;
 }
+.tool-btn { box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; width: 36px !important; height: 36px !important; }
 
-.subtitle {
-  color: #bfdbfe; /* blue-200 */
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
-}
+/* STATES */
+.empty-state { padding: 80px 0; text-align: center; background: white; border-radius: 20px; border: 2px dashed #e2e8f0; }
+.loading-state { text-align: center; padding: 60px 0; color: #64748b; }
 
-.header-decoration {
-  position: absolute;
-  right: -2.5rem;
-  top: -2.5rem;
-  width: 8rem;
-  height: 8rem;
-  background-color: #1e40af; /* blue-800 */
-  border-radius: 9999px;
-  opacity: 0.5;
-  filter: blur(24px);
-}
+/* MODAL & MAP */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(6px); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal-card { background: white; width: 100%; max-width: 900px; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.2); }
+.modal-header { background: #1f3a52; color: white; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; }
+.form-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; padding: 30px; max-height: 70vh; overflow-y: auto; }
+.field { margin-bottom: 20px; }
+.field label { display: block; font-size: 0.75rem; font-weight: 800; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.field input, .field select, .field textarea { width: 100%; padding: 12px 16px; border: 2px solid #f1f5f9; border-radius: 12px; font-size: 0.9rem; transition: 0.3s; }
+.field input:focus { border-color: #fca311; outline: none; background: #fffcf5; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.map-box { height: 350px; border-radius: 16px; border: 2px solid #f1f5f9; background: #f8fafc; z-index: 1; }
+.coord-info { margin-top: 10px; display: flex; justify-content: space-between; font-size: 0.7rem; font-family: monospace; color: #94a3b8; }
+.modal-footer { padding: 20px 30px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e2e8f0; }
 
-/* --- CONTENT SECTION --- */
-.content-container {
-  padding-left: 1rem;
-  padding-right: 1rem;
-  margin-top: 1.5rem;
-}
+/* ANIMATION */
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
 
-/* Loading & States */
-.state-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-top: 5rem;
-  padding-bottom: 5rem;
-  color: #9ca3af; /* gray-400 */
-}
-
-.spinner {
-  animation: spin 1s linear infinite;
-  height: 2.5rem;
-  width: 2.5rem;
-  color: #1e3a8a; /* blue-900 */
-  margin-bottom: 1rem;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.loading-text {
-  font-size: 0.875rem;
-  font-weight: 500;
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .5; }
-}
-
-/* Error State */
-.error-wrapper {
-  background-color: #fef2f2; /* red-50 */
-  color: #dc2626; /* red-600 */
-  padding: 1rem;
-  border-radius: 0.75rem;
-  margin-bottom: 1rem;
-  text-align: center;
-  font-size: 0.875rem;
-  border: 1px solid #fee2e2;
-}
-.error-title { font-weight: 700; margin-bottom: 0.25rem; }
-
-/* Empty State */
-.empty-wrapper {
-  text-align: center;
-  padding-top: 3rem;
-  padding-bottom: 3rem;
-  color: #9ca3af;
-}
-.empty-icon-box {
-  background-color: #f3f4f6;
-  width: 5rem;
-  height: 5rem;
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: auto;
-  margin-right: auto;
-  margin-bottom: 1rem;
-}
-.empty-icon { height: 2.5rem; width: 2.5rem; color: #d1d5db; }
-.empty-text { font-weight: 500; }
-.empty-subtext { font-size: 0.75rem; margin-top: 0.25rem; color: #9ca3af; }
-
-/* --- CARD LIST --- */
-.event-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.event-card {
-  background-color: white;
-  padding: 1.25rem;
-  border-radius: 1rem;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6; /* gray-100 */
-  position: relative;
-  overflow: hidden;
-  transition: all 0.2s;
-}
-
-.event-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.event-card:active {
-  transform: scale(0.99);
-}
-
-/* Badge Severity */
-.severity-badge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.625rem; /* 10px */
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom-left-radius: 0.75rem;
-}
-.bg-red { background-color: #ef4444; color: white; }
-.bg-yellow { background-color: #facc15; color: black; }
-.bg-blue { background-color: #dbeafe; color: #1e40af; }
-
-/* Typography */
-.date-row {
-  display: flex;
-  align-items: center;
-  color: #2563eb; /* blue-600 */
-  margin-bottom: 0.5rem;
-}
-.icon-small { height: 1rem; width: 1rem; margin-right: 0.25rem; }
-.date-text { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.025em; }
-
-.event-title {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #1f2937; /* gray-800 */
-  margin-bottom: 0.25rem;
-  padding-right: 2rem;
-  line-height: 1.375;
-}
-
-.type-badge {
-  display: inline-block;
-  background-color: #f3f4f6; /* gray-100 */
-  color: #6b7280; /* gray-500 */
-  font-size: 0.625rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: 9999px;
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
-
-.event-desc {
-  color: #6b7280; /* gray-500 */
-  font-size: 0.875rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  line-height: 1.625;
-}
-
-/* Footer & Maps */
-.card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px dashed #f3f4f6;
-}
-
-.location-info {
-  display: flex;
-  align-items: center;
-  font-size: 0.75rem;
-  color: #9ca3af;
-}
-.icon-pin { height: 1rem; width: 1rem; margin-right: 0.25rem; color: #f87171; }
-
-.maps-link {
-  font-size: 0.75rem;
-  color: #2563eb;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  background-color: #eff6ff;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.5rem;
-  text-decoration: none;
-}
-.maps-link:hover { text-decoration: underline; }
-.icon-arrow { height: 0.75rem; width: 0.75rem; margin-left: 0.25rem; }
-
-/* Animasi Fade In Up */
-.fade-in-up {
-  opacity: 0;
-  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-.fade-in-up:nth-child(1) { animation-delay: 0.1s; }
-.fade-in-up:nth-child(2) { animation-delay: 0.15s; }
-.fade-in-up:nth-child(3) { animation-delay: 0.2s; }
-.fade-in-up:nth-child(4) { animation-delay: 0.25s; }
-.fade-in-up:nth-child(5) { animation-delay: 0.3s; }
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+@media (max-width: 768px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .modal-card { height: 95vh; }
+  .map-box { height: 250px; }
+  .field-row { grid-template-columns: 1fr; gap: 0; }
 }
 </style>

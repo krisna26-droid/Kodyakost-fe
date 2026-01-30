@@ -59,28 +59,29 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // --- REGISTER ---
-    async register(name, email, password, role, phone) {
-      this.loading = true;
-      this.error = null;
-      try {
-        await apiClient.post('/register', {
-          name, email, password,
-          password_confirmation: password,
-          role,
-          phone_whatsapp: phone
-        });
-        return true;
-      } catch (err) {
-        if (err.response?.data?.errors) {
-          this.error = Object.values(err.response.data.errors).flat()[0];
-        } else {
-          this.error = err.response?.data?.message || 'Registrasi gagal';
-        }
-        return false;
-      } finally {
-        this.loading = false;
-      }
-    },
+async register(name, email, password, role, phone) {
+  this.loading = true;
+  this.error = null;
+  try {
+    await apiClient.post('/register', {
+      name, 
+      email, 
+      password,
+      password_confirmation: password, // Laravel validator butuh ini
+      role,
+      phone_whatsapp: phone // [FIX] Sesuai validator di Laravel
+    });
+    return true;
+  } catch (err) {
+    // Logic error handling Anda sudah bagus
+    this.error = err.response?.data?.errors 
+      ? Object.values(err.response.data.errors).flat()[0] 
+      : (err.response?.data?.message || 'Registrasi gagal');
+    return false;
+  } finally {
+    this.loading = false;
+  }
+},
 
     // --- UPDATE PROFILE ---
     async updateProfile(formData) {

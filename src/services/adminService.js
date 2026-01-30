@@ -1,60 +1,120 @@
 import apiClient from '@/api/Axios';
 
 export default {
-  // --- DASHBOARD UTAMA ---
-  // Endpoint ini otomatis mendeteksi role (Admin/Owner) dari token user
+  // --- DASHBOARD STATS ---
   async getDashboardStats() {
     try {
       const response = await apiClient.get('/dashboard');
-      const data = response.data; // Ini bisa langsung objek { role: 'admin', stats: ... }
-      
-      // Kita perlu menstandarisasi format output agar UI Dashboard Admin tidak error
-      // Karena UI mengharapkan properti: total_users, total_kosts, pending_kosts, revenue
+      const data = response.data;
       if (data.role === 'admin' && data.stats) {
         return {
           total_users: data.stats.total_users || 0,
           total_kosts: data.stats.total_kosts || 0,
           pending_kosts: data.stats.pending_verification || 0,
-          revenue: 0 // Backend belum ada revenue, jadi kita default 0 dulu
+          revenue: 0 
         };
       }
-      
-      // Fallback jika response backend beda struktur
       return { total_users: 0, total_kosts: 0, pending_kosts: 0, revenue: 0 };
     } catch (error) {
-      console.error("Gagal load dashboard stats:", error);
+      console.error("❌ Error loading dashboard stats:", error);
       throw error;
     }
   },
 
-  // --- LIST PENDING KOST ---
+  // --- GET PENDING KOSTS ---
+  // Backend menggunakan method index() dengan filter ?status=pending
   async getPendingKosts() {
-    // Sesuai route: Route::get('/kosts/pending', [AdminKostController::class, 'pending']);
-    // Prefix URL 'admin' sudah diatur di routes/api.php
-    return apiClient.get('/admin/kosts/pending').then(res => res.data.data || res.data);
+    try {
+      console.log('🔄 Fetching pending kosts via index filter...');
+      const response = await apiClient.get('/admin/kosts', {
+        params: { status: 'pending' }
+      });
+      
+      // Backend return format: { success: true, data: [...] }
+      return response.data; 
+    } catch (error) {
+      console.error('❌ Error fetching pending kosts:', error);
+      throw error;
+    }
   },
 
-  // --- APPROVE KOST ---
-  async verifyKost(id) {
-    // Sesuai route: Route::patch('/kosts/{id}/verify', [AdminKostController::class, 'verify']);
-    // Perhatikan method-nya PATCH, bukan POST
-    return apiClient.patch(`/admin/kosts/${id}/verify`);
-  },
-
-  // --- DETAIL KOST ---
+  // --- GET KOST DETAIL ---
   async getKostDetail(id) {
-    // Admin bisa pakai endpoint publik untuk melihat detail, atau endpoint khusus jika ada.
-    // Di file routes.php kamu: Route::get('/kosts/{id}', [KostController::class, 'show']);
-    return apiClient.get(`/kosts/${id}`).then(res => res.data.data || res.data);
+    try {
+      // Sesuai route: Route::get('/kosts/{id}', [AdminKostController::class, 'show'])
+      const response = await apiClient.get(`/admin/kosts/${id}`);
+      const item = response.data.data || response.data;
+
+      // Normalisasi data lokasi agar UI tidak error
+      const locationData = item.location || {};
+      return {
+        ...item,
+        district: item.district || locationData.district || '',
+        village: item.village || locationData.village || '',
+        address: item.address || locationData.address || '',
+        latitude: item.latitude || locationData.latitude,
+        longitude: item.longitude || locationData.longitude,
+      };
+    } catch (error) {
+      console.error('❌ Error in getKostDetail:', error);
+      throw error;
+    }
+  },
+
+  // --- VERIFY / APPROVE KOST ---
+  // Backend menggunakan method approve() dengan method PUT
+  async verifyKost(id) {
+    try {
+      console.log('✅ Approving kost ID:', id);
+      // Sesuai route: Route::put('/kosts/{id}/approve', ...)
+      const response = await apiClient.put(`/admin/kosts/${id}/approve`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error verifying kost:', error);
+      throw error;
+    }
   },
 
   // --- REJECT KOST ---
-  // [CATATAN]: Di file routes/api.php kamu BELUM ADA route untuk reject.
-  // Jadi fitur ini sementara akan error 404 jika dipakai.
-  // Kamu bisa minta backend engineer menambahkannya, atau biarkan dulu.
-  async rejectKost(id, reason) {
-    console.warn("Fitur Reject belum ada di backend.");
-    // return apiClient.post(`/admin/kosts/${id}/reject`, { reason });
-    return Promise.reject("Fitur Reject belum tersedia di server.");
+  // Backend menggunakan method reject() dengan method PUT
+  async rejectKost(id) {
+    try {
+      console.log('🚫 Rejecting kost ID:', id);
+      // Sesuai route: Route::put('/kosts/{id}/reject', ...)
+      const response = await apiClient.put(`/admin/kosts/${id}/reject`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error rejecting kost:', error);
+      throw error;
+    }
+  },
+
+  // --- USER MANAGEMENT ---
+  async getAllUsers(params = {}) {
+    try {
+      const response = await apiClient.get('/admin/users', { params });
+      return response.data; 
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getUserDetail(userId) {
+    try {
+      const response = await apiClient.get(`/admin/users/${userId}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async deleteUser(userId) {
+    try {
+      const response = await apiClient.delete(`/admin/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      if (error.response?.data?.message) throw new Error(error.response.data.message);
+      throw error;
+    }
   }
 };

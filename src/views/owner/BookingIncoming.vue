@@ -106,16 +106,17 @@
 import { ref, computed, onMounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import ownerService from '@/services/ownerService';
+import { notify } from '@/utils/swal'; // [PENTING] Import helper notifikasi Anda
 
 const bookings = ref([]);
 const loading = ref(true);
-const processing = ref(null); // ID booking yang sedang diproses
+const processing = ref(null); 
 const activeTab = ref('pending');
 
 const tabs = [
   { label: 'Menunggu', value: 'pending' },
-  { label: 'Disetujui', value: 'approved' }, // Approved = Menunggu Bayar
-  { label: 'Aktif', value: 'active' }, // Active = Sudah Bayar
+  { label: 'Disetujui', value: 'approved' }, 
+  { label: 'Aktif', value: 'active' }, 
   { label: 'Ditolak', value: 'canceled' },
   { label: 'Semua', value: 'all' },
 ];
@@ -123,8 +124,6 @@ const tabs = [
 // --- COMPUTED ---
 const filteredList = computed(() => {
   if (activeTab.value === 'all') return bookings.value;
-  // Mapping status: 'approved' di filter ini termasuk yang sudah bayar (active) atau belum
-  // Sederhananya kita filter exact match dulu
   return bookings.value.filter(b => b.status === activeTab.value);
 });
 
@@ -140,6 +139,7 @@ const fetchBookings = async () => {
     bookings.value = data;
   } catch (error) {
     console.error(error);
+    notify.error("Gagal mengambil data booking dari server.");
   } finally {
     loading.value = false;
   }
@@ -147,22 +147,33 @@ const fetchBookings = async () => {
 
 // --- ACTION ---
 const handleAction = async (id, status) => {
-  const confirmMsg = status === 'approved' ? 'Terima pengajuan ini?' : 'Tolak pengajuan ini?';
-  if (!confirm(confirmMsg)) return;
+  const isApprove = status === 'approved';
+  
+  // [UPDATE] Gunakan notify.confirm yang modern
+  const confirmed = await notify.confirm(
+    isApprove ? 'Terima Pengajuan?' : 'Tolak Pengajuan?',
+    isApprove 
+      ? 'Calon penyewa akan diberikan akses untuk melakukan pembayaran.' 
+      : 'Permintaan sewa ini akan dibatalkan.',
+    isApprove ? 'Ya, Terima' : 'Ya, Tolak'
+  );
+
+  if (!confirmed) return;
 
   processing.value = id;
   try {
     await ownerService.updateBookingStatus(id, status);
     
-    // Update data lokal agar UI berubah tanpa refresh
+    // Update data lokal
     const index = bookings.value.findIndex(b => b.id === id);
     if (index !== -1) {
       bookings.value[index].status = status;
     }
     
-    alert(`Berhasil ${status === 'approved' ? 'menerima' : 'menolak'} pengajuan.`);
+    // [UPDATE] Gunakan notify.success
+    notify.success(`Berhasil ${isApprove ? 'menerima' : 'menolak'} pengajuan.`);
   } catch (error) {
-    alert("Gagal memproses data.");
+    notify.error("Gagal memproses perubahan status.");
   } finally {
     processing.value = null;
   }
@@ -177,7 +188,6 @@ const getInitials = (name) => (name ? name.charAt(0).toUpperCase() : '?');
 
 const formatPhone = (phone) => {
   if (!phone) return '';
-  // Ubah 08... jadi 628...
   return phone.startsWith('0') ? '62' + phone.slice(1) : phone;
 };
 

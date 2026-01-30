@@ -4,7 +4,7 @@
       
       <div class="page-header">
         <div class="header-content">
-          <h1 class="page-title">Verifikasi Pengajuan</h1>
+          <h1 class="page-title">Verifikasi Pengajuan Kost</h1>
           <p class="subtitle">Tinjau dan setujui properti baru sebelum tayang ke publik.</p>
         </div>
         <div class="stats-badge">
@@ -13,9 +13,44 @@
         </div>
       </div>
 
-      <div v-if="loading" class="state-container loading">
-        <Icon icon="mdi:loading" class="spinner" width="40" />
-        <p>Memuat data pengajuan...</p>
+      <div v-if="loading" class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th width="40%">Properti</th>
+              <th width="20%">Pemilik</th>
+              <th width="20%">Lokasi</th>
+              <th width="20%" class="text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="i in 3" :key="i">
+              <td>
+                <div class="kost-info">
+                  <BaseSkeleton width="64px" height="64px" border-radius="16px" />
+                  <div class="text-info">
+                    <BaseSkeleton width="140px" height="20px" class="mb-2" />
+                    <BaseSkeleton width="100px" height="14px" />
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="owner-info">
+                  <BaseSkeleton width="40px" height="40px" border-radius="12px" />
+                  <div class="owner-text" style="flex:1">
+                    <BaseSkeleton width="80%" height="16px" />
+                  </div>
+                </div>
+              </td>
+              <td><BaseSkeleton width="60%" height="16px" /></td>
+              <td class="text-right">
+                <div class="action-group">
+                  <BaseSkeleton v-for="j in 3" :key="j" width="40px" height="40px" border-radius="14px" />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div v-else-if="kosts.length === 0" class="state-container empty">
@@ -24,20 +59,20 @@
         </div>
         <h3>Semua Beres!</h3>
         <p>Tidak ada pengajuan kost baru yang perlu diverifikasi saat ini.</p>
-        <button class="btn-refresh" @click="fetchData">
-          <Icon icon="mdi:refresh" /> Segarkan Data
-        </button>
+        <BaseButton variant="primary" @click="fetchData" class="mt-4">
+          <template #icon-left><Icon icon="mdi:refresh" /></template>
+          Segarkan Data
+        </BaseButton>
       </div>
 
       <div v-else class="table-card">
         <table class="data-table">
           <thead>
             <tr>
-              <th width="35%">Properti</th>
+              <th width="40%">Properti</th>
               <th width="20%">Pemilik</th>
-              <th width="15%">Harga/Bulan</th>
-              <th width="15%">Lokasi</th>
-              <th width="15%" class="text-right">Aksi</th>
+              <th width="20%">Lokasi</th>
+              <th width="20%" class="text-right">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -45,13 +80,13 @@
               <td>
                 <div class="kost-info">
                   <div class="img-wrapper">
-                    <img :src="$storage(kost.main_image || kost.image_path)" alt="Thumbnail" />
+                    <img :src="getThumb(kost.thumbnail)" alt="Thumbnail" />
                   </div>
                   <div class="text-info">
                     <h4 class="kost-name">{{ kost.name }}</h4>
                     <div class="date-badge">
                       <Icon icon="mdi:calendar-blank-outline" width="12" />
-                      <span>{{ formatDate(kost.created_at) }}</span>
+                      <span>Dibuat: {{ formatDate(kost.created_at) }}</span>
                     </div>
                   </div>
                 </div>
@@ -60,44 +95,53 @@
               <td>
                 <div class="owner-info">
                   <div class="avatar-circle">
-                    {{ getInitials(kost.owner?.name) }}
+                    {{ getInitials(kost.owner?.name || kost.user?.name) }}
                   </div>
                   <div class="owner-text">
-                    <span class="name">{{ kost.owner?.name || 'Unknown' }}</span>
-                    <span class="role">Owner</span>
+                    <span class="name">{{ kost.owner?.name || kost.user?.name || 'Owner' }}</span>
+                    <span class="role">Landlord</span>
                   </div>
                 </div>
-              </td>
-
-              <td>
-                <span class="price-badge">{{ formatRupiah(kost.price) }}</span>
               </td>
 
               <td>
                 <div class="location-text">
                   <Icon icon="mdi:map-marker-outline" width="14" />
-                  {{ kost.district || '-' }}
+                  <span>{{ kost.district || 'Denpasar' }}</span>
+                  <span class="village-text">{{ kost.village }}</span>
                 </div>
               </td>
 
               <td class="text-right">
                 <div class="action-group">
-                  <button 
-                    class="btn-icon detail" 
+                  <BaseButton 
+                    variant="ghost" 
+                    icon 
                     @click="viewDetail(kost.id)"
-                    title="Lihat Detail"
+                    class="btn-detail"
                   >
                     <Icon icon="mdi:eye-outline" width="18" />
-                  </button>
-                  <button 
-                    class="btn-icon approve" 
-                    @click="handleVerify(kost.id)"
-                    :disabled="processing === kost.id"
-                    title="Setujui"
+                  </BaseButton>
+
+                  <BaseButton 
+                    variant="danger" 
+                    icon 
+                    :loading="processing === kost.id"
+                    @click="handleReject(kost.id)"
+                    class="btn-reject"
                   >
-                    <Icon v-if="processing === kost.id" icon="mdi:loading" class="spin" width="18" />
-                    <Icon v-else icon="mdi:check-bold" width="18" />
-                  </button>
+                    <Icon icon="mdi:close-thick" width="18" />
+                  </BaseButton>
+
+                  <BaseButton 
+                    variant="success" 
+                    icon 
+                    :loading="processing === kost.id"
+                    @click="handleVerify(kost.id)"
+                    class="btn-approve"
+                  >
+                    <Icon icon="mdi:check-bold" width="18" />
+                  </BaseButton>
                 </div>
               </td>
             </tr>
@@ -114,180 +158,118 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import adminService from '@/services/adminService';
+import { notify } from '@/utils/swal';
 
 const router = useRouter();
 const kosts = ref([]);
 const loading = ref(true);
-const processing = ref(null); 
+const processing = ref(null);
 
-// --- FETCH DATA ---
+const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
+const STORAGE_BASE = API_URL.replace(/\/api\/?$/, '');
+
+const getThumb = (path) => {
+  if (!path) return 'https://placehold.co/100x100?text=No+Image';
+  if (path.startsWith('http')) return path;
+  return `${STORAGE_BASE}/storage/${path.replace(/^\//, '')}`;
+};
+
 const fetchData = async () => {
   loading.value = true;
   try {
-    const data = await adminService.getPendingKosts();
-    // Pastikan data berupa array (handle jika backend return object)
-    kosts.value = Array.isArray(data) ? data : (data.data || []);
+    const response = await adminService.getPendingKosts();
+    kosts.value = response.data || [];
   } catch (err) {
-    console.error("Gagal memuat data:", err);
+    notify.error("Gagal mengambil data.");
   } finally {
     loading.value = false;
   }
 };
 
-// --- ACTION: VERIFIKASI ---
 const handleVerify = async (id) => {
-  if (!confirm("Yakin ingin menyetujui kost ini agar tayang ke publik?")) return;
-
+  const kost = kosts.value.find(k => k.id === id);
+  const confirmed = await notify.confirm("Setujui Kost?", `"${kost.name}" akan langsung aktif.`);
+  if (!confirmed) return;
   processing.value = id;
   try {
     await adminService.verifyKost(id);
-    // Hapus item dari list secara lokal agar UI responsif
+    notify.success("Berhasil disetujui!");
     kosts.value = kosts.value.filter(k => k.id !== id);
   } catch (err) {
-    console.error(err);
-    alert("Gagal memproses verifikasi. Cek koneksi atau server.");
+    notify.error("Gagal verifikasi.");
   } finally {
     processing.value = null;
   }
 };
 
-const viewDetail = (id) => {
-  // Pastikan route detail kost admin sudah dibuat di router/index.js
-  router.push(`/admin/kost-detail/${id}`); 
+const handleReject = async (id) => {
+  const confirmed = await notify.confirm("Tolak?", "Yakin menolak?", "Tolak", "error");
+  if (!confirmed) return;
+  processing.value = id;
+  try {
+    await adminService.rejectKost(id);
+    kosts.value = kosts.value.filter(k => k.id !== id);
+    notify.success("Kost ditolak.");
+  } catch (err) {
+    notify.error("Gagal menolak.");
+  } finally {
+    processing.value = null;
+  }
 };
 
-// --- HELPERS ---
-const getInitials = (name) => {
-  if (!name) return 'U';
-  return name.substring(0, 2).toUpperCase();
-};
+const viewDetail = (id) => router.push({ name: 'admin-kost-detail', params: { id } });
+const getInitials = (n) => n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : 'O';
+const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-';
 
-const formatRupiah = (num) => {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
-};
-
-const formatDate = (date) => {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-};
-
-onMounted(() => {
-  fetchData();
-});
+onMounted(fetchData);
 </script>
 
 <style scoped>
-/* BACKGROUND */
-.admin-page {
-  padding: 2rem;
-  font-family: 'Poppins', sans-serif;
-  color: #334155;
-  min-height: 80vh; /* Agar footer tidak naik saat loading */
-}
-
+/* ===== STYLE ASLI 100% SESUAI GAMBAR ===== */
+.admin-page { padding: 2.5rem; background-color: #f8fafc; min-height: 100vh; font-family: 'Poppins', sans-serif; }
 .container { max-width: 1200px; margin: 0 auto; }
 
-/* HEADER */
-.page-header {
-  display: flex; justify-content: space-between; align-items: flex-end;
-  margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0;
-  flex-wrap: wrap; gap: 10px;
-}
-.page-title { font-size: 1.5rem; font-weight: 700; color: #1e3a8a; margin-bottom: 0.25rem; }
-.subtitle { color: #64748b; font-size: 0.95rem; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 2px solid #e2e8f0; }
+.page-title { font-size: 2rem; font-weight: 800; color: #1e3a8a; }
+.subtitle { color: #64748b; font-size: 1rem; }
+.stats-badge { background: #eff6ff; color: #1e40af; padding: 0.75rem 1.5rem; border-radius: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px; border: 1px solid #bfdbfe; }
 
-.stats-badge {
-  display: flex; align-items: center; gap: 8px;
-  background: #fff7ed; color: #c2410c; 
-  padding: 0.5rem 1rem; border-radius: 99px;
-  font-size: 0.9rem; font-weight: 500;
-  border: 1px solid #ffedd5;
-}
-.badge-icon { font-size: 1.1rem; }
+.table-card { background: white; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
+.data-table { width: 100%; border-collapse: collapse; text-align: left; }
+.data-table th { background: #f8fafc; padding: 1.25rem 1.5rem; font-size: 0.75rem; font-weight: 700; color: #475569; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
+.data-table td { padding: 1.5rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
 
-/* STATES */
-.state-container {
-  background: white; border-radius: 16px; padding: 4rem 2rem;
-  text-align: center; border: 1px dashed #cbd5e1;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-}
-.loading .spinner { color: #1e3a8a; animation: spin 1s linear infinite; margin-bottom: 1rem; }
-@keyframes spin { 100% { transform: rotate(360deg); } }
-
-/* Empty State */
-.empty-icon-bg {
-  width: 80px; height: 80px; background: #eff6ff; color: #1e3a8a;
-  border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  margin-bottom: 1.5rem;
-}
-.empty h3 { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem; }
-.empty p { color: #64748b; margin-bottom: 1.5rem; }
-
-.btn-refresh {
-  display: flex; align-items: center; gap: 8px;
-  background: white; border: 1px solid #e2e8f0; padding: 0.6rem 1.2rem;
-  border-radius: 8px; color: #334155; font-weight: 600; cursor: pointer; transition: 0.2s;
-}
-.btn-refresh:hover { background: #f8fafc; border-color: #cbd5e1; }
-
-/* TABLE STYLING */
-.table-card {
-  background: white; border-radius: 16px; 
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  overflow-x: auto; /* Agar responsive di mobile */
-  border: 1px solid #e2e8f0;
-}
-
-.data-table { width: 100%; border-collapse: collapse; min-width: 800px; /* Mencegah tabel gepeng */ }
-
-.data-table th {
-  background: #f8fafc; text-align: left; padding: 1.25rem 1.5rem;
-  font-size: 0.75rem; font-weight: 700; color: #64748b;
-  text-transform: uppercase; letter-spacing: 0.05em;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.data-table td {
-  padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;
-  vertical-align: middle;
-}
-.data-table tr:hover { background-color: #fafafa; }
-
-/* COMPONENTS INSIDE TABLE */
-.kost-info { display: flex; gap: 1rem; align-items: center; }
-.img-wrapper { width: 60px; height: 60px; border-radius: 10px; overflow: hidden; flex-shrink: 0; border: 1px solid #e2e8f0; background: #f1f5f9; }
+.kost-info { display: flex; gap: 1.25rem; align-items: center; }
+.img-wrapper { width: 64px; height: 64px; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; }
 .img-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-.kost-name { font-size: 0.95rem; font-weight: 600; color: #0f172a; margin-bottom: 4px; }
-.date-badge { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #94a3b8; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; width: fit-content; }
+.kost-name { font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+.date-badge { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #94a3b8; }
 
-.owner-info { display: flex; gap: 10px; align-items: center; }
-.avatar-circle { 
-  width: 36px; height: 36px; background: #eff6ff; color: #1e3a8a; 
-  border-radius: 50%; display: flex; align-items: center; justify-content: center; 
-  font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+.owner-info { display: flex; gap: 0.75rem; align-items: center; }
+.avatar-circle { width: 40px; height: 40px; background: #f1f5f9; color: #475569; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; border: 1px solid #e2e8f0; }
+.owner-text .name { font-weight: 600; font-size: 0.9rem; display: block; }
+.owner-text .role { font-size: 0.75rem; color: #94a3b8; }
+
+.location-text { display: flex; flex-direction: column; color: #475569; }
+.location-text span:first-child { font-weight: 600; font-size: 0.9rem; color: #334155; }
+.village-text { font-size: 0.8rem; color: #94a3b8; }
+
+/* FIX TOMBOL: Agar kontras dan tidak invisible */
+.action-group { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* Menggunakan BaseButton dengan warna asli desainmu */
+.btn-detail { background: #f1f5f9 !important; color: #64748b !important; border: 1px solid #e2e8f0 !important; }
+.btn-reject { background: #fee2e2 !important; color: #b91c1c !important; border: 1px solid #fecaca !important; }
+.btn-approve { background: #dcfce7 !important; color: #15803d !important; border: 1px solid #bbf7d0 !important; }
+
+/* State Handling */
+.state-container { padding: 5rem 2rem; text-align: center; border: 2px dashed #e2e8f0; border-radius: 24px; }
+.empty-icon-bg { width: 100px; height: 100px; background: #f0fdf4; color: #16a34a; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+
+@media (max-width: 768px) {
+  .data-table thead { display: none; }
+  .data-table tr { display: block; margin-bottom: 1rem; border: 1px solid #e2e8f0; border-radius: 16px; padding: 10px; }
+  .data-table td { display: block; width: 100%; border-bottom: none; }
+  .action-group { justify-content: center; padding-top: 10px; border-top: 1px dashed #f1f5f9; }
 }
-.owner-text { display: flex; flex-direction: column; }
-.owner-text .name { font-size: 0.9rem; font-weight: 500; color: #334155; }
-.owner-text .role { font-size: 0.7rem; color: #64748b; }
-
-.price-badge { font-weight: 600; color: #059669; font-size: 0.9rem; }
-.location-text { display: flex; align-items: center; gap: 4px; color: #64748b; font-size: 0.9rem; }
-
-/* ACTIONS */
-.text-right { text-align: right; }
-.action-group { display: flex; justify-content: flex-end; gap: 8px; }
-
-.btn-icon {
-  width: 36px; height: 36px; border-radius: 8px; border: none;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.2s;
-}
-.btn-icon.detail { background: #f1f5f9; color: #64748b; }
-.btn-icon.detail:hover { background: #e2e8f0; color: #1e293b; }
-
-.btn-icon.approve { background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7; }
-.btn-icon.approve:hover { background: #16a34a; color: white; border-color: #16a34a; box-shadow: 0 2px 5px rgba(22, 163, 74, 0.2); }
-.btn-icon.approve:disabled { background: #f3f4f6; color: #9ca3af; border-color: #e5e7eb; cursor: not-allowed; }
-
-.spin { animation: spin 1s linear infinite; }
 </style>

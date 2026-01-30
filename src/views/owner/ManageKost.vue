@@ -32,7 +32,7 @@
         <div v-for="kost in kosts" :key="kost.id" class="kost-card">
           
           <div class="card-image">
-            <img :src="getThumb(kost.thumbnail)" alt="Kost Thumbnail" />
+            <img :src="getThumb(kost.thumbnail || kost.main_image)" :alt="kost.name" />
             <span :class="['status-badge', kost.is_verified ? 'verified' : 'pending']">
               <Icon :icon="kost.is_verified ? 'mdi:check-decagram' : 'mdi:clock-outline'" width="14" />
               {{ kost.is_verified ? 'Terverifikasi' : 'Menunggu Verifikasi' }}
@@ -44,22 +44,38 @@
               <h3 class="kost-name">{{ kost.name }}</h3>
               <div class="location">
                 <Icon icon="mdi:map-marker-outline" width="16" />
-                <span>{{ kost.district }}</span>
+                <span>{{ getLocationDisplay(kost) }}</span>
               </div>
             </div>
             
-            <p class="desc text-truncate">{{ kost.description }}</p>
+            <p class="desc text-truncate">{{ kost.description || 'Tidak ada deskripsi' }}</p>
+
+            <div class="stats-row">
+              <div class="stat-item">
+                <Icon icon="mdi:eye-outline" width="16" />
+                <span>{{ kost.views || 0 }} views</span>
+              </div>
+              <div class="stat-item">
+                <Icon icon="mdi:calendar-clock" width="16" />
+                <span>{{ formatDate(kost.created_at) }}</span>
+              </div>
+            </div>
 
             <div class="divider"></div>
 
             <div class="card-actions">
-              <button class="btn-action primary" @click="manageRooms(kost.id)">
-                <Icon icon="mdi:bed-king-outline" width="18" /> Atur Kamar
+              <button 
+                class="btn-action primary" 
+                @click="manageRooms(kost.id)"
+                :disabled="!kost.is_verified"
+              >
+                <Icon icon="mdi:bed-king-outline" width="18" /> 
+                {{ kost.is_verified ? 'Atur Kamar' : 'Menunggu Verifikasi' }}
               </button>
               
               <div class="secondary-actions">
-                <button class="btn-icon" @click="editKost(kost.id)" title="Edit Info">
-                  <Icon icon="mdi:pencil-outline" width="18" />
+                <button class="btn-icon" @click="viewDetail(kost.id)" title="Lihat Detail">
+                  <Icon icon="mdi:eye-outline" width="18" />
                 </button>
                 <button class="btn-icon delete" @click="confirmDelete(kost.id)" title="Hapus Kost">
                   <Icon icon="mdi:trash-can-outline" width="18" />
@@ -80,56 +96,119 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import ownerService from '@/services/ownerService';
+import { notify } from '@/utils/swal';
 
 const router = useRouter();
 const loading = ref(true);
 const kosts = ref([]);
-const API_BASE_URL = 'http://127.0.0.1:8000'; // Sesuaikan
 
-// --- FETCH DATA ---
+const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
+const BASE_STORAGE_URL = API_URL.replace(/\/api\/?$/, '');
+
 const fetchKosts = async () => {
   loading.value = true;
   try {
-    const data = await ownerService.getMyKosts();
-    kosts.value = data;
+    const response = await ownerService.getMyKosts();
+    kosts.value = response.data || response || [];
+    console.log("✅ [ManageKost] List Kost:", kosts.value);
   } catch (error) {
-    console.error("Gagal load kost:", error);
+    console.error("❌ [ManageKost] Error Fetch Kosts:", error);
+    notify.error("Gagal memuat daftar properti Anda.");
   } finally {
     loading.value = false;
   }
 };
 
-// --- HELPERS ---
+// ✅ FIX: Helper untuk menampilkan lokasi dengan benar
+const getLocationDisplay = (kost) => {
+  if (!kost) return '-';
+  
+  const parts = [];
+  
+  // Try from root level first
+  if (kost.village) parts.push(kost.village);
+  if (kost.district) parts.push(kost.district);
+  
+  // If empty, try from nested location object
+  if (parts.length === 0 && kost.location) {
+    if (kost.location.village) parts.push(kost.location.village);
+    if (kost.location.district) parts.push(kost.location.district);
+  }
+  
+  // Fallback
+  if (parts.length === 0) {
+    return kost.city || kost.location?.city || 'Denpasar';
+  }
+  
+  return parts.join(', ');
+};
+
 const getThumb = (path) => {
   if (!path) return 'https://placehold.co/400x300?text=No+Image';
-  if (path.startsWith('http')) return path;
-  return `${API_BASE_URL}/storage/${path}`;
+  
+  // If already full URL, return as is
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path; 
+  }
+  
+  const cleanPath = path.replace(/^\//, '');
+  
+  let finalUrl = '';
+  if (cleanPath.startsWith('storage/')) {
+    finalUrl = `${BASE_STORAGE_URL}/${cleanPath}`;
+  } else {
+    finalUrl = `${BASE_STORAGE_URL}/storage/${cleanPath}`;
+  }
+
+  return finalUrl;
 };
 
-// --- ACTIONS ---
-const manageRooms = (id) => {
-  router.push({ name: 'manage-rooms', params: { id } });
+const formatDate = (date) => {
+  if (!date) return '-';
+  return new Date(date).toLocaleDateString('id-ID', { 
+    day: 'numeric', 
+    month: 'short', 
+    year: 'numeric' 
+  });
 };
 
-const editKost = (id) => {
-  alert("Fitur Edit akan segera hadir! (Prioritas P2)");
+const manageRooms = (kostId) => {
+  console.log("🚀 [ManageKost] Navigasi ke ManageRoom dengan ID:", kostId);
+  router.push({ 
+    name: 'manage-rooms', 
+    params: { id: kostId } 
+  });
 };
 
-const confirmDelete = async (id) => {
-  if (confirm("Hapus kost ini? Data kamar & booking akan hilang permanen.")) {
+const viewDetail = (kostId) => {
+  router.push({ 
+    name: 'kost-detail', 
+    params: { id: kostId } 
+  });
+};
+
+const confirmDelete = async (kostId) => {
+  const kost = kosts.value.find(k => k.id === kostId);
+  if (!kost) return;
+  
+  const confirmed = await notify.confirm(
+    "Hapus Properti?", 
+    `Yakin ingin menghapus "${kost.name}"? Tindakan ini tidak dapat dibatalkan.`
+  );
+  
+  if (confirmed) {
     try {
-      await ownerService.deleteKost(id); // Pastikan service ini ada
-      kosts.value = kosts.value.filter(k => k.id !== id);
-      alert("Properti berhasil dihapus.");
+      await ownerService.deleteKost(kostId);
+      kosts.value = kosts.value.filter(k => k.id !== kostId);
+      notify.success("Properti berhasil dihapus.");
     } catch (error) {
-      alert("Gagal menghapus properti.");
+      console.error("❌ [ManageKost] Error Delete:", error);
+      notify.error("Gagal menghapus properti.");
     }
   }
 };
 
-onMounted(() => {
-  fetchKosts();
-});
+onMounted(fetchKosts);
 </script>
 
 <style scoped>
@@ -151,8 +230,8 @@ onMounted(() => {
 .icon-lg { font-size: 3rem; margin-bottom: 15px; color: #1e3a8a; }
 .spin { animation: spin 1s linear infinite; }
 
-.btn-primary { margin-top: 20px; background: #fca311; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-.btn-primary:hover { background: #d97706; }
+.btn-primary { margin-top: 20px; background: #1e3a8a; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+.btn-primary:hover { background: #172554; }
 
 /* GRID */
 .kost-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
@@ -174,7 +253,10 @@ onMounted(() => {
 .kost-name { font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 4px; line-height: 1.3; }
 .location { display: flex; align-items: center; gap: 5px; font-size: 0.85rem; color: #64748b; font-weight: 500; }
 
-.desc { font-size: 0.85rem; color: #94a3b8; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5; }
+.desc { font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5; }
+
+.stats-row { display: flex; gap: 15px; margin-bottom: 15px; }
+.stat-item { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; color: #94a3b8; }
 
 .divider { height: 1px; background: #f1f5f9; margin-bottom: 15px; margin-top: auto; }
 
@@ -183,7 +265,8 @@ onMounted(() => {
 
 .btn-action { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: 0.2s; border: none; }
 .btn-action.primary { background: #eff6ff; color: #1e3a8a; border: 1px solid #dbeafe; }
-.btn-action.primary:hover { background: #1e3a8a; color: white; }
+.btn-action.primary:hover:not(:disabled) { background: #1e3a8a; color: white; }
+.btn-action:disabled { opacity: 0.5; cursor: not-allowed; background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
 
 .secondary-actions { display: flex; gap: 8px; }
 .btn-icon { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #e2e8f0; background: white; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
@@ -191,9 +274,11 @@ onMounted(() => {
 .btn-icon.delete:hover { border-color: #fecaca; background: #fef2f2; color: #ef4444; }
 
 @keyframes spin { 100% { transform: rotate(360deg); } }
+
 @media (max-width: 640px) {
   .page-header { flex-direction: column; align-items: flex-start; gap: 15px; }
   .btn-add { width: 100%; justify-content: center; }
   .kost-grid { grid-template-columns: 1fr; }
+  .stats-row { flex-direction: column; gap: 8px; }
 }
 </style>

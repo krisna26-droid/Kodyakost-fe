@@ -1,14 +1,56 @@
 @import './base.css';
 
+/* --- [BARU] FLUID TYPOGRAPHY DI ROOT --- */
+:root {
+  /* Font akan membesar/mengecil otomatis sesuai lebar layar */
+  --font-xs: clamp(0.7rem, 0.6rem + 0.4vw, 0.8rem);
+  --font-sm: clamp(0.8rem, 0.7rem + 0.5vw, 0.9rem);
+  --font-base: clamp(0.9rem, 0.8rem + 0.6vw, 1rem);
+  --font-lg: clamp(1.1rem, 1rem + 1vw, 1.3rem);
+  --font-xl: clamp(1.5rem, 1.2rem + 2vw, 2.2rem);
+
+  /* Spasi Kontainer Responsif */
+  --container-padding: clamp(1rem, 5vw, 2.5rem);
+}
+
 #app {
   margin: 0 auto;
   font-weight: normal;
 }
 
-a,
-.green {
+/* --- [BARU] UTILITY CLASSES UNTUK SEMUA HALAMAN --- */
+
+/* Bungkus halaman Anda dengan ini agar rapi di Mobile & Desktop */
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: var(--container-padding);
+}
+
+/* Grid Pintar: Kartu Kost akan otomatis jadi 1, 2, atau 3 kolom */
+.dynamic-grid {
+  display: grid;
+  /* min-width kartu 280px, jika layar lebar maka otomatis nambah kolom */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+
+/* Terapkan font dinamis ke tag standar */
+h1 { font-size: var(--font-xl); font-weight: 800; line-height: 1.2; }
+h2 { font-size: var(--font-lg); font-weight: 700; }
+p { font-size: var(--font-base); }
+small { font-size: var(--font-xs); }
+
+/* Helper untuk Spasi */
+.mt-4 { margin-top: 1.5rem; }
+.mb-4 { margin-bottom: 1.5rem; }
+
+/* --- Sisa kode a dan .green Anda --- */
+a, .green {
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
+  color: #00897b;
   transition: 0.4s;
   padding: 3px;
 }

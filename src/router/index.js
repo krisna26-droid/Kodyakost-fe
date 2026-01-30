@@ -15,7 +15,9 @@ const router = createRouter({
     return { top: 0 }
   },
   routes: [
-    // A. PUBLIC ROUTES
+    // ==========================================
+    // A. PUBLIC ROUTES (Tanpa Login)
+    // ==========================================
     {
       path: '/',
       component: MainLayout,
@@ -33,51 +35,49 @@ const router = createRouter({
       ],
     },
 
-    // B. TENANT AREA
+    // ==========================================
+    // B. TENANT AREA (Wajib Login & Role Tenant)
+    // ==========================================
     {
-      path: '/',
+      path: '/tenant',
       component: MainLayout,
       meta: { requiresAuth: true, role: 'tenant' },
       children: [
+        // Dashboard Utama Tenant (Active Mode / Empty State)
+        { 
+          path: 'dashboard', 
+          name: 'tenant-dashboard', 
+          component: () => import('@/views/tenant/Dashboard.vue') 
+        },
         { path: 'profile', name: 'profile', component: () => import('@/views/ProfileView.vue') },
         { path: 'wishlist', name: 'wishlist', component: () => import('@/views/tenant/WishlistView.vue') },
         { path: 'my-bookings', name: 'booking-history', component: () => import('@/views/tenant/booking/BookingHistory.vue') },
         { 
           path: 'payment-success', 
           name: 'payment-success', 
-          component: () => import('@/views/tenant/payment/PaymentSuccess.vue'),
-          meta: { requiresAuth: false } 
+          component: () => import('@/views/tenant/payment/PaymentSuccess.vue') 
         },
       ]
     },
 
-    // C. BOOKING FLOW
+    // ==========================================
+    // C. BOOKING FLOW (Tenant Only)
+    // ==========================================
     {
-      path: '/booking/request',
-      name: 'booking-step-1',
-      component: () => import('@/views/tenant/booking/Step1Request.vue'),
-      meta: { requiresAuth: true, role: 'tenant' }
-    },
-    {
-      path: '/booking/waiting',
-      name: 'booking-step-2',
-      component: () => import('@/views/tenant/booking/Step2Waiting.vue'),
-      meta: { requiresAuth: true, role: 'tenant' }
-    },
-    {
-      path: '/booking/payment',
-      name: 'booking-step-3',
-      component: () => import('@/views/tenant/booking/Step3Payment.vue'),
-      meta: { requiresAuth: true, role: 'tenant' }
-    },
-    {
-      path: '/booking/checkin',
-      name: 'booking-step-4',
-      component: () => import('@/views/tenant/booking/Step4Checkin.vue'),
-      meta: { requiresAuth: true, role: 'tenant' }
+      path: '/booking',
+      component: MainLayout,
+      meta: { requiresAuth: true, role: 'tenant' },
+      children: [
+        { path: 'request', name: 'booking-step-1', component: () => import('@/views/tenant/booking/Step1Request.vue') },
+        { path: 'waiting', name: 'booking-step-2', component: () => import('@/views/tenant/booking/Step2Waiting.vue') },
+        { path: 'payment', name: 'booking-step-3', component: () => import('@/views/tenant/booking/Step3Payment.vue') },
+        { path: 'checkin', name: 'booking-step-4', component: () => import('@/views/tenant/booking/Step4Checkin.vue') },
+      ]
     },
 
-    // D. OWNER DASHBOARD (AKTIF)
+    // ==========================================
+    // D. OWNER DASHBOARD (Wajib Role Owner)
+    // ==========================================
     {
       path: '/owner',
       component: DashboardLayout,
@@ -91,7 +91,9 @@ const router = createRouter({
       ]
     },
     
-    // E. ADMIN DASHBOARD (AKTIF)
+    // ==========================================
+    // E. ADMIN DASHBOARD (Wajib Role Admin)
+    // ==========================================
     {
       path: '/admin',
       component: DashboardLayout,
@@ -99,44 +101,64 @@ const router = createRouter({
       children: [
         { path: 'dashboard', name: 'admin-dashboard', component: () => import('@/views/admin/DashboardView.vue') },
         { path: 'verify', name: 'admin-verify', component: () => import('@/views/admin/KostVerificationView.vue') },
-        
-        // [FIX] INI DIA YANG KURANG TADI:
-        { path: 'users', name: 'admin-users', component: () => import('@/views/admin/UserManagement.vue') }
+        { path: 'users', name: 'admin-users', component: () => import('@/views/admin/UserManagement.vue') },
+        { 
+          path: 'kost/:id', 
+          name: 'admin-kost-detail',
+          component: () => import('@/views/admin/KostDetailAdmin.vue'),
+          props: true
+        }
       ]
     },
-    {
-      // Note: Jika kamu ingin detail kost tampil dengan Sidebar Admin, 
-      // sebaiknya pindahkan route ini ke dalam children '/admin' di atas.
-      // Tapi ditaruh di sini juga tidak apa-apa (tampil full page).
-      path: '/admin/kost-detail/:id', 
-      name: 'kost-detail-admin',
-      component: () => import('@/views/admin/KostDetailAdmin.vue'), // Fix path import
-      meta: { requiresAuth: true, role: 'admin' }
-    },
 
+    // ==========================================
     // F. AUTH & UTILS
+    // ==========================================
     { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
-    { path: '/register', name: 'register', component: () => import('@/views/auth/Register.vue'), meta: { guestOnly: true } },
+    { 
+      path: '/register', 
+      name: 'register', 
+      component: () => import('@/views/auth/Register.vue'), 
+      meta: { guestOnly: true } 
+    },
     { path: '/api-test', name: 'api-test', component: () => import('@/views/ApiTest.vue') },
+    
+    // Catch-all (404)
+    { 
+      path: '/:pathMatch(.*)*', 
+      redirect: '/' 
+    }
   ],
 })
 
+// ==========================================
+// NAVIGATION GUARD
+// ==========================================
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
   const user = authStore.user
 
+  // 1. Jika rute butuh Auth tapi user belum login
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'login', query: { redirect: to.fullPath } }) 
-  } else if (to.meta.guestOnly && authStore.isAuthenticated) {
-    if (authStore.isAdmin) next({ name: 'admin-dashboard' }) 
-    else if (authStore.isOwner) next({ name: 'owner-dashboard' })
-    else next({ name: 'home' }) 
-  } else if (to.meta.role && user) {
-    if (user.role !== to.meta.role) next({ name: 'home' }); 
-    else next();
-  } else {
-    next()
+    return next({ name: 'login', query: { redirect: to.fullPath } }) 
   }
+
+  // 2. Jika user sudah login tapi mencoba akses Login/Register (guestOnly)
+  if (to.meta.guestOnly && authStore.isAuthenticated) {
+    if (authStore.isAdmin) return next({ name: 'admin-dashboard' }) 
+    if (authStore.isOwner) return next({ name: 'owner-dashboard' })
+    return next({ name: 'tenant-dashboard' }) 
+  }
+
+  // 3. Jika rute punya meta role, cek apakah role user cocok
+  if (to.meta.role && user) {
+    if (user.role !== to.meta.role) {
+      // Jika role tidak cocok, tendang ke home
+      return next({ name: 'home' }); 
+    }
+  }
+
+  next()
 })
 
 export default router
