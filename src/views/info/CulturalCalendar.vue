@@ -303,6 +303,9 @@ onMounted(fetchEvents);
   background: white; border-radius: 20px; overflow: hidden; 
   box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: 0.3s; position: relative;
   border: 1px solid #f1f5f9;
+  padding-bottom: 20px;
+  gap: 15px;
+  margin-bottom: 30px;
 }
 .event-card:hover { transform: translateY(-8px); box-shadow: 0 12px 30px rgba(0,0,0,0.1); }
 
