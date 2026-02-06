@@ -14,8 +14,8 @@
     <div class="stats-grid mb-4">
       <template v-if="loading">
         <div class="stat-card skeleton-card" v-for="i in 4" :key="i">
-          <div class="card-top"><BaseSkeleton width="50%" height="20px" /></div>
-          <div class="card-bottom"><BaseSkeleton width="80%" height="40px" /></div>
+          <div class="card-top"><div class="skeleton-text short"></div></div>
+          <div class="card-bottom"><div class="skeleton-text long"></div></div>
         </div>
       </template>
 
@@ -67,7 +67,7 @@
             </div>
           </div>
           <div class="card-bottom">
-            <h2 class="number">Rp {{ formatNumber(stats.revenue) }}</h2>
+            <h2 class="number">Rp {{ formatCurrency(stats.revenue) }}</h2>
             <span class="desc text-green">Bulan Ini</span>
           </div>
         </div>
@@ -75,34 +75,47 @@
     </div>
 
     <div class="content-split">
-      
       <div class="main-panel">
-        <div class="panel-header">
-          <h3>Aksi Cepat</h3>
-        </div>
-        
-        <div class="quick-actions">
-          <router-link :to="{ name: 'admin-verify' }" class="action-box primary">
-            <div class="icon">
-              <Icon icon="mdi:check-decagram" width="24" />
-            </div>
-            <div class="text">
-              <h4>Verifikasi Kost</h4>
-              <p>Cek data properti yang masuk</p>
-            </div>
-            <Icon icon="mdi:arrow-right" class="arrow" />
-          </router-link>
+        <div class="panel-section mb-4">
+          <h3 class="section-title">Aksi Cepat</h3>
+          <div class="quick-actions">
+            <router-link :to="{ name: 'admin-verify' }" class="action-box primary">
+              <div class="icon"><Icon icon="mdi:check-decagram" width="24" /></div>
+              <div class="text">
+                <h4>Verifikasi Kost</h4>
+                <p>Cek data properti baru</p>
+              </div>
+              <Icon icon="mdi:arrow-right" class="arrow" />
+            </router-link>
 
-          <router-link :to="{ name: 'admin-users' }" class="action-box secondary">
-            <div class="icon">
-              <Icon icon="mdi:account-cog" width="24" />
+            <router-link :to="{ name: 'admin-users' }" class="action-box secondary">
+              <div class="icon"><Icon icon="mdi:account-cog" width="24" /></div>
+              <div class="text">
+                <h4>Manajemen User</h4>
+                <p>Kelola data pengguna</p>
+              </div>
+              <Icon icon="mdi:arrow-right" class="arrow" />
+            </router-link>
+          </div>
+        </div>
+
+        <div class="panel-section mt-4">
+          <h3 class="section-title">Booking Terbaru</h3>
+          <div class="recent-list" v-if="recentActivity.length > 0">
+            <div v-for="item in recentActivity" :key="item.id" class="recent-item">
+              <div class="item-info">
+                <span class="tenant-name">{{ item.tenant?.name }}</span>
+                <span class="kost-name">{{ item.room?.kost?.name }}</span>
+              </div>
+              <div class="item-status">
+                <span :class="['badge', item.payment_status]">{{ item.payment_status }}</span>
+                <span class="item-date">{{ formatDate(item.created_at) }}</span>
+              </div>
             </div>
-            <div class="text">
-              <h4>Manajemen User</h4>
-              <p>Kelola data pengguna</p>
-            </div>
-            <Icon icon="mdi:arrow-right" class="arrow" />
-          </router-link>
+          </div>
+          <div v-else class="empty-state">
+            <p>Belum ada aktivitas transaksi.</p>
+          </div>
         </div>
       </div>
 
@@ -116,7 +129,7 @@
           <div class="status-item">
             <span class="dot" :class="error ? 'red' : 'green'"></span>
             <span>API Connection</span>
-            <span class="status-ok" :class="{ 'text-red': error }">
+            <span class="status-label" :class="{ 'text-red': error }">
               {{ error ? 'Disconnected' : 'Active' }}
             </span>
           </div>
@@ -124,19 +137,17 @@
           <div class="status-item">
             <span class="dot green"></span>
             <span>Database</span>
-            <span class="status-ok">Connected</span>
+            <span class="status-label">Connected</span>
           </div>
           
           <div class="status-item">
             <span class="dot green"></span>
             <span>Storage</span>
-            <span class="status-ok">Ready</span>
+            <span class="status-label">Ready</span>
           </div>
         </div>
       </div>
-
     </div>
-
   </div>
 </template>
 
@@ -149,6 +160,7 @@ import { notify } from '@/utils/swal';
 
 const authStore = useAuthStore();
 const stats = ref({ total_users: 0, total_kosts: 0, pending_kosts: 0, revenue: 0 });
+const recentActivity = ref([]);
 const loading = ref(true); 
 const error = ref(null);   
 
@@ -157,18 +169,32 @@ const currentDate = computed(() => {
   return new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 });
 
-const formatNumber = (num) => {
+// Format Rupiah standar
+const formatCurrency = (num) => {
   if (!num) return '0';
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + ' Jt';
-  if (num >= 1000) return (num / 1000).toFixed(0) + ' Rb';
-  return num.toString();
+  return new Intl.NumberFormat('id-ID').format(num);
+};
+
+// Format Tanggal untuk list
+const formatDate = (dateStr) => {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 };
 
 onMounted(async () => {
   try {
     loading.value = true;
-    const data = await adminService.getDashboardStats();
-    stats.value = data; 
+    const response = await adminService.getDashboardStats();
+    
+    // Sinkronisasi data dari hasil mapping service
+    stats.value = {
+      total_users: response.total_users,
+      total_kosts: response.total_kosts,
+      pending_kosts: response.pending_kosts,
+      revenue: response.revenue
+    };
+    recentActivity.value = response.recent_activity || [];
+    
   } catch (err) {
     error.value = "Gagal memuat data.";
     notify.error("Koneksi server terputus.");

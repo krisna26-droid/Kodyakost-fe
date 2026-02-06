@@ -19,8 +19,15 @@
           <p>Handpicked selection of the finest boarding houses in Bali</p>
         </div>
 
-        <div v-if="isLoading" class="loading-state">
-          <Icon icon="mdi:loading" class="spin" /> Loading properties...
+        <div v-if="isLoading" class="property-grid">
+          <div v-for="i in 3" :key="i" class="skeleton-wrapper">
+            <BaseSkeleton height="200px" border-radius="20px 20px 0 0" />
+            <div style="padding: 20px;">
+              <BaseSkeleton width="60%" height="20px" class="mb-2" />
+              <BaseSkeleton width="40%" height="15px" class="mb-4" />
+              <BaseSkeleton height="45px" border-radius="12px" />
+            </div>
+          </div>
         </div>
 
         <div v-else class="property-grid">
@@ -70,6 +77,20 @@
     
   </div>
 </template>
+
+<style scoped>
+/* Tambahan dikit buat ngebungkus skeleton supaya kartu gak dempet */
+.skeleton-wrapper {
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid #f1f5f9;
+}
+.mb-2 { margin-bottom: 8px; }
+.mb-4 { margin-bottom: 16px; }
+
+/* Sisa Style Asli Lo Dibawah Tetap Sama... */
+</style>
 
 <script setup>
 import { ref, onMounted } from 'vue';

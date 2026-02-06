@@ -43,7 +43,6 @@ const router = createRouter({
       component: MainLayout,
       meta: { requiresAuth: true, role: 'tenant' },
       children: [
-        // Dashboard Utama Tenant (Active Mode / Empty State)
         { 
           path: 'dashboard', 
           name: 'tenant-dashboard', 
@@ -88,6 +87,12 @@ const router = createRouter({
         { path: 'manage-kost/add', name: 'add-kost', component: () => import('@/views/owner/AddKost.vue') },
         { path: 'kost/:id/rooms', name: 'manage-rooms', component: () => import('@/views/owner/ManageRoom.vue'), props: true },
         { path: 'bookings', name: 'owner-bookings', component: () => import('@/views/owner/BookingIncoming.vue') },
+        { 
+          path: 'bookings/:id/verify', 
+          name: 'owner-verify-booking', 
+          component: () => import('@/views/owner/VerifyBooking.vue'),
+          props: true
+        },
       ]
     },
     
@@ -153,7 +158,6 @@ router.beforeEach((to, from, next) => {
   // 3. Jika rute punya meta role, cek apakah role user cocok
   if (to.meta.role && user) {
     if (user.role !== to.meta.role) {
-      // Jika role tidak cocok, tendang ke home
       return next({ name: 'home' }); 
     }
   }

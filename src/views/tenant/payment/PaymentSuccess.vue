@@ -1,17 +1,17 @@
 <template>
   <div class="payment-success-page">
-    <div class="card">
+    <div class="card shadow-premium">
       
       <div class="success-animation">
         <Icon icon="mdi:check-decagram" class="check-icon" />
       </div>
 
       <h1 class="title">Pembayaran Berhasil!</h1>
-      <p class="desc">Terima kasih, pembayaran Anda telah terverifikasi otomatis. Kamar Anda sudah siap.</p>
+      <p class="desc">Terima kasih, pembayaran Anda telah terverifikasi otomatis. Kamar Anda sudah siap untuk dihuni.</p>
 
       <div class="ticket">
         <div class="ticket-header">
-          <span>Rincian Pesanan</span>
+          <span>Rincian Transaksi</span>
         </div>
         <div class="ticket-body">
           <div class="row">
@@ -32,15 +32,17 @@
             <span class="amount">Rp 4.505.000</span>
           </div>
         </div>
-      </div>
+        <div class="ticket-punch"></div> </div>
 
       <div class="actions">
-        <button class="btn-primary" @click="$router.push('/my-bookings')">
+        <BaseButton variant="primary" block size="md" @click="$router.push('/my-bookings')">
+          <template #icon-left><Icon icon="mdi:ticket-confirmation-outline" /></template>
           Lihat Tiket & Check-in
-        </button>
-        <button class="btn-secondary" @click="$router.push('/')">
+        </BaseButton>
+        
+        <BaseButton variant="ghost" block size="md" @click="$router.push('/')" class="text-gray-btn">
           Kembali ke Beranda
-        </button>
+        </BaseButton>
       </div>
 
     </div>
@@ -49,38 +51,80 @@
 
 <script setup>
 import { Icon } from '@iconify/vue';
+// BaseButton otomatis ter-import jika sudah didaftarkan global, 
+// atau import manual jika perlu:
+// import BaseButton from '@/components/common/BaseButton.vue';
 </script>
 
 <style scoped>
-.payment-success-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #ecfdf5; padding: 20px; font-family: 'Poppins', sans-serif; }
+.payment-success-page { 
+  display: flex; align-items: center; justify-content: center; 
+  min-height: 100vh; background: #f0fdf4; padding: 20px; 
+  font-family: 'Poppins', sans-serif; 
+}
 
-.card { background: white; width: 100%; max-width: 420px; padding: 40px 30px; border-radius: 20px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.08); }
+.card { 
+  background: white; width: 100%; max-width: 440px; 
+  padding: 50px 35px; border-radius: 24px; text-align: center; 
+  position: relative;
+}
 
-.success-animation { margin-bottom: 20px; }
-.check-icon { font-size: 5rem; color: #10b981; animation: popIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+.shadow-premium {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.05), 0 10px 20px rgba(16, 185, 129, 0.05);
+}
 
-.title { font-size: 1.6rem; font-weight: 700; color: #1e293b; margin-bottom: 10px; }
-.desc { color: #64748b; font-size: 0.95rem; margin-bottom: 30px; line-height: 1.5; }
+.success-animation { margin-bottom: 25px; }
+.check-icon { font-size: 6rem; color: #10b981; animation: popIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+
+.title { font-size: 1.75rem; font-weight: 800; color: #1e3a8a; margin-bottom: 12px; }
+.desc { color: #64748b; font-size: 0.95rem; margin-bottom: 35px; line-height: 1.6; padding: 0 10px; }
 
 /* Ticket Style */
-.ticket { background: #f8fafc; border-radius: 12px; overflow: hidden; margin-bottom: 30px; border: 1px solid #e2e8f0; text-align: left; }
-.ticket-header { background: #f1f5f9; padding: 10px 20px; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #e2e8f0; }
-.ticket-body { padding: 20px; }
+.ticket { 
+  background: #f8fafc; border-radius: 16px; overflow: hidden; 
+  margin-bottom: 35px; border: 1px solid #e2e8f0; text-align: left; 
+  position: relative;
+}
 
-.row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; }
-.row .label { color: #64748b; }
-.row .val { color: #1e293b; font-weight: 600; }
-.divider { height: 1px; border-top: 2px dashed #cbd5e1; margin: 15px 0; }
+.ticket-header { 
+  background: #f1f5f9; padding: 12px 20px; font-size: 0.75rem; 
+  font-weight: 800; color: #94a3b8; text-transform: uppercase; 
+  letter-spacing: 1.5px; border-bottom: 1px solid #e2e8f0; 
+}
+
+.ticket-body { padding: 25px; }
+
+.row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.9rem; }
+.row .label { color: #94a3b8; font-weight: 500; }
+.row .val { color: #1e293b; font-weight: 700; }
+
+.divider { height: 1px; border-top: 2px dashed #cbd5e1; margin: 18px 0; }
+
 .row.total { margin-bottom: 0; align-items: center; }
-.row.total .amount { color: #10b981; font-weight: 700; font-size: 1.1rem; }
+.row.total span:first-child { color: #1e293b; font-weight: 800; }
+.row.total .amount { color: #059669; font-weight: 800; font-size: 1.25rem; }
+
+/* Ticket Punch Effect */
+.ticket-punch::before, .ticket-punch::after {
+  content: ''; position: absolute; width: 20px; height: 20px; 
+  background: #f0fdf4; border-radius: 50%; top: 52%; 
+  border: 1px solid #e2e8f0;
+}
+.ticket-punch::before { left: -11px; box-shadow: inset -3px 0 5px rgba(0,0,0,0.02); }
+.ticket-punch::after { right: -11px; box-shadow: inset 3px 0 5px rgba(0,0,0,0.02); }
 
 /* Actions */
-.actions { display: flex; flex-direction: column; gap: 12px; }
-.btn-primary { width: 100%; background: #1e3a8a; color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(30, 58, 138, 0.2); }
-.btn-primary:hover { background: #172554; transform: translateY(-2px); }
+.actions { display: flex; flex-direction: column; gap: 10px; }
+.text-gray-btn { color: #94a3b8 !important; }
+.text-gray-btn:hover { color: #64748b !important; }
 
-.btn-secondary { width: 100%; background: transparent; color: #64748b; border: none; font-weight: 600; cursor: pointer; padding: 10px; }
-.btn-secondary:hover { color: #1e293b; }
+@keyframes popIn { 
+  0% { transform: scale(0) rotate(-20deg); opacity: 0; } 
+  100% { transform: scale(1) rotate(0); opacity: 1; } 
+}
 
-@keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@media (max-width: 480px) {
+  .card { padding: 40px 20px; }
+  .title { font-size: 1.5rem; }
+}
 </style>

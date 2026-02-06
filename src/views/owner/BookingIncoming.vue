@@ -7,9 +7,10 @@
           <h1 class="title">Permintaan Sewa</h1>
           <p class="subtitle">Kelola pengajuan masuk dari calon penyewa.</p>
         </div>
-        <button class="btn-refresh" @click="fetchBookings">
-          <Icon icon="mdi:refresh" :class="{ 'spin': loading }" /> Refresh
-        </button>
+        <BaseButton variant="outline" size="sm" @click="fetchBookings" :loading="loading">
+          <template #icon-left><Icon icon="mdi:refresh" /></template>
+          Refresh
+        </BaseButton>
       </div>
 
       <div class="tabs">
@@ -27,9 +28,12 @@
         </button>
       </div>
 
-      <div v-if="loading" class="state-box">
-        <Icon icon="mdi:loading" class="spin icon-lg" />
-        <p>Memuat data booking...</p>
+      <div v-if="loading" class="booking-list">
+        <div v-for="i in 3" :key="i" class="booking-card skeleton-card">
+          <div class="card-left"><BaseSkeleton width="50px" height="50px" type="circle" /></div>
+          <div class="card-center"><BaseSkeleton v-for="j in 3" :key="j" height="15px" class="mb-2" /></div>
+          <div class="card-right"><BaseSkeleton width="100px" height="30px" /></div>
+        </div>
       </div>
 
       <div v-else-if="filteredList.length === 0" class="state-box empty">
@@ -79,17 +83,50 @@
              </div>
              
              <div v-if="item.status === 'pending'" class="btn-group">
-               <button class="btn-action reject" @click="handleAction(item.id, 'canceled')" :disabled="processing === item.id">
-                 <Icon icon="mdi:close" /> Tolak
-               </button>
-               <button class="btn-action approve" @click="handleAction(item.id, 'approved')" :disabled="processing === item.id">
-                 <Icon v-if="processing === item.id" icon="mdi:loading" class="spin" />
-                 <span v-else><Icon icon="mdi:check" /> Terima</span>
-               </button>
+               <BaseButton 
+                 variant="ghost" 
+                 size="sm" 
+                 @click="goToDetail(item.id)"
+                 class="btn-detail"
+               >
+                 <template #icon-left><Icon icon="mdi:file-document-outline" /></template>
+                 Lihat Detail
+               </BaseButton>
+
+               <BaseButton 
+                 variant="danger" 
+                 size="sm" 
+                 outline
+                 @click="handleAction(item.id, 'rejected')"
+                 :disabled="processing === item.id"
+               >
+                 <template #icon-left><Icon icon="mdi:close" /></template>
+                 Tolak
+               </BaseButton>
+
+               <BaseButton 
+                 variant="primary" 
+                 size="sm" 
+                 @click="handleAction(item.id, 'approved')"
+                 :loading="processing === item.id"
+               >
+                 <template #icon-left><Icon icon="mdi:check" /></template>
+                 Terima
+               </BaseButton>
              </div>
 
-             <div v-else class="status-display">
-               <span :class="['badge', getStatusClass(item.status)]">
+             <div v-else class="action-group">
+               <BaseButton 
+                 variant="ghost" 
+                 size="sm" 
+                 @click="goToDetail(item.id)"
+                 class="btn-detail-small"
+               >
+                 <template #icon-left><Icon icon="mdi:eye-outline" /></template>
+                 Detail
+               </BaseButton>
+               
+               <span :class="['status-badge', getStatusClass(item.status)]">
                  {{ formatStatus(item.status) }}
                </span>
              </div>
@@ -104,10 +141,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import ownerService from '@/services/ownerService';
-import { notify } from '@/utils/swal'; // [PENTING] Import helper notifikasi Anda
+import { notify } from '@/utils/swal';
 
+const router = useRouter();
 const bookings = ref([]);
 const loading = ref(true);
 const processing = ref(null); 
@@ -117,43 +156,38 @@ const tabs = [
   { label: 'Menunggu', value: 'pending' },
   { label: 'Disetujui', value: 'approved' }, 
   { label: 'Aktif', value: 'active' }, 
-  { label: 'Ditolak', value: 'canceled' },
+  { label: 'Ditolak', value: 'rejected' },
   { label: 'Semua', value: 'all' },
 ];
 
-// --- COMPUTED ---
 const filteredList = computed(() => {
   if (activeTab.value === 'all') return bookings.value;
   return bookings.value.filter(b => b.status === activeTab.value);
 });
 
-const pendingCount = computed(() => {
-  return bookings.value.filter(b => b.status === 'pending').length;
-});
+const pendingCount = computed(() => bookings.value.filter(b => b.status === 'pending').length);
 
-// --- FETCH DATA ---
 const fetchBookings = async () => {
   loading.value = true;
   try {
-    const data = await ownerService.getIncomingBookings();
-    bookings.value = data;
+    bookings.value = await ownerService.getIncomingBookings();
   } catch (error) {
-    console.error(error);
-    notify.error("Gagal mengambil data booking dari server.");
+    notify.error("Gagal mengambil data booking.");
   } finally {
     loading.value = false;
   }
 };
 
-// --- ACTION ---
+const goToDetail = (id) => {
+  router.push({ name: 'owner-verify-booking', params: { id } });
+};
+
 const handleAction = async (id, status) => {
   const isApprove = status === 'approved';
-  
-  // [UPDATE] Gunakan notify.confirm yang modern
   const confirmed = await notify.confirm(
     isApprove ? 'Terima Pengajuan?' : 'Tolak Pengajuan?',
     isApprove 
-      ? 'Calon penyewa akan diberikan akses untuk melakukan pembayaran.' 
+      ? 'Calon penyewa akan diberitahu untuk segera melakukan pembayaran.' 
       : 'Permintaan sewa ini akan dibatalkan.',
     isApprove ? 'Ya, Terima' : 'Ya, Tolak'
   );
@@ -163,14 +197,8 @@ const handleAction = async (id, status) => {
   processing.value = id;
   try {
     await ownerService.updateBookingStatus(id, status);
-    
-    // Update data lokal
     const index = bookings.value.findIndex(b => b.id === id);
-    if (index !== -1) {
-      bookings.value[index].status = status;
-    }
-    
-    // [UPDATE] Gunakan notify.success
+    if (index !== -1) bookings.value[index].status = status;
     notify.success(`Berhasil ${isApprove ? 'menerima' : 'menolak'} pengajuan.`);
   } catch (error) {
     notify.error("Gagal memproses perubahan status.");
@@ -179,110 +207,379 @@ const handleAction = async (id, status) => {
   }
 };
 
-// --- HELPERS ---
 const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
-
 const formatDate = (date) => new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-
 const getInitials = (name) => (name ? name.charAt(0).toUpperCase() : '?');
+const formatPhone = (phone) => phone ? (phone.startsWith('0') ? '62' + phone.slice(1) : phone) : '';
+const formatStatus = (s) => ({ pending: 'Menunggu', approved: 'Disetujui', active: 'Aktif', rejected: 'Ditolak', canceled: 'Dibatalkan' }[s] || s);
+const getStatusClass = (s) => ({ pending: 'st-pending', approved: 'st-approved', active: 'st-active', rejected: 'st-canceled', canceled: 'st-canceled' }[s] || '');
 
-const formatPhone = (phone) => {
-  if (!phone) return '';
-  return phone.startsWith('0') ? '62' + phone.slice(1) : phone;
-};
-
-const formatStatus = (status) => {
-  const map = { pending: 'Menunggu', approved: 'Menunggu Bayar', active: 'Lunas / Aktif', canceled: 'Ditolak' };
-  return map[status] || status;
-};
-
-const getStatusClass = (status) => {
-  const map = { pending: 'bg-orange', approved: 'bg-blue', active: 'bg-green', canceled: 'bg-red' };
-  return map[status] || 'bg-gray';
-};
-
-onMounted(() => {
-  fetchBookings();
-});
+onMounted(fetchBookings);
 </script>
 
 <style scoped>
-.incoming-page { padding: 40px; font-family: 'Poppins', sans-serif; background: #f8fafc; min-height: 100vh; }
-.container { max-width: 1000px; margin: 0 auto; }
+.incoming-page { 
+  padding: 2rem; 
+  background: #f8fafc; 
+  min-height: 100vh; 
+  font-family: 'Poppins', sans-serif; 
+}
 
-/* HEADER */
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-.title { font-size: 1.8rem; font-weight: 700; color: #1e293b; margin: 0; }
-.subtitle { color: #64748b; font-size: 0.95rem; }
+.container { 
+  max-width: 1200px; 
+  margin: 0 auto; 
+}
 
-.btn-refresh { background: white; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; color: #64748b; transition: 0.2s; }
-.btn-refresh:hover { background: #f1f5f9; color: #1e3a8a; }
+.page-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 2rem; 
+}
 
-/* TABS */
-.tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; overflow-x: auto; }
-.tab { background: none; border: none; padding: 8px 16px; color: #64748b; font-weight: 600; cursor: pointer; border-radius: 20px; transition: 0.2s; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-.tab:hover { background: #f1f5f9; }
-.tab.active { background: #1e3a8a; color: white; }
-.badge-count { background: #ef4444; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; }
+.title { 
+  font-size: 1.8rem; 
+  font-weight: 800; 
+  color: #1e3a8a; 
+  margin: 0; 
+}
 
-/* STATES */
-.state-box { padding: 60px; text-align: center; color: #64748b; }
-.state-box.empty { background: white; border-radius: 12px; border: 1px dashed #cbd5e1; }
-.icon-bg { width: 60px; height: 60px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; color: #94a3b8; }
-.spin { animation: spin 1s linear infinite; }
+.subtitle { 
+  color: #64748b; 
+  font-size: 0.95rem; 
+  margin-top: 4px;
+}
 
-/* LIST */
-.booking-list { display: flex; flex-direction: column; gap: 20px; }
+.tabs { 
+  display: flex; 
+  gap: 10px; 
+  margin-bottom: 2rem; 
+  border-bottom: 2px solid #e2e8f0; 
+  padding-bottom: 12px; 
+  overflow-x: auto; 
+}
+
+.tab { 
+  background: none; 
+  border: none; 
+  padding: 10px 20px; 
+  color: #64748b; 
+  font-weight: 700; 
+  cursor: pointer; 
+  border-radius: 12px; 
+  transition: 0.3s; 
+  position: relative;
+  white-space: nowrap;
+}
+
+.tab.active { 
+  background: #1e3a8a; 
+  color: white; 
+}
+
+.tab:hover:not(.active) {
+  background: #f1f5f9;
+}
+
+.badge-count { 
+  background: #ef4444; 
+  color: white; 
+  font-size: 0.7rem; 
+  padding: 2px 8px; 
+  border-radius: 20px; 
+  margin-left: 8px; 
+}
+
+.state-box.empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 16px;
+  border: 2px dashed #e2e8f0;
+}
+
+.icon-bg {
+  width: 80px;
+  height: 80px;
+  background: #f1f5f9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  color: #94a3b8;
+}
+
+.state-box h3 {
+  color: #1e293b;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.state-box p {
+  color: #94a3b8;
+}
+
+.booking-list { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 1rem; 
+}
 
 .booking-card { 
-  background: white; border-radius: 12px; padding: 20px; 
-  border: 1px solid #e2e8f0; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-  display: grid; grid-template-columns: 1.2fr 1.5fr 1.2fr; gap: 20px; align-items: center;
-  transition: transform 0.2s;
+  background: white; 
+  border-radius: 16px; 
+  padding: 24px; 
+  border: 1px solid #e2e8f0; 
+  display: grid; 
+  grid-template-columns: 1.2fr 1.5fr 1.3fr; 
+  gap: 20px; 
+  align-items: center;
+  transition: box-shadow 0.2s;
 }
-.booking-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
 
-/* LEFT: USER */
-.user-profile { display: flex; gap: 15px; align-items: center; }
-.avatar { width: 50px; height: 50px; background: #eff6ff; color: #1e3a8a; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid #dbeafe; }
-.user-name { font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0; }
-.user-contact { font-size: 0.85rem; color: #10b981; display: flex; align-items: center; gap: 5px; margin-top: 3px; text-decoration: none; font-weight: 500; }
-.user-contact:hover { text-decoration: underline; }
+.booking-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
 
-/* CENTER: INFO */
-.card-center { border-left: 1px dashed #cbd5e1; border-right: 1px dashed #cbd5e1; padding: 0 20px; }
-.info-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
-.info-row .label { color: #94a3b8; }
-.info-row .val { font-weight: 600; color: #334155; }
+.user-profile { 
+  display: flex; 
+  gap: 1rem; 
+  align-items: center; 
+}
 
-/* RIGHT: ACTION */
-.card-right { text-align: right; }
-.price-tag small { color: #64748b; font-size: 0.75rem; }
-.price-tag h3 { color: #059669; font-size: 1.2rem; margin: 0 0 15px 0; }
+.avatar { 
+  width: 52px; 
+  height: 52px; 
+  background: #eff6ff; 
+  color: #1e3a8a; 
+  font-weight: 800; 
+  font-size: 1.2rem;
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  border-radius: 50%; 
+  border: 2px solid #dbeafe; 
+  flex-shrink: 0;
+}
 
-.btn-group { display: flex; justify-content: flex-end; gap: 10px; }
-.btn-action { padding: 10px 16px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: 0.2s; }
-.btn-action.reject { background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2; }
-.btn-action.reject:hover { background: #fee2e2; }
-.btn-action.approve { background: #1e3a8a; color: white; }
-.btn-action.approve:hover { background: #172554; }
-.btn-action:disabled { opacity: 0.7; cursor: not-allowed; }
+.user-name { 
+  font-size: 1rem; 
+  font-weight: 700; 
+  color: #1e293b; 
+  margin: 0; 
+}
 
-/* STATUS BADGE */
-.status-display { display: flex; justify-content: flex-end; }
-.badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-.bg-orange { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
-.bg-blue { background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; }
-.bg-green { background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7; }
-.bg-red { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
+.user-contact { 
+  color: #10b981; 
+  text-decoration: none; 
+  font-size: 0.85rem; 
+  font-weight: 600; 
+  display: flex; 
+  align-items: center; 
+  gap: 4px; 
+  margin-top: 4px;
+  transition: color 0.2s;
+}
 
-@keyframes spin { 100% { transform: rotate(360deg); } }
+.user-contact:hover {
+  color: #059669;
+}
 
-@media (max-width: 800px) {
-  .booking-card { grid-template-columns: 1fr; text-align: left; gap: 15px; }
-  .card-center { border: none; padding: 0; border-top: 1px dashed #cbd5e1; border-bottom: 1px dashed #cbd5e1; padding: 15px 0; }
-  .card-right { text-align: left; display: flex; justify-content: space-between; align-items: flex-end; }
-  .price-tag h3 { margin-bottom: 0; }
-  .status-display { width: 100%; justify-content: flex-start; margin-top: 10px; }
+.card-center { 
+  border-left: 1px dashed #cbd5e1; 
+  border-right: 1px dashed #cbd5e1; 
+  padding: 0 24px; 
+}
+
+.info-row { 
+  display: flex; 
+  justify-content: space-between; 
+  font-size: 0.85rem; 
+  margin-bottom: 6px; 
+}
+
+.info-row .label { 
+  color: #94a3b8; 
+}
+
+.info-row .val { 
+  font-weight: 600; 
+  color: #334155; 
+}
+
+.price-tag small {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.price-tag h3 { 
+  color: #059669; 
+  font-size: 1.3rem; 
+  margin: 4px 0 16px 0; 
+  font-weight: 800; 
+}
+
+.btn-group { 
+  display: flex; 
+  flex-direction: column;
+  gap: 8px; 
+}
+
+.btn-detail {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.btn-detail:hover {
+  background: #e2e8f0 !important;
+}
+
+.action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.btn-detail-small {
+  background: #f8fafc !important;
+  color: #64748b !important;
+  font-weight: 600 !important;
+  border: 1px solid #e2e8f0 !important;
+  width: 100%;
+}
+
+.btn-detail-small:hover {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+.status-badge { 
+  padding: 8px 14px; 
+  border-radius: 10px; 
+  font-size: 0.75rem; 
+  font-weight: 800; 
+  text-transform: uppercase;
+  text-align: center;
+  display: block;
+}
+
+.st-pending { 
+  background: #fff7ed; 
+  color: #ea580c; 
+  border: 1px solid #ffedd5; 
+}
+
+.st-approved { 
+  background: #eff6ff; 
+  color: #2563eb; 
+  border: 1px solid #dbeafe; 
+}
+
+.st-active { 
+  background: #f0fdf4; 
+  color: #16a34a; 
+  border: 1px solid #dcfce7; 
+}
+
+.st-canceled { 
+  background: #fef2f2; 
+  color: #dc2626; 
+  border: 1px solid #fee2e2; 
+}
+
+.skeleton-card {
+  pointer-events: none;
+}
+
+.mb-2 {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 900px) {
+  .booking-card { 
+    grid-template-columns: 1fr; 
+    gap: 16px;
+  }
+  
+  .card-center { 
+    border: none; 
+    padding: 16px 0; 
+    border-top: 1px solid #f1f5f9; 
+    border-bottom: 1px solid #f1f5f9; 
+  }
+  
+  .btn-group { 
+    width: 100%; 
+  }
+
+  .action-group {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .status-badge {
+    flex: 1;
+  }
+
+  .btn-detail-small {
+    flex: 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .incoming-page {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .tabs {
+    gap: 6px;
+  }
+
+  .tab {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .booking-card {
+    padding: 16px;
+  }
+
+  .user-profile {
+    gap: 0.75rem;
+  }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 1rem;
+  }
+
+  .user-name {
+    font-size: 0.95rem;
+  }
+
+  .info-row {
+    font-size: 0.8rem;
+  }
+
+  .price-tag h3 {
+    font-size: 1.1rem;
+  }
 }
 </style>

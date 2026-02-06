@@ -35,14 +35,41 @@ const extractFacilities = (rooms) => {
   return unique.map(f => map[f] || null).filter(Boolean)
 }
 
-const getRandomRating = () => (Math.random() * (5 - 3.5) + 3.5).toFixed(1)
-
-// ✅ HELPER: GENERATE ROOM ID (WORKAROUND KARENA BACKEND TIDAK KIRIM ID)
+// --- 4. HELPER: GENERATE ROOM ID ---
 const generateRoomId = (room, index, kostId) => {
-  // Buat ID unik berdasarkan kombinasi kost_id, room_type, price, dan index
   const baseId = `${kostId}_${room.type || room.room_type}_${room.price || room.price_per_month}_${index}`;
-  // Hash sederhana untuk ID yang lebih pendek
   return baseId.replace(/\s+/g, '_').toLowerCase();
+}
+
+// --- 5. HELPER: PROCESS ROOM IMAGES ---
+const processRoomImages = (room) => {
+  const images = [];
+  
+  // 1. Main room image
+  if (room.image) {
+    images.push(fixImageUrl(room.image));
+  }
+  
+  // 2. Room images array (CRITICAL!)
+  if (Array.isArray(room.images) && room.images.length > 0) {
+    room.images.forEach(img => {
+      const imgPath = img.image_path || img.path || img.image || img;
+      if (imgPath && typeof imgPath === 'string') {
+        images.push(fixImageUrl(imgPath));
+      }
+    });
+  }
+  
+  // 3. Gallery array (fallback)
+  if (Array.isArray(room.gallery) && room.gallery.length > 0) {
+    room.gallery.forEach(imgPath => {
+      if (imgPath && typeof imgPath === 'string') {
+        images.push(fixImageUrl(imgPath));
+      }
+    });
+  }
+  
+  return images;
 }
 
 export default {
@@ -55,11 +82,27 @@ export default {
       if (!Array.isArray(rawData)) return { data: [] }
 
       const enrichedData = rawData.map((item) => {
-        // ✅ Generate ID untuk setiap room
-        const roomsWithId = (item.rooms || []).map((room, index) => ({
-          ...room,
-          id: generateRoomId(room, index, item.id)
-        }));
+        const roomsWithId = (item.rooms || []).map((room, index) => {
+          const roomImages = processRoomImages(room);
+          
+          return {
+            ...room,
+            id: generateRoomId(room, index, item.id),
+            image: roomImages[0] || fixImageUrl(room.image),
+            gallery: roomImages,
+            images: Array.isArray(room.images) 
+              ? room.images.map(img => ({
+                  id: img.id || `img_${index}`,
+                  path: fixImageUrl(img.image_path || img.path || img.image || img),
+                  image_path: fixImageUrl(img.image_path || img.path || img.image || img)
+                }))
+              : roomImages.map((url, i) => ({
+                  id: `img_${i}`,
+                  path: url,
+                  image_path: url
+                }))
+          };
+        });
 
         return {
           id: item.id,
@@ -67,8 +110,8 @@ export default {
           mainImage: fixImageUrl(item.thumbnail || item.main_image),
           price: Number(item.price_per_month || item.price_start || item.price || 0), 
           location: item.district || item.location?.district || 'Bali',
-          rating: item.rating || parseFloat(getRandomRating()),
-          reviewCount: item.review_count || Math.floor(Math.random() * 50) + 1,
+          rating: item.rating || item.average_rating || 0,
+          reviewCount: item.review_count || item.reviews_count || 0,
           type: item.type || 'Campur',
           facilities: extractFacilities(roomsWithId),
           description: item.description,
@@ -77,9 +120,10 @@ export default {
           village: item.village || item.location?.village,
           city: item.city || item.location?.city,
           isVerified: item.is_verified,
-          rooms: roomsWithId, // ✅ Gunakan rooms yang sudah ada ID
+          rooms: roomsWithId,
           latitude: item.latitude || item.location?.latitude,
-          longitude: item.longitude || item.location?.longitude
+          longitude: item.longitude || item.location?.longitude,
+          views: item.views || 0
         }
       })
 
@@ -94,93 +138,78 @@ export default {
   async getKostDetail(id) {
     try {
       const response = await apiClient.get(`/kosts/${id}`)
-      
       const item = response.data.data || response.data;
 
       if (item) {
-        console.log('🔍 [kostService] Raw API response:', item);
-        
         const cleanMainImage = fixImageUrl(item.thumbnail || item.main_image || item.image);
         const locationData = item.location || {};
         
-        // ✅ FIX: Process rooms dengan generate ID
+        // Process rooms dengan SEMUA GAMBAR
         let cleanRooms = [];
         if (Array.isArray(item.rooms) && item.rooms.length > 0) {
-          console.log('🛏️ [kostService] Processing rooms:', item.rooms);
-          
           cleanRooms = item.rooms.map((room, index) => {
-            // ✅ GENERATE ID berdasarkan data yang ada
             const generatedId = generateRoomId(room, index, item.id);
+            const roomImages = processRoomImages(room);
             
             const mapped = {
-              // ✅ ID yang di-generate
               id: generatedId,
-              
-              // Backend kirim 'type', frontend expect 'room_type'
               room_type: room.type || room.room_type || 'Standard',
-              
-              // Backend kirim 'price', frontend expect 'price_per_month'
               price_per_month: Number(room.price || room.price_per_month || 0),
-              
-              // Backend kirim 'total' (tidak ada), frontend expect 'total_rooms'
               total_rooms: Number(room.total || room.total_rooms || 0),
-              
-              // Backend kirim 'available', frontend expect 'available_rooms'
               available_rooms: Number(room.available || room.available_rooms || 0),
-              
-              // Backend kirim 'size', frontend expect 'room_size'
               room_size: room.size || room.room_size || '',
               
-              // Image - prioritas: room.image > gallery[0]
-              image: fixImageUrl(room.image || (room.gallery && room.gallery[0])),
+              // Images
+              image: roomImages[0] || fixImageUrl(room.image),
+              gallery: roomImages,
               
-              // Gallery images
-              gallery: room.gallery || [],
+              // Images array untuk compatibility
+              images: Array.isArray(room.images) 
+                ? room.images.map(img => ({
+                    id: img.id || `img_${index}`,
+                    path: fixImageUrl(img.image_path || img.path || img.image || img),
+                    image_path: fixImageUrl(img.image_path || img.path || img.image || img)
+                  }))
+                : roomImages.map((url, i) => ({
+                    id: `${generatedId}_img_${i}`,
+                    path: url,
+                    image_path: url
+                  })),
               
-              // Facilities dengan ID juga
+              // Facilities
               facilities: Array.isArray(room.facilities) 
                 ? room.facilities.map(f => ({
-                    id: f.id || f.name, // Fallback ke name jika id tidak ada
+                    id: f.id || f.name,
                     name: f.name,
                     icon: f.icon
                   }))
                 : [],
               
-              // Keep semua field original untuk compatibility
+              // Keep original
               ...room
             };
             
-            console.log(`✅ [kostService] Room ${index} mapped:`, {
-              generated_id: generatedId,
-              type: mapped.room_type,
-              price: mapped.price_per_month,
-              available: mapped.available_rooms
-            });
-            
             return mapped;
           });
-          
-          console.log('✅ [kostService] Total rooms processed:', cleanRooms.length);
-          console.log('✅ [kostService] All room IDs:', cleanRooms.map(r => r.id));
         }
 
-        // Process images
+        // Process kost images
         let cleanImages = [];
-        if (Array.isArray(item.images)) {
+        if (Array.isArray(item.images) && item.images.length > 0) {
           cleanImages = item.images.map(img => ({
-            ...img,
-            path: fixImageUrl(img.path || img.image_path)
+            id: img.id,
+            path: fixImageUrl(img.path || img.image_path || img.image),
+            image_path: fixImageUrl(img.path || img.image_path || img.image)
           }));
         }
 
         const result = {
           ...item,
-          // Main image
           main_image: cleanMainImage,
           mainImage: cleanMainImage,
           thumbnail: cleanMainImage,
+          thumbnail_url: cleanMainImage,
           
-          // Location data
           address: item.address || locationData.address || '',
           district: item.district || locationData.district || '',
           village: item.village || locationData.village || '',
@@ -188,56 +217,48 @@ export default {
           latitude: item.latitude || locationData.latitude,
           longitude: item.longitude || locationData.longitude,
           
-          // Rooms dengan ID yang sudah di-generate
           rooms: cleanRooms,
-          
-          // Images
           images: cleanImages,
-          
-          // Facilities
           facilities: extractFacilities(cleanRooms),
           
-          // Price
           price: Number(item.price_per_month || item.price_start || item.price || 0),
           price_per_month: Number(item.price_per_month || item.price || 0),
           
-          // Views
+          rating: item.rating || item.average_rating || 0,
+          reviews_count: item.reviews_count || item.review_count || 0,
+          
           views: item.views || 0,
           
-          // Location object
           location: locationData,
-          
-          // Owner data
-          owner: item.owner || item.user || null
+          owner: item.owner || item.user || null,
+          reviews: Array.isArray(item.reviews) ? item.reviews : []
         };
-
-        console.log('✅ [kostService] Final result:', {
-          kost_id: result.id,
-          name: result.name,
-          rooms_count: result.rooms.length,
-          sample_room_id: result.rooms[0]?.id
-        });
 
         return result;
       }
       return item;
     } catch (error) { 
-      console.error("❌ [kostService] Error:", error);
+      console.error("Error:", error);
       throw error 
     }
   },
 
   // --- SEARCH ---
   async searchKosts(query) {
-    return this.getKosts({ q: query });
+    return this.getKosts({ search: query });
   },
 
-  // --- HELPERS LAIN ---
+  // --- HELPERS ---
   async getKostRooms(kostId) {
      const detail = await this.getKostDetail(kostId);
      return detail.rooms || []; 
   },
 
-  async getAllKosts(params = {}) { return (await this.getKosts(params)).data; },
-  async getFeaturedKost() { return (await this.getKosts({ limit: 6 })).data; }
+  async getAllKosts(params = {}) { 
+    return (await this.getKosts(params)).data; 
+  },
+  
+  async getFeaturedKost() { 
+    return (await this.getKosts({ limit: 6 })).data; 
+  }
 }

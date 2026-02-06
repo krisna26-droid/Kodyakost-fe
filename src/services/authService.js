@@ -50,5 +50,22 @@ export default {
     } catch (error) {
       throw error;
     }
+  },
+  // 5. UPLOAD KTP (FIXED ROUTE)
+  async uploadKtp(file) {
+    try {
+      const formData = new FormData();
+      formData.append('ktp_image', file); 
+
+      // ✅ Pakai jalur /tenant sesuai api.php
+      const response = await apiClient.post('/tenant/profile/ktp', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 }
+
+  

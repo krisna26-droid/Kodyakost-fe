@@ -6,14 +6,29 @@
           <h1>Halo, <span class="highlight">{{ authStore.user?.name }}</span> 👋</h1>
           <p>{{ activeKost ? 'Selamat datang kembali di rumah keduamu.' : 'Temukan tempat nyamanmu hari ini.' }}</p>
         </div>
-        <div class="header-avatar">{{ getInitials(authStore.user?.name) }}</div>
-      </div>
+        </div>
     </header>
 
     <div class="container main-content">
-      <div v-if="loading" class="state-card loading">
-        <Icon icon="line-md:loading-twotone-loop" width="50" />
-        <p>Menyelaraskan data hunian...</p>
+      
+      <div v-if="loading" class="active-mode-card">
+        <div class="card-header-status">
+          <BaseSkeleton width="120px" height="28px" border-radius="20px" />
+          <BaseSkeleton width="80px" height="18px" />
+        </div>
+        <div class="card-grid">
+          <div class="kost-main-info">
+            <BaseSkeleton width="70%" height="32px" class="mb-2" />
+            <BaseSkeleton width="40%" height="20px" class="mb-6" />
+            <div class="info-details">
+              <BaseSkeleton v-for="i in 3" :key="i" width="90%" height="16px" class="mb-3" />
+            </div>
+          </div>
+          <div class="kost-actions">
+            <BaseSkeleton height="50px" border-radius="14px" class="mb-4" />
+            <BaseSkeleton height="50px" border-radius="14px" />
+          </div>
+        </div>
       </div>
 
       <div v-else-if="activeKost" class="active-mode-card fade-in">
@@ -92,6 +107,7 @@ import { ref, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import transactionService from '@/services/transactionService';
 import { Icon } from '@iconify/vue';
+import BaseSkeleton from '@/components/common/BaseSkeleton.vue';
 
 const authStore = useAuthStore();
 const activeKost = ref(null);
@@ -100,7 +116,6 @@ const loading = ref(true);
 const fetchDashboard = async () => {
   try {
     loading.value = true;
-    // Menggunakan service yang sudah dipelajari
     activeKost.value = await transactionService.getActiveKost();
   } catch (err) {
     console.error("Dashboard fetch error:", err);
@@ -109,7 +124,6 @@ const fetchDashboard = async () => {
   }
 };
 
-const getInitials = (n) => n?.split(' ').map(i => i[0]).join('').toUpperCase().slice(0, 2) || 'NK';
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
 const formatPhone = (p) => p?.startsWith('0') ? '62' + p.slice(1) : p;
 
@@ -117,21 +131,25 @@ onMounted(fetchDashboard);
 </script>
 
 <style scoped>
+/* Tambahan dikit buat Skeleton */
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-6 { margin-bottom: 24px; }
+
 .tenant-dashboard { background-color: #f8fafc; min-height: 100vh; font-family: 'Poppins', sans-serif; padding-bottom: 60px; }
 .container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
 
 /* HEADER */
 .dashboard-header { background: linear-gradient(135deg, #1f3a52 0%, #2c5274 100%); color: white; padding: 60px 0 100px; border-bottom-left-radius: 40px; border-bottom-right-radius: 40px; }
-.flex-header { display: flex; justify-content: space-between; align-items: center; }
-.user-greeting h1 { font-size: 2rem; font-weight: 800; margin: 0; }
+.flex-header { display: flex; align-items: center; justify-content: flex-start; } /* Diubah ke start agar sapaan di kiri */
+.user-greeting h1 { font-size: 2.2rem; font-weight: 800; margin: 0; }
 .highlight { color: #fca311; }
-.user-greeting p { opacity: 0.9; margin-top: 5px; font-size: 1rem; }
-.header-avatar { width: 50px; height: 50px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; }
+.user-greeting p { opacity: 0.9; margin-top: 5px; font-size: 1.1rem; }
 
-/* MAIN CONTENT */
 .main-content { margin-top: -60px; }
 
-/* ACTIVE MODE CARD (FIXED CONTRAST) */
+/* ACTIVE MODE CARD */
 .active-mode-card { background: white; border-radius: 24px; padding: 35px; box-shadow: 0 20px 50px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
 .card-header-status { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
 .status-indicator { display: inline-flex; align-items: center; gap: 8px; background: #f0fdf4; color: #16a34a; padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; }
@@ -153,7 +171,6 @@ onMounted(fetchDashboard);
 .maps { background: #f1f5f9; color: #1f3a52; border: 1px solid #e2e8f0; }
 .maps:hover { background: #e2e8f0; }
 
-/* EMPTY STATE */
 .hero-card-empty { background: white; border-radius: 24px; padding: 60px 40px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.03); border: 1px solid #f1f5f9; }
 .empty-icon-wrapper { width: 100px; height: 100px; background: #f0fbfb; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
 .fallback-icon { font-size: 3.5rem; color: #1f3a52; }
@@ -162,7 +179,6 @@ onMounted(fetchDashboard);
 .btn-gacor { background: #fca311; color: white; border: none; padding: 15px 35px; border-radius: 12px; font-weight: 700; font-size: 1rem; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: 0.3s; box-shadow: 0 10px 25px rgba(252, 163, 17, 0.2); }
 .btn-gacor:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(252, 163, 17, 0.3); }
 
-/* QUICK MENU */
 .quick-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 30px; }
 .menu-item { background: white; padding: 25px 20px; border-radius: 24px; text-align: center; text-decoration: none; color: #1e293b; font-weight: 700; border: 1px solid #f1f5f9; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
 .menu-item:hover { transform: translateY(-8px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); border-color: #fca311; }
@@ -171,7 +187,6 @@ onMounted(fetchDashboard);
 .menu-icon.history { background: #eff6ff; color: #2563eb; }
 .menu-icon.profile { background: #f0fdfa; color: #0d9488; }
 
-/* ANIMATIONS */
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(22, 163, 74, 0); } 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); } }
 .fade-in { animation: fadeIn 0.6s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

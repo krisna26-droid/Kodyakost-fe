@@ -1,7 +1,5 @@
 import axios from 'axios'
 
-// [FIX] Langsung tembak URL Live Backend kamu.
-// Tidak peduli sedang di laptop atau di hosting, tujuannya satu.
 const apiClient = axios.create({
   baseURL: 'https://kodyakostapi.adityavisual.my.id/api', 
   headers: {

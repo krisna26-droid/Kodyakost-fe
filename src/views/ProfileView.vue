@@ -84,6 +84,7 @@
                   </div>
                 </div>
 
+                <!-- NOMOR TELEPON -->
                 <div class="form-group">
                   <label>Nomor WhatsApp</label>
                   <input 
@@ -94,6 +95,63 @@
                     placeholder="08xxxxxxxxxx"
                     required
                   />
+                </div>
+
+                <!-- KTP SECTION - DI KANAN NOMOR TELEPON -->
+                <div class="form-group">
+                  <label>
+                    Foto KTP 
+                    <span v-if="user?.is_ktp_verified" class="verified-badge">
+                      <Icon icon="mdi:check-circle" /> Terverifikasi
+                    </span>
+                  </label>
+                  
+                  <!-- Preview KTP atau Upload Button -->
+                  <div class="ktp-container">
+                    <!-- Jika sudah ada KTP -->
+                    <div v-if="previewKtp || user?.ktp_image" class="ktp-preview">
+                      <img 
+                        :src="previewKtp || getKtpUrl(user?.ktp_image)" 
+                        alt="KTP Preview"
+                        @click="viewKtpFullscreen"
+                        class="ktp-image"
+                      />
+                      <button 
+                        type="button" 
+                        @click="triggerKtpInput" 
+                        class="change-ktp-btn"
+                        :disabled="!isEditing"
+                      >
+                        <Icon icon="mdi:camera" /> Ubah KTP
+                      </button>
+                    </div>
+
+                    <!-- Jika belum ada KTP -->
+                    <div v-else class="ktp-upload-placeholder">
+                      <Icon icon="mdi:card-account-details-outline" class="placeholder-icon" />
+                      <p>Belum ada KTP</p>
+                      <button 
+                        type="button" 
+                        @click="triggerKtpInput"
+                        class="upload-ktp-btn"
+                        :disabled="!isEditing"
+                      >
+                        <Icon icon="mdi:upload" /> Upload KTP
+                      </button>
+                    </div>
+
+                    <input 
+                      type="file" 
+                      ref="ktpFileInput" 
+                      class="hidden-input" 
+                      @change="handleKtpChange" 
+                      accept="image/png, image/jpeg, image/jpg" 
+                    />
+                  </div>
+                  <small class="form-hint">
+                    <Icon icon="mdi:information-outline" /> 
+                    KTP diperlukan untuk verifikasi saat booking kost
+                  </small>
                 </div>
 
                 <div class="form-group full-width">
@@ -139,6 +197,20 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Fullscreen KTP -->
+    <div v-if="showKtpModal" class="ktp-modal" @click="closeKtpModal">
+      <div class="modal-content">
+        <button class="close-modal" @click="closeKtpModal">
+          <Icon icon="mdi:close" />
+        </button>
+        <img 
+          :src="previewKtp || getKtpUrl(user?.ktp_image)" 
+          alt="KTP Fullscreen"
+          class="ktp-fullscreen"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -146,7 +218,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { Icon } from '@iconify/vue';
-import { notify } from '@/utils/swal'; // [PENTING] Import helper notifikasi
+import { notify } from '@/utils/swal';
 
 const authStore = useAuthStore();
 const user = computed(() => authStore.user);
@@ -163,6 +235,12 @@ const fileInput = ref(null);
 const selectedFile = ref(null);
 const previewAvatar = ref(null);
 
+// State KTP
+const ktpFileInput = ref(null);
+const selectedKtpFile = ref(null);
+const previewKtp = ref(null);
+const showKtpModal = ref(false);
+
 // State Form
 const form = ref({
   name: '',
@@ -173,6 +251,13 @@ const form = ref({
 
 // --- HELPER METHODS ---
 const getAvatarUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  return `${BASE_STORAGE_URL}/storage/${cleanPath}`;
+};
+
+const getKtpUrl = (path) => {
   if (!path) return null;
   if (path.startsWith('http')) return path;
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
@@ -199,7 +284,7 @@ const resetForm = () => {
   }
 };
 
-// --- HANDLERS ---
+// --- HANDLERS AVATAR ---
 const triggerFileInput = () => {
   isEditing.value = true;
   fileInput.value.click();
@@ -208,7 +293,6 @@ const triggerFileInput = () => {
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
-    // Validasi ukuran file (Opsional, misal max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       return notify.error("Ukuran foto terlalu besar (Maks 2MB)");
     }
@@ -218,17 +302,47 @@ const handleFileChange = (event) => {
   }
 };
 
+// --- HANDLERS KTP ---
+const triggerKtpInput = () => {
+  if (!isEditing.value) {
+    isEditing.value = true;
+  }
+  ktpFileInput.value.click();
+};
+
+const handleKtpChange = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    if (file.size > 2 * 1024 * 1024) {
+      return notify.error("Ukuran foto KTP terlalu besar (Maks 2MB)");
+    }
+    selectedKtpFile.value = file;
+    previewKtp.value = URL.createObjectURL(file);
+    notify.success("Foto KTP terpilih, klik Simpan untuk memperbarui");
+  }
+};
+
+const viewKtpFullscreen = () => {
+  showKtpModal.value = true;
+};
+
+const closeKtpModal = () => {
+  showKtpModal.value = false;
+};
+
+// --- EDIT & SAVE ---
 const enableEdit = () => { 
   isEditing.value = true; 
 };
 
 const cancelEdit = async () => {
-  // Tambahkan konfirmasi jika ingin lebih aman
   const yakin = await notify.confirm("Batalkan perubahan?", "Data yang Anda masukkan tidak akan disimpan.");
   if (yakin) {
     isEditing.value = false;
     selectedFile.value = null;
-    previewAvatar.value = null; 
+    previewAvatar.value = null;
+    selectedKtpFile.value = null;
+    previewKtp.value = null;
     resetForm();
   }
 };
@@ -243,16 +357,25 @@ const handleSaveProfile = async () => {
     formData.append('avatar', selectedFile.value);
   }
 
+  // Update profil umum dulu
   const success = await authStore.updateProfile(formData);
 
+  // Jika ada KTP baru, upload terpisah
+  if (selectedKtpFile.value) {
+    const ktpSuccess = await authStore.uploadKtp(selectedKtpFile.value);
+    if (!ktpSuccess) {
+      notify.error("Profil tersimpan, tapi gagal upload KTP");
+    }
+  }
+
   if (success) {
-    // [UPDATE] Notifikasi sukses menggunakan Toast
     notify.success("Profil Anda berhasil diperbarui!");
     isEditing.value = false;
     selectedFile.value = null;
-    previewAvatar.value = null; 
+    previewAvatar.value = null;
+    selectedKtpFile.value = null;
+    previewKtp.value = null;
   } else {
-    // [UPDATE] Notifikasi error menggunakan Toast
     notify.error(authStore.error || "Gagal menyimpan perubahan profil.");
   }
 };
@@ -302,7 +425,9 @@ watch(user, () => resetForm());
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
 .form-group { display: flex; flex-direction: column; gap: 8px; }
 .form-group.full-width { grid-column: span 2; }
-.form-group label { font-size: 0.9rem; font-weight: 600; color: #4b5563; }
+.form-group label { font-size: 0.9rem; font-weight: 600; color: #4b5563; display: flex; align-items: center; gap: 8px; }
+
+.verified-badge { display: inline-flex; align-items: center; gap: 4px; background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
 
 input, textarea { padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 0.95rem; background: #f9fafb; color: #1f3a52; transition: all 0.2s; font-family: inherit; }
 input.editable, textarea.editable { background: white; border-color: #cbd5e1; }
@@ -311,6 +436,34 @@ input.editable:focus, textarea.editable:focus { border-color: #fca311; outline: 
 .input-wrapper.locked { position: relative; }
 .input-wrapper.locked input { padding-right: 40px; cursor: not-allowed; opacity: 0.7; }
 .lock-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+
+/* KTP SECTION */
+.ktp-container { background: #f9fafb; border: 2px dashed #e5e7eb; border-radius: 12px; padding: 15px; min-height: 150px; display: flex; align-items: center; justify-content: center; }
+
+.ktp-preview { text-align: center; width: 100%; }
+.ktp-image { width: 100%; max-width: 300px; height: auto; border-radius: 8px; object-fit: cover; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 10px; }
+.ktp-image:hover { transform: scale(1.02); }
+
+.change-ktp-btn { background: #fca311; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+.change-ktp-btn:hover { background: #e69200; }
+.change-ktp-btn:disabled { background: #d1d5db; cursor: not-allowed; }
+
+.ktp-upload-placeholder { text-align: center; color: #9ca3af; }
+.placeholder-icon { font-size: 3rem; margin-bottom: 10px; color: #cbd5e1; }
+.ktp-upload-placeholder p { font-size: 0.9rem; margin-bottom: 15px; }
+
+.upload-ktp-btn { background: #1f3a52; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+.upload-ktp-btn:hover { background: #152938; }
+.upload-ktp-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+.form-hint { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; color: #6b7280; margin-top: 5px; }
+
+/* MODAL FULLSCREEN KTP */
+.ktp-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal-content { position: relative; max-width: 90%; max-height: 90%; }
+.ktp-fullscreen { width: 100%; height: auto; border-radius: 8px; }
+.close-modal { position: absolute; top: -40px; right: 0; background: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: 0.2s; }
+.close-modal:hover { background: #f3f4f6; }
 
 .action-buttons { display: flex; justify-content: flex-end; gap: 15px; padding-top: 20px; border-top: 1px solid #f3f4f6; }
 .btn-cancel { background: white; border: 1px solid #d1d5db; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; color: #64748b; }
@@ -333,5 +486,6 @@ input.editable:focus, textarea.editable:focus { border-color: #fca311; outline: 
   .form-group.full-width { grid-column: span 1; }
   .action-buttons { flex-direction: column-reverse; }
   .btn-cancel, .btn-save { width: 100%; justify-content: center; }
+  .ktp-image { max-width: 100%; }
 }
 </style>

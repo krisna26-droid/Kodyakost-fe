@@ -208,7 +208,7 @@ const menuItems = [
 </script>
 
 <style scoped>
-/* STYLE ASLI 100% */
+/* --- NAVBAR CONTAINER --- */
 .navbar-container { 
   width: 100%; 
   position: sticky; 
@@ -217,6 +217,7 @@ const menuItems = [
   background-color: var(--color-background); 
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); 
 }
+
 .navbar { 
   display: flex; 
   align-items: center; 
@@ -228,12 +229,14 @@ const menuItems = [
   height: 80px; 
 }
 
+/* --- LOGO & SEARCH --- */
 .logo-section { flex-shrink: 0; width: 180px; display: flex; align-items: center; }
 .logo-img { height: 55px !important; width: auto !important; object-fit: contain; }
 
 .search-section { flex: 1; max-width: 450px; padding-top: 27px; }
 .search-section :deep(.input-wrapper) { border-radius: 9999px; }
 
+/* --- NAVIGATION --- */
 .nav-actions { display: flex; align-items: center; gap: 1.5rem; }
 .nav-links { display: flex; list-style: none; gap: 1.5rem; padding: 0; margin: 0; }
 .nav-link { 
@@ -247,8 +250,12 @@ const menuItems = [
 
 .separator { height: 28px; width: 1px; background-color: var(--color-border); }
 
-.user-section { display: flex; align-items: center; gap: 1rem; }
-.icon-btn { position: relative; width: 40px; height: 40px; border: none; background: transparent; color: #64748b; cursor: pointer; border-radius: 50%; }
+/* --- USER SECTION --- */
+.user-section { display: flex; align-items: center; gap: 0.75rem; }
+
+.icon-btn { position: relative; width: 40px; height: 40px; border: none; background: transparent; color: #64748b; cursor: pointer; border-radius: 50%; transition: 0.2s; }
+.icon-btn:hover { background-color: var(--color-background-soft); color: #1e3a8a; }
+
 .badge { 
   position: absolute; 
   top: 2px; 
@@ -265,9 +272,30 @@ const menuItems = [
   border: 2px solid white; 
 }
 
-.avatar-btn { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0.7rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md); transition: 0.2s; }
-.avatar-btn:hover { background-color: var(--color-background-soft); }
+/* --- DROPDOWN CORE --- */
+.user-dropdown { 
+  position: relative; /* ✅ Biar menu nempel ke sini */
+  display: inline-block;
+}
+
+.avatar-btn { 
+  display: flex; 
+  align-items: center; 
+  gap: 0.75rem; 
+  padding: 0.5rem 0.8rem; 
+  border: 1px solid transparent; 
+  background: transparent; 
+  cursor: pointer; 
+  border-radius: 12px; 
+  transition: 0.2s; 
+}
+.avatar-btn:hover { 
+  background-color: var(--color-background-soft); 
+  border-color: var(--color-border);
+}
+
 .avatar-img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-border); }
+
 .user-name { 
   font-size: var(--font-sm); 
   font-weight: 700; 
@@ -278,43 +306,62 @@ const menuItems = [
   text-overflow: ellipsis; 
 }
 
+.chevron { color: #94a3b8; transition: 0.3s; }
+.chevron.is-open { transform: rotate(180deg); color: #1e3a8a; }
+
+/* --- DROPDOWN MENU BOX --- */
 .dropdown-menu { 
   position: absolute; 
   right: 0; 
-  top: calc(100% + 10px); 
-  width: 215px; 
+  top: calc(100% + 12px); /* ✅ Jarak manis dari navbar */
+  width: 240px; 
   background: var(--color-background); 
-  border-radius: var(--radius-md); 
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+  border-radius: 14px; 
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); 
   border: 1px solid var(--color-border); 
-  overflow: hidden; 
+  padding: 0.6rem; 
   z-index: 1000; 
+  transform-origin: top right;
 }
 
 .dropdown-item { 
   display: flex; 
   align-items: center; 
-  gap: 0.75rem; 
+  gap: 0.8rem; 
   padding: 0.75rem 1rem; 
   font-size: var(--font-sm); 
   color: var(--color-text); 
   text-decoration: none; 
-  transition: 0.15s; 
+  transition: 0.2s; 
   cursor: pointer; 
   border: none; 
   width: 100%; 
   background: none; 
+  border-radius: 10px; /* ✅ Hover effect jadi rounded cantik */
 }
-.dropdown-item:hover { background-color: var(--color-background-soft); }
-.admin-link { color: #1e3a8a; background-color: #f0f7ff; font-weight: 700; }
-.owner-link { color: #059669; background-color: #f0fdf4; font-weight: 700; }
-.tenant-link { color: #ff6b35; background-color: #fffaf0; font-weight: 700; }
-.dropdown-divider { border-top: 1px solid var(--color-border); margin: 0.2rem 0; }
-.logout-item { color: #ef4444; }
-.chevron { transition: 0.2s; }
-.chevron.is-open { transform: rotate(180deg); }
 
-/* --- PERBAIKAN RESPONSIVE (BURGER MENU) --- */
+.dropdown-item:hover { background-color: var(--color-background-soft); color: #1e3a8a; }
+
+/* Role Links Styling */
+.admin-link { color: #1e3a8a !important; background-color: #f0f7ff !important; font-weight: 700; margin-bottom: 4px; }
+.owner-link { color: #059669 !important; background-color: #f0fdf4 !important; font-weight: 700; margin-bottom: 4px; }
+.tenant-link { color: #ff6b35 !important; background-color: #fffaf0 !important; font-weight: 700; margin-bottom: 4px; }
+
+.dropdown-badge {
+  margin-left: auto;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-weight: 700;
+}
+
+.dropdown-divider { border-top: 1px solid var(--color-border); margin: 0.5rem 0; }
+.logout-item { color: #ef4444 !important; }
+.logout-item:hover { background-color: #fef2f2 !important; }
+
+/* --- RESPONSIVE --- */
 .show-mobile-only { display: none; }
 
 @media (max-width: 1024px) {
@@ -323,9 +370,12 @@ const menuItems = [
   .show-mobile-only { display: block; }
   .search-section { padding-top: 20px; margin: 0 0.5rem; max-width: none; }
   .burger-btn { background: none; border: none; cursor: pointer; color: #1e3a8a; }
+  
+  /* Atur agar dropdown di mobile tetap rapi jika terpanggil */
+  .dropdown-menu { width: 200px; }
 }
 
-/* DRAWER STYLES */
+/* --- MOBILE DRAWER --- */
 .mobile-drawer {
   position: fixed; top: 0; left: 0; width: 280px; height: 100vh;
   background: white; z-index: 100; padding: 1.5rem;
@@ -341,7 +391,11 @@ const menuItems = [
 }
 .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
 
-/* Transitions */
+/* --- TRANSITIONS --- */
 .slide-enter-active, .slide-leave-active { transition: transform 0.3s ease; }
 .slide-enter-from, .slide-leave-to { transform: translateX(-100%); }
+
+.dropdown-enter-active { transition: all 0.2s ease-out; }
+.dropdown-leave-active { transition: all 0.15s ease-in; }
+.dropdown-enter-from, .dropdown-leave-to { opacity: 0; transform: translateY(-10px); }
 </style>

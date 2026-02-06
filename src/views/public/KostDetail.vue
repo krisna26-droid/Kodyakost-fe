@@ -2,15 +2,34 @@
   <div class="kost-detail-page">
     <div class="page-container">
       
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
-        <p>Sedang memuat detail properti...</p>
+      <!-- Loading State -->
+      <div v-if="loading" class="loading-state-skeleton">
+        <div class="gallery-skeleton-wrapper">
+          <BaseSkeleton height="400px" border-radius="16px" class="flex-main" />
+          <div class="thumb-skeleton-side">
+            <BaseSkeleton height="192px" border-radius="16px" />
+            <BaseSkeleton height="192px" border-radius="16px" />
+          </div>
+        </div>
+
+        <div class="main-content-layout">
+          <div class="left-skeleton">
+            <BaseSkeleton width="70%" height="40px" class="mb-4" />
+            <BaseSkeleton width="40%" height="20px" class="mb-8" />
+            <BaseSkeleton height="2px" class="mb-8" />
+            <BaseSkeleton v-for="i in 5" :key="i" height="18px" class="mb-3" />
+          </div>
+          <div class="right-skeleton">
+            <BaseSkeleton height="450px" border-radius="20px" />
+          </div>
+        </div>
       </div>
 
+      <!-- Error State -->
       <div v-else-if="error" class="error-state">
         <div class="error-card">
           <div class="error-icon">
-             <Icon icon="mdi:alert-circle-outline" width="64" />
+            <Icon icon="mdi:alert-circle-outline" width="64" />
           </div>
           <h3>Gagal Memuat Data</h3>
           <p>{{ error }}</p>
@@ -18,10 +37,11 @@
         </div>
       </div>
 
+      <!-- Not Found State -->
       <div v-else-if="!kost" class="error-state">
         <div class="error-card">
           <div class="error-icon">
-             <Icon icon="mdi:home-alert-outline" width="64" />
+            <Icon icon="mdi:home-alert-outline" width="64" />
           </div>
           <h3>Data Tidak Ditemukan</h3>
           <p>Properti yang Anda cari tidak ditemukan atau telah dihapus.</p>
@@ -29,34 +49,36 @@
         </div>
       </div>
 
+      <!-- Main Content -->
       <div v-else class="content-wrapper">
+        <!-- Breadcrumb -->
         <nav class="breadcrumb">
           <router-link to="/">Beranda</router-link> <span>/</span>
           <router-link to="/properties">Properti</router-link> <span>/</span>
           <span class="current">{{ kost.name || 'Detail Kost' }}</span>
         </nav>
 
-        <!-- ✅ Gallery Section - Improved with external button -->
+        <!-- Gallery Section -->
         <div class="gallery-section">
           <div class="main-image">
             <img :src="getThumb(kost.thumbnail || kost.main_image)" :alt="kost.name" />
           </div>
+          
           <div v-if="galleryPreview.length > 1" class="thumbnail-grid">
             <div 
-              class="thumb-item" 
               v-for="(img, i) in galleryPreview.slice(1, 5)" 
               :key="i"
+              class="thumb-item" 
               @click="openGalleryModal(i + 1)"
             >
-               <img :src="img" :alt="`Gallery ${i + 2}`" />
-               <!-- Show +N more on last thumbnail if there are more images -->
-               <div v-if="i === 3 && galleryPreview.length > 5" class="more-overlay">
-                 +{{ galleryPreview.length - 5 }} foto
-               </div>
+              <img :src="img" :alt="`Gallery ${i + 2}`" />
+              <div v-if="i === 3 && galleryPreview.length > 5" class="more-overlay">
+                +{{ galleryPreview.length - 5 }} foto
+              </div>
             </div>
           </div>
           
-          <!-- ✅ View All Photos Button - Outside image -->
+          <!-- View All Photos Button -->
           <button 
             v-if="galleryPreview.length > 1" 
             class="view-all-btn" 
@@ -67,17 +89,20 @@
           </button>
         </div>
 
+        <!-- Main Content Grid -->
         <div class="main-content">
+          <!-- Left Section -->
           <div class="left-section">
+            <!-- Property Header -->
             <div class="property-header">
               <div class="header-top">
                 <h1 class="property-title">{{ kost.name }}</h1>
                 <div class="header-actions">
                   <button 
                     class="icon-btn" 
-                    @click="handleWishlist"
-                    :disabled="loadingWishlist"
                     :class="{ 'wishlist-active': isWishlisted }"
+                    :disabled="loadingWishlist"
+                    @click="handleWishlist"
                   >
                     <Icon v-if="loadingWishlist" icon="mdi:loading" class="spin" width="20" />
                     <Icon v-else :icon="isWishlisted ? 'mdi:heart' : 'mdi:heart-outline'" width="20" />
@@ -86,7 +111,7 @@
                 </div>
               </div>
 
-              <!-- ✅ Rating & Reviews -->
+              <!-- Rating & Reviews -->
               <div v-if="kost.rating || kost.reviews_count" class="rating-section">
                 <div class="rating-display">
                   <Icon icon="mdi:star" class="star-icon" />
@@ -96,6 +121,7 @@
                 </div>
               </div>
 
+              <!-- Property Meta -->
               <div class="property-meta">
                 <span class="meta-item">
                   <Icon icon="mdi:eye-outline" /> 
@@ -107,7 +133,7 @@
                 </span>
               </div>
               
-              <!-- ✅ Full Address -->
+              <!-- Full Address -->
               <div v-if="kost.address" class="property-address">
                 <Icon icon="mdi:map-marker-outline" />
                 <span>{{ kost.address }}</span>
@@ -116,7 +142,7 @@
 
             <div class="divider"></div>
 
-            <!-- ✅ About Section -->
+            <!-- About Section -->
             <div class="info-section">
               <h2 class="section-title">
                 <Icon icon="mdi:text-box-outline" />
@@ -125,7 +151,7 @@
               <p class="info-text">{{ kost.description || 'Tidak ada deskripsi.' }}</p>
             </div>
 
-            <!-- ✅ Facilities with Iconify icons -->
+            <!-- Facilities Section -->
             <div v-if="allFacilities.length > 0" class="info-section">
               <div class="divider"></div>
               <h2 class="section-title">
@@ -142,18 +168,21 @@
 
             <div class="divider"></div>
 
-            <!-- ✅ Room Selection - Single selection -->
+            <!-- Room Selection -->
             <div class="info-section" id="room-selection">
               <h2 class="section-title">
                 <Icon icon="mdi:bed-outline" />
                 Pilih Tipe Kamar
               </h2>
               
+              <!-- No Rooms Available -->
               <div v-if="rooms.length === 0" class="no-rooms">
                 <Icon icon="mdi:door-closed" width="40" class="text-gray" />
                 <p>Belum ada tipe kamar tersedia untuk properti ini.</p>
                 <p class="hint-text">Pemilik belum menambahkan tipe kamar. Hubungi pemilik untuk informasi lebih lanjut.</p>
               </div>
+              
+              <!-- Room List -->
               <div v-else class="room-list">
                 <div 
                   v-for="room in rooms" 
@@ -186,7 +215,7 @@
                         </span>
                       </div>
                       
-                      <div class="room-fac-list" v-if="room.facilities && room.facilities.length > 0">
+                      <div v-if="room.facilities && room.facilities.length > 0" class="room-fac-list">
                         <span v-for="fac in room.facilities.slice(0, 4)" :key="fac.id" class="fac-tag">
                           <Icon :icon="getFacilityIcon(fac.name)" width="14" />
                           {{ fac.name }}
@@ -197,12 +226,12 @@
                       </div>
                     </div>
                     
-                    <!-- ✅ Radio button for single selection -->
+                    <!-- Radio Button Selector -->
                     <div class="room-card-selector">
                       <Icon 
                         :icon="selectedRoom?.id === room.id ? 'mdi:radiobox-marked' : 'mdi:radiobox-blank'" 
-                        width="28"
                         :class="{ 'radio-active': selectedRoom?.id === room.id }"
+                        width="28"
                       />
                     </div>
                   </div>
@@ -210,7 +239,7 @@
               </div>
             </div>
 
-            <!-- ✅ Reviews Section -->
+            <!-- Reviews Section -->
             <div v-if="hasReviews" class="info-section" id="reviews">
               <div class="divider"></div>
               <h2 class="section-title">
@@ -218,6 +247,7 @@
                 Ulasan Penyewa
               </h2>
               
+              <!-- Reviews Summary -->
               <div class="reviews-summary">
                 <div class="rating-big">
                   <Icon icon="mdi:star" class="star-big" />
@@ -225,10 +255,10 @@
                 </div>
                 <div class="rating-breakdown">
                   <p class="reviews-total">{{ kost.reviews_count || 0 }} ulasan</p>
-                  <!-- Rating bars bisa ditambahkan di sini jika ada data detail -->
                 </div>
               </div>
 
+              <!-- Reviews List -->
               <div class="reviews-list">
                 <div v-for="review in displayedReviews" :key="review.id" class="review-item">
                   <div class="review-header">
@@ -250,6 +280,7 @@
                 </div>
               </div>
 
+              <!-- Show More Button -->
               <button 
                 v-if="kost.reviews && kost.reviews.length > 3" 
                 class="btn-show-more"
@@ -258,25 +289,26 @@
                 {{ showAllReviews ? 'Tampilkan Lebih Sedikit' : `Lihat Semua ${kost.reviews.length} Ulasan` }}
               </button>
             </div>
-
           </div>
 
-          <!-- ✅ Booking Card (Right Side) -->
+          <!-- Right Section - Booking Card -->
           <div class="right-section">
             <div class="booking-card">
+              <!-- Price Header -->
               <div class="price-header">
                 <div>
                   <div class="price-amount">
                     {{ selectedRoom ? formatRupiah(selectedRoom.price_per_month) : (lowestPrice > 0 ? formatRupiah(lowestPrice) : 'Hubungi Pemilik') }}
                   </div>
-                  <div class="price-period" v-if="selectedRoom || lowestPrice > 0">per bulan</div>
+                  <div v-if="selectedRoom || lowestPrice > 0" class="price-period">per bulan</div>
                 </div>
                 <div class="availability-badge" :class="selectedRoom ? 'bg-green-light' : 'bg-gray-light'">
-                   <Icon :icon="selectedRoom ? 'mdi:check-circle' : 'mdi:information'" width="16" />
-                   {{ selectedRoom ? 'Kamar Dipilih' : (rooms.length > 0 ? 'Mulai Dari' : 'Belum Tersedia') }}
+                  <Icon :icon="selectedRoom ? 'mdi:check-circle' : 'mdi:information'" width="16" />
+                  {{ selectedRoom ? 'Kamar Dipilih' : (rooms.length > 0 ? 'Mulai Dari' : 'Belum Tersedia') }}
                 </div>
               </div>
 
+              <!-- Booking Form -->
               <div class="booking-form">
                 <div class="form-group">
                   <label class="form-label">
@@ -291,6 +323,7 @@
                     :disabled="rooms.length === 0" 
                   />
                 </div>
+                
                 <div class="form-group">
                   <label class="form-label">
                     <Icon icon="mdi:clock-outline" width="16" />
@@ -313,7 +346,8 @@
                 </div>
               </div>
 
-              <div class="price-breakdown" v-if="selectedRoom">
+              <!-- Price Breakdown -->
+              <div v-if="selectedRoom" class="price-breakdown">
                 <div class="breakdown-row">
                   <span>
                     <Icon icon="mdi:currency-usd" width="16" />
@@ -334,11 +368,12 @@
                 </div>
               </div>
 
+              <!-- Action Buttons -->
               <button 
-                @click="handleBooking" 
                 class="btn-primary-custom" 
-                :disabled="!selectedRoom || rooms.length === 0 || !bookingDate"
                 :class="{ 'opacity-50': !selectedRoom || !bookingDate }"
+                :disabled="!selectedRoom || rooms.length === 0 || !bookingDate"
+                @click="handleBooking" 
               >
                 <Icon icon="mdi:calendar-check" width="20" /> 
                 {{ 
@@ -349,7 +384,7 @@
                 }}
               </button>
               
-              <button @click="handleContactOwner" class="btn-outline-custom">
+              <button class="btn-outline-custom" @click="handleContactOwner">
                 <Icon icon="mdi:whatsapp" width="20" /> 
                 Chat Pemilik
               </button>
@@ -359,26 +394,26 @@
       </div>
     </div>
 
-    <!-- ✅ Gallery Modal -->
+    <!-- Gallery Modal -->
     <div 
       v-if="showGalleryModal" 
       class="gallery-modal" 
-      @click.self="closeGalleryModal"
       role="dialog"
       aria-modal="true"
       aria-label="Gallery viewer"
+      @click.self="closeGalleryModal"
     >
       <div class="gallery-modal-content">
-        <button class="gallery-close" @click="closeGalleryModal" aria-label="Close gallery">
+        <button class="gallery-close" aria-label="Close gallery" @click="closeGalleryModal">
           <Icon icon="mdi:close" width="28" />
         </button>
         
         <div class="gallery-main">
           <button 
             class="gallery-nav prev" 
-            @click="previousImage"
-            :disabled="currentImageIndex === 0"
             aria-label="Previous image"
+            :disabled="currentImageIndex === 0"
+            @click="previousImage"
           >
             <Icon icon="mdi:chevron-left" width="32" />
           </button>
@@ -395,9 +430,9 @@
           
           <button 
             class="gallery-nav next" 
-            @click="nextImage"
-            :disabled="currentImageIndex === galleryPreview.length - 1"
             aria-label="Next image"
+            :disabled="currentImageIndex === galleryPreview.length - 1"
+            @click="nextImage"
           >
             <Icon icon="mdi:chevron-right" width="32" />
           </button>
@@ -409,10 +444,10 @@
             :key="index"
             class="gallery-thumb"
             :class="{ 'active': currentImageIndex === index }"
-            @click="currentImageIndex = index"
             :aria-label="`View image ${index + 1}`"
             role="button"
             tabindex="0"
+            @click="currentImageIndex = index"
           >
             <img :src="img" :alt="`Thumbnail ${index + 1}`" />
           </div>
@@ -423,19 +458,37 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
+// ============================================
+// SCRIPT SECTION UNTUK KostDetail.vue
+// SUDAH DIPERBAIKI - COPY PASTE LANGSUNG
+// ============================================
+
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { Icon } from '@iconify/vue';
+import Swal from 'sweetalert2';
 import { useAuthStore } from '@/stores/auth';
 import { useWishlistStore } from '@/stores/wishlist';
-import { Icon } from '@iconify/vue';
 import kostService from '@/services/kostService';
+import BaseSkeleton from '@/components/common/BaseSkeleton.vue';
 
+// ========================================
+// COMPOSABLES & STORES
+// ========================================
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const wishlistStore = useWishlistStore();
 
-// --- STATE ---
+// ========================================
+// CONFIGURATION
+// ========================================
+const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
+const BASE_STORAGE_URL = API_URL.replace(/\/api\/?$/, '');
+
+// ========================================
+// STATE
+// ========================================
 const kost = ref(null);
 const rooms = ref([]);
 const selectedRoom = ref(null);
@@ -455,27 +508,21 @@ const currentImageIndex = ref(0);
 // Reviews state
 const showAllReviews = ref(false);
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
-const BASE_STORAGE_URL = API_URL.replace(/\/api\/?$/, '');
-
-// --- HELPER FUNCTIONS ---
+// ========================================
+// HELPER FUNCTIONS
+// ========================================
 const getThumb = (path) => {
   if (!path) return 'https://placehold.co/800x600?text=No+Image';
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   
   const cleanPath = path.replace(/^\//, '');
-  let finalUrl = '';
-  
-  if (cleanPath.startsWith('storage/')) {
-    finalUrl = `${BASE_STORAGE_URL}/${cleanPath}`;
-  } else {
-    finalUrl = `${BASE_STORAGE_URL}/storage/${cleanPath}`;
-  }
+  const finalUrl = cleanPath.startsWith('storage/') 
+    ? `${BASE_STORAGE_URL}/${cleanPath}`
+    : `${BASE_STORAGE_URL}/storage/${cleanPath}`;
 
   return finalUrl;
 };
 
-// ✅ Icon mapping for facilities
 const getFacilityIcon = (facilityName) => {
   const iconMap = {
     'wifi': 'mdi:wifi',
@@ -527,10 +574,11 @@ const formatReviewDate = (dateString) => {
   }).format(date);
 };
 
-// --- COMPUTED PROPERTIES ---
+// ========================================
+// COMPUTED PROPERTIES - FIXED!
+// ========================================
 const todayDate = computed(() => {
-  const today = new Date();
-  return today.toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0];
 });
 
 const isWishlisted = computed(() => {
@@ -550,41 +598,62 @@ const displayLocation = computed(() => {
     if (kost.value.location.district) parts.push(kost.value.location.district);
   }
   
-  if (parts.length === 0) {
-    return kost.value.city || 'Lokasi tidak tersedia';
-  }
-  
-  return parts.join(', ');
+  return parts.length === 0 ? kost.value.city || 'Lokasi tidak tersedia' : parts.join(', ');
 });
 
+// ✅ FIXED: Gallery Preview with room.images[] support
 const galleryPreview = computed(() => {
   if (!kost.value) return [];
+  
   const images = [];
   
-  if (kost.value.thumbnail || kost.value.main_image) {
-    images.push(getThumb(kost.value.thumbnail || kost.value.main_image));
+  // 1. Main thumbnail
+  if (kost.value.thumbnail || kost.value.main_image || kost.value.thumbnail_url) {
+    images.push(getThumb(kost.value.thumbnail || kost.value.main_image || kost.value.thumbnail_url));
   }
   
-  if (rooms.value && rooms.value.length > 0) {
-    rooms.value.forEach(r => {
-      if (r.image) images.push(getThumb(r.image));
-    });
-  }
-  
-  if (kost.value.images && Array.isArray(kost.value.images)) {
+  // 2. Kost-level images
+  if (Array.isArray(kost.value.images)) {
     kost.value.images.forEach(img => {
-      if (img.path) images.push(getThumb(img.path));
+      const imgPath = img.path || img.image_path || img.image;
+      if (imgPath) images.push(getThumb(imgPath));
     });
   }
   
-  return images;
+  // 3. Room images (CRITICAL FIX!)
+  if (Array.isArray(rooms.value)) {
+    rooms.value.forEach(room => {
+      // A. Room main image
+      if (room.image) {
+        images.push(getThumb(room.image));
+      }
+      
+      // B. Room images array (INI YANG PENTING!)
+      if (Array.isArray(room.images)) {
+        room.images.forEach(img => {
+          const imgPath = img.path || img.image_path || img.image;
+          if (imgPath) images.push(getThumb(imgPath));
+        });
+      }
+      
+      // C. Room gallery (fallback)
+      if (Array.isArray(room.gallery)) {
+        room.gallery.forEach(imgPath => {
+          if (imgPath) images.push(getThumb(imgPath));
+        });
+      }
+    });
+  }
+  
+  // Remove duplicates
+  return [...new Set(images)];
 });
 
 const lowestPrice = computed(() => {
-  if (!rooms.value || rooms.value.length === 0) return 0;
+  if (!rooms.value?.length) return 0;
   
   const validRooms = rooms.value.filter(r => r.price_per_month && r.price_per_month > 0);
-  if (validRooms.length === 0) return 0;
+  if (!validRooms.length) return 0;
   
   return Math.min(...validRooms.map(r => r.price_per_month));
 });
@@ -601,15 +670,17 @@ const allFacilities = computed(() => {
 });
 
 const calculateSubtotal = computed(() => {
-  if (!selectedRoom.value || !selectedRoom.value.price_per_month) return 0;
+  if (!selectedRoom.value?.price_per_month) return 0;
+  
   const duration = durationUnit.value === 'Tahun' 
     ? bookingDuration.value * 12 
     : bookingDuration.value;
+    
   return selectedRoom.value.price_per_month * duration;
 });
 
 const hasReviews = computed(() => {
-  return kost.value?.reviews && Array.isArray(kost.value.reviews) && kost.value.reviews.length > 0;
+  return kost.value?.reviews?.length > 0;
 });
 
 const displayedReviews = computed(() => {
@@ -617,7 +688,9 @@ const displayedReviews = computed(() => {
   return showAllReviews.value ? kost.value.reviews : kost.value.reviews.slice(0, 3);
 });
 
-// --- WATCHERS ---
+// ========================================
+// WATCHERS
+// ========================================
 watch(selectedRoom, (newVal, oldVal) => {
   console.log('🔄 Selected room changed:', {
     from: oldVal?.room_type || 'none',
@@ -627,34 +700,13 @@ watch(selectedRoom, (newVal, oldVal) => {
   });
 });
 
-// --- FUNCTIONS ---
-const selectRoom = (room) => {
-  // Cek ketersediaan
-  if (room.available_rooms < 1) {
-    alert('Kamar ini sudah penuh. Silakan pilih tipe kamar lain.');
-    return;
-  }
-  
-  // Cek data room valid
-  if (!room.id) {
-    console.error('❌ Room tidak memiliki ID:', room);
-    alert('Data kamar tidak valid. Silakan refresh halaman.');
-    return;
-  }
-  
-  // Set selected room
-  selectedRoom.value = room;
-  console.log('✅ Room selected:', {
-    id: room.id,
-    type: room.room_type,
-    price: room.price_per_month,
-    available: room.available_rooms
-  });
-};
-
+// ========================================
+// METHODS
+// ========================================
 const fetchDetail = async () => {
   loading.value = true;
   error.value = null;
+  
   try {
     console.log("📡 [KostDetail] Fetching kost ID:", route.params.id);
     
@@ -663,15 +715,9 @@ const fetchDetail = async () => {
     
     kost.value = result;
     
-    if (result && Array.isArray(result.rooms)) {
+    if (result?.rooms && Array.isArray(result.rooms)) {
       rooms.value = result.rooms;
       console.log("✅ [KostDetail] Rooms assigned:", rooms.value.length, "rooms");
-      console.log("📋 [KostDetail] Room details:", rooms.value.map(r => ({
-        id: r.id,
-        type: r.room_type,
-        available: r.available_rooms,
-        price: r.price_per_month
-      })));
       
       // Auto-select first available room
       const availableRoom = rooms.value.find(r => r.available_rooms > 0 && r.id);
@@ -680,11 +726,8 @@ const fetchDetail = async () => {
         console.log("✅ [KostDetail] Auto-selected room:", {
           id: availableRoom.id,
           type: availableRoom.room_type,
-          price: availableRoom.price_per_month,
-          available: availableRoom.available_rooms
+          price: availableRoom.price_per_month
         });
-      } else {
-        console.warn("⚠️ [KostDetail] No available room to auto-select");
       }
     } else {
       console.warn("⚠️ [KostDetail] No rooms found in result");
@@ -697,76 +740,166 @@ const fetchDetail = async () => {
   } catch (err) {
     console.error("❌ [KostDetail] Error:", err);
     error.value = err.response?.data?.message || "Gagal memuat data properti.";
+    
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal Memuat Data',
+      text: error.value,
+      confirmButtonColor: '#1e3a8a',
+      confirmButtonText: 'OK'
+    });
   } finally {
     loading.value = false;
   }
 };
 
+const selectRoom = (room) => {
+  if (room.available_rooms < 1) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Kamar Penuh',
+      text: 'Kamar ini sudah penuh. Silakan pilih tipe kamar lain.',
+      confirmButtonColor: '#1e3a8a'
+    });
+    return;
+  }
+  
+  if (!room.id) {
+    console.error('❌ Room tidak memiliki ID:', room);
+    Swal.fire({
+      icon: 'error',
+      title: 'Data Tidak Valid',
+      text: 'Data kamar tidak valid. Silakan refresh halaman.',
+      confirmButtonColor: '#1e3a8a'
+    });
+    return;
+  }
+  
+  selectedRoom.value = room;
+  
+  Swal.fire({
+    icon: 'success',
+    title: 'Kamar Terpilih',
+    text: `Anda memilih ${room.room_type} - ${formatRupiah(room.price_per_month)}/bulan`,
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true
+  });
+};
+
 const handleWishlist = async () => {
   if (!authStore.isAuthenticated) {
-    return router.push({ 
-      name: 'login', 
-      query: { redirect: route.fullPath } 
+    const result = await Swal.fire({
+      icon: 'info',
+      title: 'Login Diperlukan',
+      text: 'Anda harus login terlebih dahulu untuk menyimpan properti ke wishlist.',
+      showCancelButton: true,
+      confirmButtonColor: '#1e3a8a',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Login Sekarang',
+      cancelButtonText: 'Batal'
     });
+    
+    if (result.isConfirmed) {
+      router.push({ name: 'login', query: { redirect: route.fullPath } });
+    }
+    return;
   }
   
   loadingWishlist.value = true;
+  
   try {
     await wishlistStore.toggleWishlist(kost.value.id);
+    
+    Swal.fire({
+      icon: isWishlisted.value ? 'success' : 'info',
+      title: isWishlisted.value ? 'Ditambahkan ke Wishlist' : 'Dihapus dari Wishlist',
+      text: isWishlisted.value 
+        ? 'Properti berhasil disimpan ke wishlist Anda.' 
+        : 'Properti dihapus dari wishlist Anda.',
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true
+    });
   } catch (err) {
     console.error('❌ Wishlist error:', err);
-    alert('Gagal memproses wishlist. Silakan coba lagi.');
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal Memproses',
+      text: 'Gagal memproses wishlist. Silakan coba lagi.',
+      confirmButtonColor: '#1e3a8a'
+    });
   } finally {
     loadingWishlist.value = false;
   }
 };
 
-const handleBooking = () => {
+const handleBooking = async () => {
   console.log('🎯 [handleBooking] Starting booking process...');
   
-  // 1. Cek autentikasi
   if (!authStore.isAuthenticated) {
-    console.log('⚠️ [handleBooking] User not authenticated, redirecting to login');
-    return router.push({ 
-      name: 'login', 
-      query: { redirect: route.fullPath } 
+    const result = await Swal.fire({
+      icon: 'info',
+      title: 'Login Diperlukan',
+      text: 'Anda harus login terlebih dahulu untuk melakukan booking.',
+      showCancelButton: true,
+      confirmButtonColor: '#1e3a8a',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Login Sekarang',
+      cancelButtonText: 'Batal'
     });
-  }
-  
-  // 2. Cek ketersediaan kamar
-  if (rooms.value.length === 0) {
-    console.log('⚠️ [handleBooking] No rooms available');
-    alert("Belum ada kamar tersedia untuk properti ini.");
-    return;
-  }
-  
-  // 3. Cek kamar terpilih - dengan logging untuk debug
-  console.log('🔍 [handleBooking] Selected Room:', selectedRoom.value);
-  console.log('🔍 [handleBooking] Selected Room ID:', selectedRoom.value?.id);
-  
-  if (!selectedRoom.value) {
-    console.log('⚠️ [handleBooking] No room selected');
-    alert("Silakan pilih tipe kamar terlebih dahulu!");
     
-    // Scroll ke room selection
-    const roomSection = document.getElementById('room-selection');
-    if (roomSection) {
-      roomSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (result.isConfirmed) {
+      router.push({ name: 'login', query: { redirect: route.fullPath } });
     }
     return;
   }
-
-  // 4. Cek tanggal masuk
-  if (!bookingDate.value) {
-    console.log('⚠️ [handleBooking] No booking date selected');
-    alert("Pilih tanggal masuk terlebih dahulu!");
+  
+  if (rooms.value.length === 0) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Kamar Tidak Tersedia',
+      text: 'Belum ada kamar tersedia untuk properti ini.',
+      confirmButtonColor: '#1e3a8a'
+    });
+    return;
+  }
+  
+  if (!selectedRoom.value) {
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Pilih Kamar',
+      text: 'Silakan pilih tipe kamar terlebih dahulu!',
+      confirmButtonColor: '#1e3a8a'
+    });
+    
+    const roomSection = document.getElementById('room-selection');
+    roomSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
 
-  // 5. Validasi tambahan
+  if (!bookingDate.value) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Pilih Tanggal',
+      text: 'Pilih tanggal masuk terlebih dahulu!',
+      confirmButtonColor: '#1e3a8a'
+    });
+    return;
+  }
+
   if (!selectedRoom.value.id) {
     console.error('❌ [handleBooking] Selected room tidak memiliki ID:', selectedRoom.value);
-    alert("Terjadi kesalahan. Silakan pilih ulang kamar.");
+    Swal.fire({
+      icon: 'error',
+      title: 'Terjadi Kesalahan',
+      text: 'Terjadi kesalahan. Silakan pilih ulang kamar.',
+      confirmButtonColor: '#1e3a8a'
+    });
     return;
   }
 
@@ -780,33 +913,54 @@ const handleBooking = () => {
   };
 
   console.log('✅ [handleBooking] Booking data:', bookingData);
-  console.log('🚀 [handleBooking] Navigating to booking-step-1...');
 
-  // 6. Navigate ke booking step 1
-  router.push({
-    name: 'booking-step-1',
-    query: bookingData
+  const result = await Swal.fire({
+    icon: 'question',
+    title: 'Lanjutkan Booking?',
+    html: `
+      <div style="text-align: left; padding: 10px;">
+        <p><strong>Tipe Kamar:</strong> ${selectedRoom.value.room_type}</p>
+        <p><strong>Harga:</strong> ${formatRupiah(selectedRoom.value.price_per_month)}/bulan</p>
+        <p><strong>Durasi:</strong> ${bookingDuration.value} ${durationUnit.value}</p>
+        <p><strong>Total:</strong> ${formatRupiah(calculateSubtotal.value)}</p>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonColor: '#1e3a8a',
+    cancelButtonColor: '#94a3b8',
+    confirmButtonText: 'Ya, Lanjutkan',
+    cancelButtonText: 'Batal'
   });
+
+  if (result.isConfirmed) {
+    router.push({
+      name: 'booking-step-1',
+      query: bookingData
+    });
+  }
 };
 
 const handleContactOwner = () => {
-  if (!kost.value?.owner?.phone && !kost.value?.user?.phone_whatsapp) {
-    return alert('Nomor telepon pemilik tidak tersedia');
+  const ownerPhone = kost.value?.owner?.phone || kost.value?.user?.phone_whatsapp;
+  
+  if (!ownerPhone) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Nomor Tidak Tersedia',
+      text: 'Nomor telepon pemilik tidak tersedia.',
+      confirmButtonColor: '#1e3a8a'
+    });
+    return;
   }
   
-  const phone = (kost.value.owner?.phone || kost.value.user?.phone_whatsapp || '').replace(/^0/, '62');
-  const roomInfo = selectedRoom.value 
-    ? ` - Tipe ${selectedRoom.value.room_type}` 
-    : '';
+  const phone = ownerPhone.replace(/^0/, '62');
+  const roomInfo = selectedRoom.value ? ` - Tipe ${selectedRoom.value.room_type}` : '';
   const message = `Halo, saya tertarik dengan properti ${kost.value.name}${roomInfo}`;
   
-  window.open(
-    `https://wa.me/${phone}?text=${encodeURIComponent(message)}`, 
-    '_blank'
-  );
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
 };
 
-// ✅ Gallery functions
+// Gallery functions
 const openGalleryModal = (index) => {
   currentImageIndex.value = index;
   showGalleryModal.value = true;
@@ -830,7 +984,10 @@ const previousImage = () => {
   }
 };
 
-// ✅ Keyboard navigation for gallery
+const toggleAllReviews = () => {
+  showAllReviews.value = !showAllReviews.value;
+};
+
 const handleKeydown = (e) => {
   if (!showGalleryModal.value) return;
   
@@ -839,12 +996,9 @@ const handleKeydown = (e) => {
   if (e.key === 'ArrowRight') nextImage();
 };
 
-// ✅ Reviews function
-const toggleAllReviews = () => {
-  showAllReviews.value = !showAllReviews.value;
-};
-
-// --- LIFECYCLE HOOKS ---
+// ========================================
+// LIFECYCLE HOOKS
+// ========================================
 onMounted(() => {
   fetchDetail();
   window.addEventListener('keydown', handleKeydown);
@@ -852,38 +1006,167 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
-  document.body.style.overflow = ''; // Cleanup
+  document.body.style.overflow = '';
 });
 </script>
 
 <style scoped>
-/* Add your styles here or import from external stylesheet */
-.opacity-50 {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* ========================================
+   BASE STYLES
+   ======================================== */
+.kost-detail-page { 
+  font-family: 'Poppins', sans-serif; 
+  background: #fafbfc; 
+  min-height: 100vh; 
+  color: #1e293b; 
 }
 
-.spin {
-  animation: spin 1s linear infinite;
+.page-container { 
+  max-width: 1200px; 
+  margin: 0 auto; 
+  padding: 2rem 1rem; 
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* ========================================
+   LOADING & ERROR STATES
+   ======================================== */
+.loading-state-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  animation: fadeIn 0.5s ease;
 }
-</style>
 
-<style scoped>
-/* Import all existing styles from the original file */
-/* ... (keep all existing CSS) ... */
+.gallery-skeleton-wrapper {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  height: 400px;
+}
 
-/* ✅ NEW STYLES FOR IMPROVEMENTS */
+.thumb-skeleton-side {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 16px;
+}
 
-/* Gallery improvements */
+.main-content-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 30px;
+}
+
+.error-state { 
+  min-height: 60vh; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 1rem; 
+}
+
+.error-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.error-icon {
+  color: #ef4444;
+  margin-bottom: 1rem;
+}
+
+/* ========================================
+   BREADCRUMB
+   ======================================== */
+.breadcrumb { 
+  font-size: 0.9rem; 
+  color: #64748b; 
+  margin-bottom: 1.5rem; 
+}
+
+.breadcrumb a { 
+  text-decoration: none; 
+  color: inherit; 
+}
+
+.breadcrumb a:hover { 
+  color: #1e3a8a; 
+}
+
+.breadcrumb .current {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+/* ========================================
+   GALLERY SECTION
+   ======================================== */
+.gallery-section { 
+  position: relative;
+  display: grid; 
+  grid-template-columns: 2fr 1fr; 
+  gap: 1rem; 
+  margin-bottom: 2rem; 
+  border-radius: 16px; 
+  overflow: hidden; 
+  height: 400px; 
+}
+
+.main-image { 
+  position: relative; 
+  height: 100%; 
+  background: #e2e8f0; 
+}
+
+.main-image img { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
+}
+
+.thumbnail-grid { 
+  display: grid; 
+  grid-template-rows: 1fr 1fr; 
+  gap: 1rem; 
+}
+
+.thumb-item { 
+  position: relative;
+  height: 100%; 
+  overflow: hidden; 
+  background: #e2e8f0;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.thumb-item:hover {
+  opacity: 0.8;
+}
+
+.thumb-item img { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
+}
+
+.more-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
 .view-all-btn {
   position: absolute;
   bottom: 20px;
@@ -907,36 +1190,9 @@ onUnmounted(() => {
   box-shadow: 0 6px 16px rgba(0,0,0,0.2);
 }
 
-.gallery-section {
-  position: relative;
-}
-
-.thumb-item {
-  cursor: pointer;
-  transition: 0.2s;
-  position: relative;
-}
-
-.thumb-item:hover {
-  opacity: 0.8;
-}
-
-.more-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.6);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 1.2rem;
-}
-
-/* Gallery Modal */
+/* ========================================
+   GALLERY MODAL
+   ======================================== */
 .gallery-modal {
   position: fixed;
   top: 0;
@@ -1074,6 +1330,81 @@ onUnmounted(() => {
   object-fit: cover;
 }
 
+/* ========================================
+   MAIN CONTENT
+   ======================================== */
+.main-content { 
+  display: grid; 
+  grid-template-columns: 2fr 1fr; 
+  gap: 2rem; 
+}
+
+.left-section { 
+  background: white; 
+  padding: 2rem; 
+  border-radius: 16px; 
+  border: 1px solid #e2e8f0; 
+}
+
+.right-section {
+  height: fit-content;
+}
+
+/* ========================================
+   PROPERTY HEADER
+   ======================================== */
+.property-header {
+  margin-bottom: 2rem;
+}
+
+.header-top { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: flex-start; 
+}
+
+.property-title { 
+  font-size: 1.8rem; 
+  font-weight: 700; 
+  margin-bottom: 1rem; 
+  color: #0f172a; 
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.icon-btn { 
+  border: 1px solid #e2e8f0; 
+  background: white; 
+  padding: 8px 12px; 
+  border-radius: 8px; 
+  cursor: pointer; 
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+  font-weight: 600; 
+  color: #64748b; 
+  transition: 0.2s; 
+}
+
+.icon-btn:hover:not(:disabled) { 
+  border-color: #1e3a8a; 
+  color: #1e3a8a; 
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wishlist-active { 
+  background: #fef2f2; 
+  border-color: #ef4444; 
+  color: #ef4444; 
+}
+
 /* Rating Section */
 .rating-section {
   margin: 1rem 0;
@@ -1109,7 +1440,219 @@ onUnmounted(() => {
   color: #172554;
 }
 
-/* Reviews Section */
+.property-meta { 
+  display: flex; 
+  gap: 1rem; 
+  align-items: center; 
+  font-size: 0.95rem; 
+  color: #64748b; 
+  margin-top: 0.5rem; 
+}
+
+.meta-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 5px; 
+}
+
+.property-address {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.property-address svg {
+  flex-shrink: 0;
+}
+
+/* ========================================
+   INFO SECTIONS
+   ======================================== */
+.divider { 
+  height: 1px; 
+  background: #e2e8f0; 
+  margin: 2rem 0; 
+}
+
+.info-section {
+  margin-bottom: 2rem;
+}
+
+.section-title { 
+  font-size: 1.25rem; 
+  font-weight: 700; 
+  margin-bottom: 1rem; 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  color: #1e293b; 
+}
+
+.info-text { 
+  line-height: 1.6; 
+  color: #475569; 
+}
+
+/* ========================================
+   FACILITIES
+   ======================================== */
+.facilities-grid { 
+  display: grid; 
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 1rem; 
+}
+
+.facility-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  color: #475569; 
+}
+
+.facility-item svg { 
+  color: #10b981; 
+}
+
+/* ========================================
+   ROOM CARDS
+   ======================================== */
+.room-list { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 1rem; 
+}
+
+.room-card-item { 
+  border: 1px solid #e2e8f0; 
+  border-radius: 10px; 
+  padding: 1rem; 
+  cursor: pointer; 
+  transition: 0.2s; 
+}
+
+.room-card-item:hover { 
+  border-color: #94a3b8; 
+}
+
+.room-card-item.selected { 
+  border-color: #1e3a8a; 
+  background: #eff6ff; 
+  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1); 
+}
+
+.room-card-item.disabled { 
+  opacity: 0.6; 
+  cursor: not-allowed; 
+  background: #f8fafc; 
+}
+
+.room-card-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.room-card-info {
+  flex: 1;
+}
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.room-type-name { 
+  font-weight: 700; 
+  display: block; 
+  font-size: 1.1rem; 
+}
+
+.room-card-price { 
+  font-weight: 700; 
+  color: #1e3a8a; 
+  font-size: 1.1rem; 
+}
+
+.room-card-price small { 
+  font-size: 0.8rem; 
+  color: #64748b; 
+  font-weight: normal; 
+}
+
+.room-meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.room-stock, .room-size {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.room-fac-list { 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 6px; 
+  margin-top: 8px; 
+}
+
+.fac-tag { 
+  background: #eff6ff; 
+  color: #1e40af; 
+  padding: 3px 8px; 
+  border-radius: 5px; 
+  font-size: 0.75rem; 
+  font-weight: 600; 
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fac-more {
+  background: #f1f5f9;
+  color: #64748b;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.room-card-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radio-active {
+  color: #1e3a8a;
+}
+
+.no-rooms { 
+  text-align: center; 
+  padding: 2rem; 
+  color: #94a3b8; 
+}
+
+.hint-text {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-top: 0.5rem;
+}
+
+/* ========================================
+   REVIEWS
+   ======================================== */
 .reviews-summary {
   display: flex;
   gap: 2rem;
@@ -1223,395 +1766,9 @@ onUnmounted(() => {
   border-color: #1e3a8a;
 }
 
-/* Improved Room Card */
-.room-card-main {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-}
-
-.room-card-info {
-  flex: 1;
-}
-
-.room-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.room-meta {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.room-stock, .room-size {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
-}
-
-.room-card-selector {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.radio-active {
-  color: #1e3a8a;
-}
-
-/* Responsive */
-@media (max-width: 900px) {
-  .gallery-modal-content {
-    height: 95vh;
-  }
-  
-  .gallery-main {
-    flex-direction: column;
-  }
-  
-  .gallery-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 10;
-  }
-  
-  .gallery-nav.prev {
-    left: 10px;
-  }
-  
-  .gallery-nav.next {
-    right: 10px;
-  }
-  
-  .reviews-summary {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-/* Keep all existing styles from original file */
-.kost-detail-page { 
-  font-family: 'Poppins', sans-serif; 
-  background: #fafbfc; 
-  min-height: 100vh; 
-  color: #1e293b; 
-}
-
-.page-container { 
-  max-width: 1200px; 
-  margin: 0 auto; 
-  padding: 2rem 1rem; 
-}
-
-.loading-state, .error-state { 
-  min-height: 60vh; 
-  display: flex; 
-  flex-direction: column; 
-  align-items: center; 
-  justify-content: center; 
-  gap: 1rem; 
-}
-
-.spinner { 
-  width: 50px; 
-  height: 50px; 
-  border: 4px solid #f1f5f9; 
-  border-top: 4px solid #1e3a8a; 
-  border-radius: 50%; 
-  animation: spin 1s linear infinite; 
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin { 
-  to { transform: rotate(360deg); } 
-}
-
-.error-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.error-icon {
-  color: #ef4444;
-  margin-bottom: 1rem;
-}
-
-.btn-primary {
-  margin-top: 1rem;
-  padding: 10px 24px;
-  background: #1e3a8a;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  background: #172554;
-}
-
-.breadcrumb { 
-  font-size: 0.9rem; 
-  color: #64748b; 
-  margin-bottom: 1.5rem; 
-}
-
-.breadcrumb a { 
-  text-decoration: none; 
-  color: inherit; 
-}
-
-.breadcrumb a:hover { 
-  color: #1e3a8a; 
-}
-
-.breadcrumb .current {
-  color: #1e293b;
-  font-weight: 600;
-}
-
-.gallery-section { 
-  display: grid; 
-  grid-template-columns: 2fr 1fr; 
-  gap: 1rem; 
-  margin-bottom: 2rem; 
-  border-radius: 16px; 
-  overflow: hidden; 
-  height: 400px; 
-}
-
-.main-image { 
-  position: relative; 
-  height: 100%; 
-  background: #e2e8f0; 
-}
-
-.main-image img { 
-  width: 100%; 
-  height: 100%; 
-  object-fit: cover; 
-}
-
-.thumbnail-grid { 
-  display: grid; 
-  grid-template-rows: 1fr 1fr; 
-  gap: 1rem; 
-}
-
-.thumb-item { 
-  height: 100%; 
-  overflow: hidden; 
-  background: #e2e8f0; 
-}
-
-.thumb-item img { 
-  width: 100%; 
-  height: 100%; 
-  object-fit: cover; 
-}
-
-.main-content { 
-  display: grid; 
-  grid-template-columns: 2fr 1fr; 
-  gap: 2rem; 
-}
-
-.left-section { 
-  background: white; 
-  padding: 2rem; 
-  border-radius: 16px; 
-  border: 1px solid #e2e8f0; 
-}
-
-.property-title { 
-  font-size: 1.8rem; 
-  font-weight: 700; 
-  margin-bottom: 1rem; 
-  color: #0f172a; 
-}
-
-.header-top { 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: flex-start; 
-}
-
-.property-meta { 
-  display: flex; 
-  gap: 1rem; 
-  align-items: center; 
-  font-size: 0.95rem; 
-  color: #64748b; 
-  margin-top: 0.5rem; 
-}
-
-.meta-item { 
-  display: flex; 
-  align-items: center; 
-  gap: 5px; 
-}
-
-.property-address {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.property-address svg {
-  flex-shrink: 0;
-}
-
-.divider { 
-  height: 1px; 
-  background: #e2e8f0; 
-  margin: 2rem 0; 
-}
-
-.section-title { 
-  font-size: 1.25rem; 
-  font-weight: 700; 
-  margin-bottom: 1rem; 
-  display: flex; 
-  align-items: center; 
-  gap: 8px; 
-  color: #1e293b; 
-}
-
-.info-text { 
-  line-height: 1.6; 
-  color: #475569; 
-}
-
-.facilities-grid { 
-  display: grid; 
-  grid-template-columns: repeat(2, 1fr); 
-  gap: 1rem; 
-}
-
-.facility-item { 
-  display: flex; 
-  align-items: center; 
-  gap: 8px; 
-  color: #475569; 
-}
-
-.facility-item svg { 
-  color: #10b981; 
-}
-
-.room-list { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 1rem; 
-}
-
-.room-card-item { 
-  border: 1px solid #e2e8f0; 
-  border-radius: 10px; 
-  padding: 1rem; 
-  display: flex; 
-  justify-content: space-between; 
-  cursor: pointer; 
-  transition: 0.2s; 
-}
-
-.room-card-item:hover { 
-  border-color: #94a3b8; 
-}
-
-.room-card-item.selected { 
-  border-color: #1e3a8a; 
-  background: #eff6ff; 
-  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1); 
-}
-
-.room-card-item.disabled { 
-  opacity: 0.6; 
-  cursor: not-allowed; 
-  background: #f8fafc; 
-}
-
-.room-type-name { 
-  font-weight: 700; 
-  display: block; 
-  font-size: 1.1rem; 
-}
-
-.text-green { 
-  color: #10b981; 
-}
-
-.text-red { 
-  color: #ef4444; 
-}
-
-.text-gray {
-  color: #94a3b8;
-}
-
-.room-fac-list { 
-  display: flex; 
-  flex-wrap: wrap; 
-  gap: 6px; 
-  margin-top: 8px; 
-}
-
-.fac-tag { 
-  background: #eff6ff; 
-  color: #1e40af; 
-  padding: 3px 8px; 
-  border-radius: 5px; 
-  font-size: 0.75rem; 
-  font-weight: 600; 
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.fac-more {
-  background: #f1f5f9;
-  color: #64748b;
-  padding: 3px 8px;
-  border-radius: 5px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.room-card-price { 
-  font-weight: 700; 
-  color: #1e3a8a; 
-  font-size: 1.1rem; 
-}
-
-.room-card-price small { 
-  font-size: 0.8rem; 
-  color: #64748b; 
-  font-weight: normal; 
-}
-
-.right-section {
-  height: fit-content;
-}
-
+/* ========================================
+   BOOKING CARD
+   ======================================== */
 .booking-card { 
   background: white; 
   padding: 1.5rem; 
@@ -1747,6 +1904,25 @@ onUnmounted(() => {
   font-size: 1rem; 
 }
 
+/* ========================================
+   BUTTONS
+   ======================================== */
+.btn-primary {
+  margin-top: 1rem;
+  padding: 10px 24px;
+  background: #1e3a8a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-primary:hover {
+  background: #172554;
+}
+
 .btn-primary-custom { 
   width: 100%; 
   padding: 12px; 
@@ -1793,48 +1969,49 @@ onUnmounted(() => {
   background: #eff6ff; 
 }
 
-.icon-btn { 
-  border: 1px solid #e2e8f0; 
-  background: white; 
-  padding: 8px 12px; 
-  border-radius: 8px; 
-  cursor: pointer; 
-  display: flex; 
-  align-items: center; 
-  gap: 6px; 
-  font-weight: 600; 
-  color: #64748b; 
-  transition: 0.2s; 
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+.text-green { 
+  color: #10b981; 
 }
 
-.icon-btn:hover:not(:disabled) { 
-  border-color: #1e3a8a; 
-  color: #1e3a8a; 
+.text-red { 
+  color: #ef4444; 
 }
 
-.icon-btn:disabled {
+.text-gray {
+  color: #94a3b8;
+}
+
+.opacity-50 {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.wishlist-active { 
-  background: #fef2f2; 
-  border-color: #ef4444; 
-  color: #ef4444; 
+.spin {
+  animation: spin 1s linear infinite;
 }
 
-.no-rooms { 
-  text-align: center; 
-  padding: 2rem; 
-  color: #94a3b8; 
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-8 { margin-bottom: 2rem; }
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+@keyframes spin { 
+  to { transform: rotate(360deg); } 
 }
 
-.hint-text {
-  font-size: 0.85rem;
-  color: #94a3b8;
-  margin-top: 0.5rem;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
 @media (max-width: 900px) {
   .main-content { 
     grid-template-columns: 1fr; 
@@ -1849,6 +2026,19 @@ onUnmounted(() => {
     display: none; 
   }
   
+  .gallery-skeleton-wrapper { 
+    grid-template-columns: 1fr; 
+    height: auto; 
+  }
+  
+  .thumb-skeleton-side { 
+    display: none; 
+  }
+  
+  .main-content-layout { 
+    grid-template-columns: 1fr; 
+  }
+  
   .booking-card {
     position: static;
   }
@@ -1858,6 +2048,34 @@ onUnmounted(() => {
     width: 100%;
     margin-top: 1rem;
     justify-content: center;
+  }
+
+  .gallery-modal-content {
+    height: 95vh;
+  }
+  
+  .gallery-main {
+    flex-direction: column;
+  }
+  
+  .gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+  }
+  
+  .gallery-nav.prev {
+    left: 10px;
+  }
+  
+  .gallery-nav.next {
+    right: 10px;
+  }
+  
+  .reviews-summary {
+    flex-direction: column;
+    text-align: center;
   }
 }
 </style>

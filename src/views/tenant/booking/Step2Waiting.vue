@@ -13,12 +13,17 @@
       </div>
 
       <div class="card-content center-align">
-        <div v-if="loading">
-          <Icon icon="mdi:loading" class="spin icon-lg" />
-          <p>Mengecek status...</p>
+        <div v-if="loading" class="w-full">
+          <BaseSkeleton width="80px" height="80px" circle class="mx-auto mb-6" />
+          <BaseSkeleton width="60%" height="24px" class="mx-auto mb-4" />
+          <div class="skeleton-info-box">
+            <BaseSkeleton width="100%" height="18px" class="mb-2" />
+            <BaseSkeleton width="80%" height="18px" />
+          </div>
+          <BaseSkeleton width="100%" height="52px" border-radius="12px" />
         </div>
 
-        <div v-else>
+        <div v-else class="w-full">
           <div v-if="booking?.status === 'pending'">
             <div class="icon-circle orange">
               <Icon icon="mdi:clock-outline" />
@@ -31,22 +36,25 @@
               <p><strong>Kost:</strong> {{ booking.room?.kost?.name }}</p>
             </div>
 
-            <button class="btn-refresh" @click="checkStatus">
-              <Icon icon="mdi:refresh" /> Cek Status Terbaru
-            </button>
-            <p class="hint">Anda bisa menutup halaman ini dan mengeceknya nanti di menu Riwayat.</p>
+            <BaseButton variant="outline" block :loading="refreshing" @click="checkStatus">
+              <template #icon-left><Icon icon="mdi:refresh" /></template>
+              Cek Status Terbaru
+            </BaseButton>
+            
+            <p class="hint">Anda bisa mengecek halaman ini secara berkala untuk melihat status terbaru.</p>
           </div>
 
           <div v-else-if="booking?.status === 'approved'">
             <div class="icon-circle green">
               <Icon icon="mdi:check-circle-outline" />
             </div>
-            <h2>Permintaan Diterima!</h2>
+            <h2>Permintaan Disetujui!</h2>
             <p>Pemilik kost telah menyetujui. Silakan lanjut ke pembayaran.</p>
             
-            <button class="btn-primary" @click="goToPayment">
-              Lanjut Pembayaran <Icon icon="mdi:arrow-right" />
-            </button>
+            <BaseButton variant="primary" block @click="goToPayment">
+              Lanjut Pembayaran
+              <template #icon-right><Icon icon="mdi:arrow-right" /></template>
+            </BaseButton>
           </div>
 
           <div v-else-if="booking?.status === 'canceled'">
@@ -54,8 +62,10 @@
               <Icon icon="mdi:close-circle-outline" />
             </div>
             <h2>Permintaan Ditolak</h2>
-            <p>Maaf, pemilik kost menolak permintaan ini (mungkin kamar penuh).</p>
-            <button class="btn-outline" @click="$router.push('/properties')">Cari Kost Lain</button>
+            <p>Maaf, pemilik kost menolak permintaan ini atau kamar sudah penuh.</p>
+            <BaseButton variant="primary" block @click="$router.push('/properties')">
+              Cari Kost Lain
+            </BaseButton>
           </div>
         </div>
 
@@ -69,37 +79,38 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import transactionService from '@/services/transactionService';
+import { notify } from '@/utils/swal';
 
 const route = useRoute();
 const router = useRouter();
 const bookingId = route.query.booking_id;
 const booking = ref(null);
 const loading = ref(true);
+const refreshing = ref(false);
 
 const checkStatus = async () => {
-  loading.value = true;
+  // Kalau refresh, jangan pake skeleton besar, cukup loading di tombol
+  if (booking.value) refreshing.value = true;
+  else loading.value = true;
+
   try {
-    // Kita pakai getBookingDetail yang sudah diperbaiki di transactionService
     const data = await transactionService.getBookingDetail(bookingId);
     booking.value = data;
-    
-    // Auto redirect kalau sudah approved?
-    // Lebih baik biarkan user klik manual biar sadar statusnya berubah
   } catch (error) {
-    console.error("Error:", error);
+    notify.error("Gagal memuat status terbaru.");
   } finally {
     loading.value = false;
+    refreshing.value = false;
   }
 };
 
 const goToPayment = () => {
-  // Lanjut ke Step 3
   router.push({ name: 'booking-step-3', query: { booking_id: bookingId } });
 };
 
 onMounted(() => {
   if (!bookingId) {
-    alert("Booking ID hilang.");
+    notify.error("Booking ID tidak ditemukan.");
     router.push('/properties');
   } else {
     checkStatus();
@@ -109,42 +120,32 @@ onMounted(() => {
 
 <style scoped>
 .step-page { background: #f8fafc; min-height: 100vh; padding-top: 40px; font-family: 'Poppins', sans-serif; display: flex; justify-content: center; }
-.container { width: 100%; max-width: 600px; padding: 20px; }
+.container { width: 100%; max-width: 550px; padding: 20px; }
 
-/* STEPPER */
-.stepper { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; font-size: 0.75rem; color: #94a3b8; font-weight: 600; }
+/* ✅ STEPPER STYLE KONSISTEN */
+.stepper { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; font-size: 0.75rem; color: #94a3b8; font-weight: 700; }
 .step.active { color: #1e3a8a; }
 .step.completed { color: #10b981; }
-.line { flex: 1; height: 2px; background: #e2e8f0; margin: 0 8px; }
+.line { flex: 1; height: 2px; background: #e2e8f0; margin: 0 10px; }
 .line.active { background: #10b981; }
 
-.card-content { background: white; padding: 40px 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; text-align: center; }
+.card-content { background: white; padding: 45px 35px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; text-align: center; }
+.center-align { display: flex; flex-direction: column; align-items: center; }
+.w-full { width: 100%; }
+.mx-auto { margin-left: auto; margin-right: auto; }
 
-.center-align { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-
-.icon-circle { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 20px; }
+.icon-circle { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; margin: 0 auto 25px; }
 .orange { background: #fff7ed; color: #ea580c; }
 .green { background: #f0fdf4; color: #16a34a; }
 .red { background: #fef2f2; color: #dc2626; }
 
-h2 { font-size: 1.5rem; color: #1e293b; margin: 0 0 10px; }
-p { color: #64748b; margin-bottom: 20px; line-height: 1.6; }
+h2 { font-size: 1.6rem; font-weight: 800; color: #1e293b; margin-bottom: 10px; }
+p { color: #64748b; margin-bottom: 25px; line-height: 1.6; font-size: 0.95rem; }
 
-.info-box { background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: left; border: 1px solid #e2e8f0; }
-.info-box p { margin: 5px 0; font-size: 0.9rem; }
+.info-box { background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 25px; text-align: left; border: 1px solid #e2e8f0; }
+.info-box p { margin: 5px 0; font-size: 0.95rem; color: #334155; }
 
-.btn-refresh, .btn-primary, .btn-outline { padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 1rem; transition: 0.2s; }
-.btn-refresh { background: white; border: 1px solid #cbd5e1; color: #64748b; }
-.btn-refresh:hover { background: #f1f5f9; color: #1e3a8a; }
-
-.btn-primary { background: #1e3a8a; color: white; border: none; }
-.btn-primary:hover { background: #172554; }
-
-.btn-outline { background: white; border: 1px solid #ef4444; color: #ef4444; }
-.btn-outline:hover { background: #fef2f2; }
+.skeleton-info-box { background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #e2e8f0; }
 
 .hint { font-size: 0.8rem; color: #94a3b8; margin-top: 20px; }
-.spin { animation: spin 1s linear infinite; margin-bottom: 10px; color: #1e3a8a; font-size: 2rem; }
-
-@keyframes spin { 100% { transform: rotate(360deg); } }
 </style>

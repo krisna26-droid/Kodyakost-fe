@@ -11,9 +11,16 @@
     </header>
 
     <div class="container main-content">
-      <div v-if="isLoading" class="loading-box">
-        <Icon icon="mdi:loading" class="spin" />
-        <p>Menyiapkan galeri terbaik untuk Anda...</p>
+      
+      <div v-if="isLoading">
+        <div class="skeleton-section-header">
+          <BaseSkeleton width="250px" height="24px" class="mb-6" />
+        </div>
+        <div class="gallery-grid">
+          <div v-for="i in 6" :key="i" class="skeleton-item">
+            <BaseSkeleton height="220px" border-radius="12px" />
+          </div>
+        </div>
       </div>
 
       <div v-else>
@@ -70,7 +77,9 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import kostService from '@/services/kostService';
-import { notify } from '@/utils/swal'; // Menggunakan helper notify
+import { notify } from '@/utils/swal';
+// Import BaseSkeleton jika belum otomatis
+import BaseSkeleton from '@/components/common/BaseSkeleton.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -78,7 +87,6 @@ const isLoading = ref(true);
 const lightboxImage = ref(null);
 const groupedPhotos = ref({});
 
-// URL HELPER
 const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
 const STORAGE_URL = API_URL.replace(/\/api\/?$/, '');
 
@@ -110,26 +118,22 @@ onMounted(async () => {
     
     const groups = { building: [], room: [], public: [] };
 
-    // 1. Foto Utama
     if (data.main_image || data.image_path) {
       groups.building.push({ url: getThumb(data.main_image || data.image_path) });
     }
 
-    // 2. Galeri Tambahan
     if (data.images?.length) {
       data.images.forEach(img => {
         groups.public.push({ url: getThumb(img.path || img) });
       });
     }
 
-    // 3. Foto dari Kamar
     if (data.rooms?.length) {
       data.rooms.forEach(room => {
         if (room.image) groups.room.push({ url: getThumb(room.image) });
       });
     }
 
-    // Bersihkan yang kosong
     Object.keys(groups).forEach(key => {
       if (groups[key].length === 0) delete groups[key];
     });
@@ -144,7 +148,11 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* NAVY THEME [Warna asli KodyaKost tetap dipertahankan] */
+/* Tambahan dikit buat Skeleton */
+.mb-6 { margin-bottom: 24px; }
+.skeleton-section-header { border-left: 4px solid #e2e8f0; padding-left: 15px; }
+
+/* Sisa Style Asli Lo Tetap Sama... */
 .photos-view { min-height: 100vh; background-color: #f8fafc; font-family: 'Poppins', sans-serif; }
 .container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
 
@@ -171,7 +179,6 @@ onMounted(async () => {
 .empty-state { text-align: center; padding: 100px 0; color: #64748b; }
 .icon-circle { width: 80px; height: 80px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: #cbd5e1; }
 
-/* LIGHTBOX */
 .lightbox { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 999; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(10px); }
 .lightbox-content { position: relative; max-width: 95%; max-height: 90vh; }
 .lightbox img { width: 100%; height: auto; border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }

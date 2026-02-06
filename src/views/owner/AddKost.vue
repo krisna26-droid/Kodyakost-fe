@@ -119,7 +119,7 @@
 import { ref, reactive, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
-import { notify } from '@/utils/swal';
+import { notify } from '@/utils/swal'; // Memanggil utilitas notifikasi kita
 import ownerService from '@/services/ownerService';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -156,8 +156,9 @@ const triggerFile = () => mainInput.value.click();
 const onFileChange = (e) => {
   const file = e.target.files[0];
   if (file) {
+    // Validasi Ukuran File (Pake notify.error)
     if (file.size > 2048000) {
-      notify.error("Ukuran file terlalu besar. Maksimal 2MB.");
+      notify.error("Ukuran file terlalu besar. Maksimal 2MB!");
       return;
     }
     mainFile.value = file;
@@ -169,10 +170,15 @@ const onFileChange = (e) => {
 let map, marker;
 onMounted(() => {
   map = L.map('map').setView([form.latitude, form.longitude], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+  
+  // Invalidate size agar peta tidak abu-abu saat modal/halaman load
   setTimeout(() => map.invalidateSize(), 400);
 
   marker = L.marker([form.latitude, form.longitude], { draggable: true }).addTo(map);
+  
   const updateCoords = (lat, lng) => {
     form.latitude = parseFloat(lat.toFixed(6));
     form.longitude = parseFloat(lng.toFixed(6));
@@ -190,25 +196,41 @@ onMounted(() => {
 });
 
 const handleSubmit = async () => {
+  // 1. Validasi Foto (Pake notify.error)
   if (!mainFile.value) {
-    notify.error("Foto utama kost wajib diunggah!");
+    notify.error("Waduh, foto utama kostnya jangan lupa diunggah dulu, Cuk!");
     return;
   }
+
+  // 2. Konfirmasi Sebelum Kirim (Pake notify.confirm)
+  const confirmed = await notify.confirm(
+    "Simpan Properti?",
+    "Pastikan data sudah benar. Setelah ini kamu harus mengisi detail kamar.",
+    "Ya, Simpan Kost"
+  );
+
+  if (!confirmed) return;
   
   loading.value = true;
   try {
     const fd = new FormData();
+    // Append semua field form ke FormData
     Object.keys(form).forEach(key => fd.append(key, form[key]));
     fd.append('thumbnail', mainFile.value);
 
     console.log("📤 [AddKost] Mengirim data ke API...");
     const res = await ownerService.createKost(fd);
-    console.log("🐞 [AddKost] Response API:", res);
     
+    // Ambil ID dari berbagai kemungkinan struktur response backend
     const kostId = res.data?.data?.id || res.data?.id;
 
     if (kostId) {
-      await notify.alertSuccess("Kost Berhasil!", "Lanjut tambah tipe kamar.");
+      // 3. Notif Sukses (Pake notify.alertSuccess)
+      await notify.alertSuccess(
+        "Kost Berhasil Dibuat!", 
+        "Mantap! Sekarang lanjut tambahkan tipe kamar (misal: Kamar Mandi Dalam) agar kostmu bisa tayang."
+      );
+      
       router.push({ 
         name: 'manage-rooms', 
         params: { id: kostId } 
@@ -216,7 +238,10 @@ const handleSubmit = async () => {
     }
   } catch (error) {
     console.error("❌ [AddKost] Error Simpan Kost:", error);
-    notify.error("Gagal simpan data.");
+    
+    // 4. Handle Error dari Server (Pake notify.error)
+    const errorMsg = error.response?.data?.message || "Gagal simpan data. Cek koneksimu atau coba lagi nanti.";
+    notify.error(errorMsg);
   } finally {
     loading.value = false;
   }

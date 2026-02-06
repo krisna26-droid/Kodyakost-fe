@@ -112,6 +112,29 @@ async register(name, email, password, role, phone) {
       }
     },
 
+    async uploadKtp(file) {
+      this.loading = true;
+      try {
+        const formData = new FormData();
+        formData.append('ktp_image', file);
+        // Jalur disesuaikan dengan api.php (prefix tenant)
+        const response = await apiClient.post('/tenant/profile/ktp', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        
+        // Update state user secara reaktif
+        const updatedUser = { ...this.user, ...response.data.data };
+        this.user = updatedUser;
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        return true;
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Gagal upload KTP';
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
     // --- SET DATA & TOKEN ---
     setUserData(user, token) {
       this.user = user;

@@ -11,7 +11,8 @@ export default {
           total_users: data.stats.total_users || 0,
           total_kosts: data.stats.total_kosts || 0,
           pending_kosts: data.stats.pending_verification || 0,
-          revenue: 0 
+          // HANYA MENGUBAH BARIS INI:
+          revenue: data.stats.monthly_revenue || 0 
         };
       }
       return { total_users: 0, total_kosts: 0, pending_kosts: 0, revenue: 0 };
