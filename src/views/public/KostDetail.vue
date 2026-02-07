@@ -2,7 +2,6 @@
   <div class="kost-detail-page">
     <div class="page-container">
       
-      <!-- Loading State -->
       <div v-if="loading" class="loading-state-skeleton">
         <div class="gallery-skeleton-wrapper">
           <BaseSkeleton height="400px" border-radius="16px" class="flex-main" />
@@ -11,7 +10,6 @@
             <BaseSkeleton height="192px" border-radius="16px" />
           </div>
         </div>
-
         <div class="main-content-layout">
           <div class="left-skeleton">
             <BaseSkeleton width="70%" height="40px" class="mb-4" />
@@ -25,43 +23,25 @@
         </div>
       </div>
 
-      <!-- Error State -->
       <div v-else-if="error" class="error-state">
         <div class="error-card">
-          <div class="error-icon">
-            <Icon icon="mdi:alert-circle-outline" width="64" />
-          </div>
+          <div class="error-icon"><Icon icon="mdi:alert-circle-outline" width="64" /></div>
           <h3>Gagal Memuat Data</h3>
           <p>{{ error }}</p>
           <button class="btn-primary" @click="fetchDetail">Coba Lagi</button>
         </div>
       </div>
 
-      <!-- Not Found State -->
-      <div v-else-if="!kost" class="error-state">
-        <div class="error-card">
-          <div class="error-icon">
-            <Icon icon="mdi:home-alert-outline" width="64" />
-          </div>
-          <h3>Data Tidak Ditemukan</h3>
-          <p>Properti yang Anda cari tidak ditemukan atau telah dihapus.</p>
-          <button class="btn-primary" @click="$router.push('/')">Kembali ke Beranda</button>
-        </div>
-      </div>
-
-      <!-- Main Content -->
-      <div v-else class="content-wrapper">
-        <!-- Breadcrumb -->
+      <div v-else-if="kost" class="content-wrapper">
         <nav class="breadcrumb">
           <router-link to="/">Beranda</router-link> <span>/</span>
           <router-link to="/properties">Properti</router-link> <span>/</span>
           <span class="current">{{ kost.name || 'Detail Kost' }}</span>
         </nav>
 
-        <!-- Gallery Section -->
         <div class="gallery-section">
           <div class="main-image">
-            <img :src="getThumb(kost.thumbnail || kost.main_image)" :alt="kost.name" />
+            <img :src="galleryPreview[0] || getThumb(null)" :alt="kost.name" />
           </div>
           
           <div v-if="galleryPreview.length > 1" class="thumbnail-grid">
@@ -78,32 +58,19 @@
             </div>
           </div>
           
-          <!-- View All Photos Button -->
-          <button 
-            v-if="galleryPreview.length > 1" 
-            class="view-all-btn" 
-            @click="openGalleryModal(0)"
-          >
+          <button v-if="galleryPreview.length > 1" class="view-all-btn" @click="openGalleryModal(0)">
             <Icon icon="mdi:image-multiple-outline" width="20" />
             Lihat Semua Foto ({{ galleryPreview.length }})
           </button>
         </div>
 
-        <!-- Main Content Grid -->
         <div class="main-content">
-          <!-- Left Section -->
           <div class="left-section">
-            <!-- Property Header -->
             <div class="property-header">
               <div class="header-top">
                 <h1 class="property-title">{{ kost.name }}</h1>
                 <div class="header-actions">
-                  <button 
-                    class="icon-btn" 
-                    :class="{ 'wishlist-active': isWishlisted }"
-                    :disabled="loadingWishlist"
-                    @click="handleWishlist"
-                  >
+                  <button class="icon-btn" :class="{ 'wishlist-active': isWishlisted }" :disabled="loadingWishlist" @click="handleWishlist">
                     <Icon v-if="loadingWishlist" icon="mdi:loading" class="spin" width="20" />
                     <Icon v-else :icon="isWishlisted ? 'mdi:heart' : 'mdi:heart-outline'" width="20" />
                     <span>{{ isWishlisted ? 'Tersimpan' : 'Simpan' }}</span>
@@ -111,29 +78,19 @@
                 </div>
               </div>
 
-              <!-- Rating & Reviews -->
-              <div v-if="kost.rating || kost.reviews_count" class="rating-section">
+              <div v-if="kost.rating || reviewsCount > 0" class="rating-section">
                 <div class="rating-display">
                   <Icon icon="mdi:star" class="star-icon" />
                   <span class="rating-value">{{ kost.rating || 0 }}</span>
                   <span class="rating-separator">·</span>
-                  <a href="#reviews" class="review-count">{{ kost.reviews_count || 0 }} ulasan</a>
+                  <a href="#reviews" class="review-count">{{ reviewsCount }} ulasan</a>
                 </div>
               </div>
 
-              <!-- Property Meta -->
               <div class="property-meta">
-                <span class="meta-item">
-                  <Icon icon="mdi:eye-outline" /> 
-                  {{ kost.views || 0 }} views
-                </span>
-                <span class="meta-item">
-                  <Icon icon="mdi:map-marker" /> 
-                  {{ displayLocation }}
-                </span>
+                <span class="meta-item"><Icon icon="mdi:eye-outline" /> {{ kost.views || 0 }} views</span>
+                <span class="meta-item"><Icon icon="mdi:map-marker" /> {{ displayLocation }}</span>
               </div>
-              
-              <!-- Full Address -->
               <div v-if="kost.address" class="property-address">
                 <Icon icon="mdi:map-marker-outline" />
                 <span>{{ kost.address }}</span>
@@ -142,22 +99,14 @@
 
             <div class="divider"></div>
 
-            <!-- About Section -->
             <div class="info-section">
-              <h2 class="section-title">
-                <Icon icon="mdi:text-box-outline" />
-                Tentang Properti
-              </h2>
+              <h2 class="section-title"><Icon icon="mdi:text-box-outline" /> Tentang Properti</h2>
               <p class="info-text">{{ kost.description || 'Tidak ada deskripsi.' }}</p>
             </div>
 
-            <!-- Facilities Section -->
             <div v-if="allFacilities.length > 0" class="info-section">
               <div class="divider"></div>
-              <h2 class="section-title">
-                <Icon icon="mdi:star-outline" />
-                Fasilitas Properti
-              </h2>
+              <h2 class="section-title"><Icon icon="mdi:star-outline" /> Fasilitas Properti</h2>
               <div class="facilities-grid">
                 <div v-for="fac in allFacilities" :key="fac" class="facility-item">
                   <Icon :icon="getFacilityIcon(fac)" />
@@ -168,138 +117,116 @@
 
             <div class="divider"></div>
 
-            <!-- Room Selection -->
             <div class="info-section" id="room-selection">
-              <h2 class="section-title">
-                <Icon icon="mdi:bed-outline" />
-                Pilih Tipe Kamar
-              </h2>
-              
-              <!-- No Rooms Available -->
+              <h2 class="section-title"><Icon icon="mdi:bed-outline" /> Pilih Tipe Kamar</h2>
               <div v-if="rooms.length === 0" class="no-rooms">
                 <Icon icon="mdi:door-closed" width="40" class="text-gray" />
                 <p>Belum ada tipe kamar tersedia untuk properti ini.</p>
-                <p class="hint-text">Pemilik belum menambahkan tipe kamar. Hubungi pemilik untuk informasi lebih lanjut.</p>
               </div>
-              
-              <!-- Room List -->
               <div v-else class="room-list">
-                <div 
-                  v-for="room in rooms" 
-                  :key="room.id" 
-                  class="room-card-item"
-                  :class="{ 
-                    'selected': selectedRoom?.id === room.id, 
-                    'disabled': room.available_rooms < 1 
-                  }"
-                  @click="selectRoom(room)"
-                >
+                <div v-for="room in rooms" :key="room.id" class="room-card-item" :class="{ 'selected': selectedRoom?.id === room.id, 'disabled': room.available_rooms < 1 }" @click="selectRoom(room)">
                   <div class="room-card-main">
                     <div class="room-card-info">
                       <div class="room-header">
                         <span class="room-type-name">{{ room.room_type }}</span>
-                        <div class="room-card-price">
-                          {{ formatRupiah(room.price_per_month) }} 
-                          <small>/bln</small>
-                        </div>
+                        <div class="room-card-price">{{ formatRupiah(room.price_per_month) }} <small>/bln</small></div>
                       </div>
-                      
                       <div class="room-meta">
                         <span class="room-stock" :class="room.available_rooms > 0 ? 'text-green' : 'text-red'">
                           <Icon :icon="room.available_rooms > 0 ? 'mdi:check-circle' : 'mdi:close-circle'" width="16" />
                           {{ room.available_rooms > 0 ? `Tersedia ${room.available_rooms} kamar` : 'Penuh' }}
                         </span>
-                        <span v-if="room.room_size" class="room-size">
-                          <Icon icon="mdi:ruler-square" width="16" />
-                          {{ room.room_size }}
-                        </span>
-                      </div>
-                      
-                      <div v-if="room.facilities && room.facilities.length > 0" class="room-fac-list">
-                        <span v-for="fac in room.facilities.slice(0, 4)" :key="fac.id" class="fac-tag">
-                          <Icon :icon="getFacilityIcon(fac.name)" width="14" />
-                          {{ fac.name }}
-                        </span>
-                        <span v-if="room.facilities.length > 4" class="fac-more">
-                          +{{ room.facilities.length - 4 }}
-                        </span>
+                        <span v-if="room.room_size" class="room-size"><Icon icon="mdi:ruler-square" width="16" /> {{ room.room_size }}</span>
                       </div>
                     </div>
-                    
-                    <!-- Radio Button Selector -->
                     <div class="room-card-selector">
-                      <Icon 
-                        :icon="selectedRoom?.id === room.id ? 'mdi:radiobox-marked' : 'mdi:radiobox-blank'" 
-                        :class="{ 'radio-active': selectedRoom?.id === room.id }"
-                        width="28"
-                      />
+                      <Icon :icon="selectedRoom?.id === room.id ? 'mdi:radiobox-marked' : 'mdi:radiobox-blank'" :class="{ 'radio-active': selectedRoom?.id === room.id }" width="28" />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Reviews Section -->
-            <div v-if="hasReviews" class="info-section" id="reviews">
+            <div class="info-section" id="reviews">
               <div class="divider"></div>
-              <h2 class="section-title">
-                <Icon icon="mdi:comment-text-outline" />
-                Ulasan Penyewa
-              </h2>
+              <div class="reviews-header-flex">
+                <h2 class="section-title" style="margin-bottom: 0;">
+                  <Icon icon="mdi:comment-text-outline" />
+                  Ulasan Penyewa
+                </h2>
+                <button v-if="canUserReview" class="btn-write-review" @click="handleWriteReview">
+                  <Icon icon="mdi:square-edit-outline" /> Tulis Ulasan
+                </button>
+              </div>
               
-              <!-- Reviews Summary -->
-              <div class="reviews-summary">
-                <div class="rating-big">
-                  <Icon icon="mdi:star" class="star-big" />
-                  <span class="rating-number">{{ kost.rating || 0 }}</span>
-                </div>
-                <div class="rating-breakdown">
-                  <p class="reviews-total">{{ kost.reviews_count || 0 }} ulasan</p>
-                </div>
+              <div v-if="rawReviews.length === 0" class="no-reviews-placeholder">
+                <Icon icon="mdi:comment-off-outline" width="40" class="mb-2" />
+                <p>Belum ada ulasan untuk properti ini.</p>
               </div>
 
-              <!-- Reviews List -->
-              <div class="reviews-list">
-                <div v-for="review in displayedReviews" :key="review.id" class="review-item">
-                  <div class="review-header">
-                    <div class="reviewer-info">
-                      <div class="reviewer-avatar">
-                        <Icon icon="mdi:account-circle" width="40" />
-                      </div>
-                      <div>
-                        <p class="reviewer-name">{{ review.user_name || 'Anonymous' }}</p>
-                        <p class="review-date">{{ formatReviewDate(review.created_at) }}</p>
-                      </div>
+              <div v-else>
+                <div class="reviews-summary-pro">
+                  <div class="summary-left">
+                    <div class="rating-big-wrapper">
+                      <span class="rating-number">{{ reviewsData?.average_rating || '0.0' }}</span>
+                      <span class="rating-max">/5</span>
                     </div>
-                    <div class="review-rating">
-                      <Icon icon="mdi:star" class="star-small" />
-                      <span>{{ review.rating }}</span>
+                    <div class="stars-wrapper">
+                      <Icon v-for="i in 5" :key="i" icon="mdi:star" :class="i <= Math.round(reviewsData?.average_rating) ? 'star-active' : 'star-inactive'" />
+                    </div>
+                    <p class="total-text">Berdasarkan {{ reviewsData?.total_reviews || 0 }} ulasan</p>
+                  </div>
+
+                  <div class="summary-right">
+                    <div v-for="(count, star) in reviewsData?.star_counts" :key="star" class="bar-item">
+                      <span class="star-label">{{ star.replace('_star', '') }}</span>
+                      <div class="bar-bg">
+                        <div class="bar-fill" :style="{ width: (count / (reviewsData?.total_reviews || 1) * 100) + '%' }"></div>
+                      </div>
+                      <span class="count-label">{{ count }}</span>
                     </div>
                   </div>
-                  <p class="review-text">{{ review.comment }}</p>
                 </div>
-              </div>
 
-              <!-- Show More Button -->
-              <button 
-                v-if="kost.reviews && kost.reviews.length > 3" 
-                class="btn-show-more"
-                @click="toggleAllReviews"
-              >
-                {{ showAllReviews ? 'Tampilkan Lebih Sedikit' : `Lihat Semua ${kost.reviews.length} Ulasan` }}
-              </button>
+                <div class="reviews-list">
+                  <div v-for="review in displayedReviews" :key="review.id" class="review-item">
+                    <div class="review-header">
+                      <div class="reviewer-info">
+                        <div class="reviewer-avatar">
+                          <img v-if="review.user?.avatar" :src="getThumb(review.user.avatar)" :alt="review.user?.name" />
+                          <div v-else class="avatar-placeholder">
+                            <Icon icon="mdi:account-circle" width="48" />
+                          </div>
+                        </div>
+                        <div class="reviewer-details">
+                          <div class="reviewer-name-row">
+                            <p class="reviewer-name">{{ review.user?.name || 'Anonymous' }}</p>
+                            <span v-if="review.user?.role === 'tenant'" class="role-badge">Penyewa</span>
+                          </div>
+                          <p class="review-date">{{ formatReviewDate(review.created_at) }}</p>
+                        </div>
+                      </div>
+                      <div class="review-rating-badge">
+                        <Icon icon="mdi:star" />
+                        <span>{{ review.rating }}</span>
+                      </div>
+                    </div>
+                    <p class="review-comment">{{ review.comment }}</p>
+                  </div>
+                </div>
+
+                <button v-if="rawReviews.length > 3" class="btn-show-more" @click="toggleAllReviews">
+                  {{ showAllReviews ? 'Tampilkan Lebih Sedikit' : `Lihat Semua ${rawReviews.length} Ulasan` }}
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- Right Section - Booking Card -->
           <div class="right-section">
             <div class="booking-card">
-              <!-- Price Header -->
               <div class="price-header">
                 <div>
-                  <div class="price-amount">
-                    {{ selectedRoom ? formatRupiah(selectedRoom.price_per_month) : (lowestPrice > 0 ? formatRupiah(lowestPrice) : 'Hubungi Pemilik') }}
-                  </div>
+                  <div class="price-amount">{{ selectedRoom ? formatRupiah(selectedRoom.price_per_month) : (lowestPrice > 0 ? formatRupiah(lowestPrice) : 'Hubungi Pemilik') }}</div>
                   <div v-if="selectedRoom || lowestPrice > 0" class="price-period">per bulan</div>
                 </div>
                 <div class="availability-badge" :class="selectedRoom ? 'bg-green-light' : 'bg-gray-light'">
@@ -307,37 +234,15 @@
                   {{ selectedRoom ? 'Kamar Dipilih' : (rooms.length > 0 ? 'Mulai Dari' : 'Belum Tersedia') }}
                 </div>
               </div>
-
-              <!-- Booking Form -->
               <div class="booking-form">
                 <div class="form-group">
-                  <label class="form-label">
-                    <Icon icon="mdi:calendar" width="16" />
-                    Tanggal Masuk
-                  </label>
-                  <input 
-                    v-model="bookingDate" 
-                    type="date" 
-                    class="form-input" 
-                    :min="todayDate" 
-                    :disabled="rooms.length === 0" 
-                  />
+                  <label class="form-label"><Icon icon="mdi:calendar" width="16" /> Tanggal Masuk</label>
+                  <input v-model="bookingDate" type="date" class="form-input" :min="todayDate" :disabled="rooms.length === 0" />
                 </div>
-                
                 <div class="form-group">
-                  <label class="form-label">
-                    <Icon icon="mdi:clock-outline" width="16" />
-                    Durasi Sewa
-                  </label>
+                  <label class="form-label"><Icon icon="mdi:clock-outline" width="16" /> Durasi Sewa</label>
                   <div class="duration-input-group">
-                    <input 
-                      v-model="bookingDuration" 
-                      type="number" 
-                      min="1" 
-                      max="24"
-                      class="form-input" 
-                      :disabled="rooms.length === 0" 
-                    />
+                    <input v-model="bookingDuration" type="number" min="1" max="24" class="form-input" :disabled="rooms.length === 0" />
                     <select v-model="durationUnit" class="form-select" :disabled="rooms.length === 0">
                       <option value="Bulan">Bulan</option>
                       <option value="Tahun">Tahun</option>
@@ -345,49 +250,16 @@
                   </div>
                 </div>
               </div>
-
-              <!-- Price Breakdown -->
               <div v-if="selectedRoom" class="price-breakdown">
-                <div class="breakdown-row">
-                  <span>
-                    <Icon icon="mdi:currency-usd" width="16" />
-                    Harga per bulan
-                  </span>
-                  <span>{{ formatRupiah(selectedRoom.price_per_month) }}</span>
-                </div>
-                <div class="breakdown-row">
-                  <span>
-                    <Icon icon="mdi:calendar-range" width="16" />
-                    Durasi
-                  </span>
-                  <span>{{ bookingDuration }} {{ durationUnit }}</span>
-                </div>
-                <div class="breakdown-row total">
-                  <span>Total Bayar</span>
-                  <span>{{ formatRupiah(calculateSubtotal) }}</span>
-                </div>
+                <div class="breakdown-row"><span>Harga / {{ durationUnit }}</span><span>{{ formatRupiah(selectedRoom.price_per_month) }}</span></div>
+                <div class="breakdown-row"><span>Durasi</span><span>{{ bookingDuration }} {{ durationUnit }}</span></div>
+                <div class="breakdown-row total"><span>Total Bayar</span><span>{{ formatRupiah(calculateSubtotal) }}</span></div>
               </div>
-
-              <!-- Action Buttons -->
-              <button 
-                class="btn-primary-custom" 
-                :class="{ 'opacity-50': !selectedRoom || !bookingDate }"
-                :disabled="!selectedRoom || rooms.length === 0 || !bookingDate"
-                @click="handleBooking" 
-              >
+              <button class="btn-primary-custom" :disabled="!selectedRoom || !bookingDate" @click="handleBooking">
                 <Icon icon="mdi:calendar-check" width="20" /> 
-                {{ 
-                  rooms.length === 0 ? 'Belum Tersedia' : 
-                  !selectedRoom ? 'Pilih Kamar Dulu' :
-                  !bookingDate ? 'Pilih Tanggal Dulu' :
-                  'Ajukan Sewa' 
-                }}
+                {{ !selectedRoom ? 'Pilih Kamar Dulu' : !bookingDate ? 'Pilih Tanggal' : 'Ajukan Sewa' }}
               </button>
-              
-              <button class="btn-outline-custom" @click="handleContactOwner">
-                <Icon icon="mdi:whatsapp" width="20" /> 
-                Chat Pemilik
-              </button>
+              <button class="btn-outline-custom" @click="handleContactOwner"><Icon icon="mdi:whatsapp" width="20" /> Chat Pemilik</button>
             </div>
           </div>
         </div>
@@ -395,82 +267,44 @@
     </div>
 
     <!-- Gallery Modal -->
-    <div 
-      v-if="showGalleryModal" 
-      class="gallery-modal" 
-      role="dialog"
-      aria-modal="true"
-      aria-label="Gallery viewer"
-      @click.self="closeGalleryModal"
-    >
+    <div v-if="showGalleryModal" class="gallery-modal" @click.self="closeGalleryModal">
       <div class="gallery-modal-content">
-        <button class="gallery-close" aria-label="Close gallery" @click="closeGalleryModal">
-          <Icon icon="mdi:close" width="28" />
-        </button>
-        
+        <button class="gallery-close" @click="closeGalleryModal"><Icon icon="mdi:close" width="28" /></button>
         <div class="gallery-main">
-          <button 
-            class="gallery-nav prev" 
-            aria-label="Previous image"
-            :disabled="currentImageIndex === 0"
-            @click="previousImage"
-          >
-            <Icon icon="mdi:chevron-left" width="32" />
-          </button>
-          
+          <button class="gallery-nav prev" :disabled="currentImageIndex === 0" @click="previousImage"><Icon icon="mdi:chevron-left" width="32" /></button>
           <div class="gallery-image-container">
-            <img 
-              :src="galleryPreview[currentImageIndex]" 
-              :alt="`Gallery ${currentImageIndex + 1} of ${galleryPreview.length}`" 
-            />
-            <div class="gallery-counter">
-              {{ currentImageIndex + 1 }} / {{ galleryPreview.length }}
-            </div>
+            <img :src="galleryPreview[currentImageIndex]" />
+            <div class="gallery-counter">{{ currentImageIndex + 1 }} / {{ galleryPreview.length }}</div>
           </div>
-          
-          <button 
-            class="gallery-nav next" 
-            aria-label="Next image"
-            :disabled="currentImageIndex === galleryPreview.length - 1"
-            @click="nextImage"
-          >
-            <Icon icon="mdi:chevron-right" width="32" />
-          </button>
-        </div>
-        
-        <div class="gallery-thumbnails">
-          <div 
-            v-for="(img, index) in galleryPreview" 
-            :key="index"
-            class="gallery-thumb"
-            :class="{ 'active': currentImageIndex === index }"
-            :aria-label="`View image ${index + 1}`"
-            role="button"
-            tabindex="0"
-            @click="currentImageIndex = index"
-          >
-            <img :src="img" :alt="`Thumbnail ${index + 1}`" />
-          </div>
+          <button class="gallery-nav next" :disabled="currentImageIndex === galleryPreview.length - 1" @click="nextImage"><Icon icon="mdi:chevron-right" width="32" /></button>
         </div>
       </div>
     </div>
+
+    <!-- ✅ Review Modal -->
+    <ReviewModal
+      :is-open="showReviewModal"
+      :kost-id="kost?.id"
+      :kost-name="kost?.name"
+      :kost-location="displayLocation"
+      :kost-image="kost?.mainImage || kost?.thumbnail"
+      @close="showReviewModal = false"
+      @review-submitted="handleReviewSubmitted"
+    />
   </div>
 </template>
 
 <script setup>
-// ============================================
-// SCRIPT SECTION UNTUK KostDetail.vue
-// SUDAH DIPERBAIKI - COPY PASTE LANGSUNG
-// ============================================
-
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import Swal from 'sweetalert2';
+import api from '@/api/Axios';
 import { useAuthStore } from '@/stores/auth';
 import { useWishlistStore } from '@/stores/wishlist';
 import kostService from '@/services/kostService';
 import BaseSkeleton from '@/components/common/BaseSkeleton.vue';
+import ReviewModal from '@/components/modal/ReviewModal.vue'; // ✅ Import modal
 
 // ========================================
 // COMPOSABLES & STORES
@@ -490,96 +324,67 @@ const BASE_STORAGE_URL = API_URL.replace(/\/api\/?$/, '');
 // STATE
 // ========================================
 const kost = ref(null);
+const rawReviews = ref([]);
+const reviewsData = ref(null);
 const rooms = ref([]);
 const selectedRoom = ref(null);
 const loading = ref(true);
 const error = ref(null);
 const loadingWishlist = ref(false);
+const canUserReview = ref(false); 
 
-// Booking form state
 const bookingDate = ref('');
 const bookingDuration = ref(1);
 const durationUnit = ref('Bulan');
 
-// Gallery modal state
 const showGalleryModal = ref(false);
 const currentImageIndex = ref(0);
 
-// Reviews state
 const showAllReviews = ref(false);
+const showReviewModal = ref(false); // ✅ State modal review
 
 // ========================================
 // HELPER FUNCTIONS
 // ========================================
 const getThumb = (path) => {
   if (!path) return 'https://placehold.co/800x600?text=No+Image';
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  
+  if (path.startsWith('http')) return path;
   const cleanPath = path.replace(/^\//, '');
-  const finalUrl = cleanPath.startsWith('storage/') 
-    ? `${BASE_STORAGE_URL}/${cleanPath}`
+  return cleanPath.startsWith('storage/') 
+    ? `${BASE_STORAGE_URL}/${cleanPath}` 
     : `${BASE_STORAGE_URL}/storage/${cleanPath}`;
-
-  return finalUrl;
 };
 
 const getFacilityIcon = (facilityName) => {
   const iconMap = {
     'wifi': 'mdi:wifi',
-    'wi-fi': 'mdi:wifi',
-    'internet': 'mdi:wifi',
     'ac': 'mdi:air-conditioner',
     'parkir': 'mdi:parking',
-    'parking': 'mdi:parking',
-    'parkir motor': 'mdi:motorbike',
-    'parkir mobil': 'mdi:car',
-    'kamar mandi': 'mdi:shower',
     'kamar mandi dalam': 'mdi:shower',
-    'bathroom': 'mdi:shower',
     'kasur': 'mdi:bed',
-    'bed': 'mdi:bed',
-    'lemari': 'mdi:wardrobe',
-    'wardrobe': 'mdi:wardrobe',
-    'meja': 'mdi:desk',
-    'desk': 'mdi:desk',
-    'tv': 'mdi:television',
-    'television': 'mdi:television',
-    'kulkas': 'mdi:fridge',
-    'refrigerator': 'mdi:fridge',
-    'dapur': 'mdi:stove',
-    'kitchen': 'mdi:stove',
-    'laundry': 'mdi:washing-machine',
-    'mesin cuci': 'mdi:washing-machine',
+    'lemari': 'mdi:wardrobe'
   };
-
   const key = facilityName.toLowerCase().trim();
   return iconMap[key] || 'mdi:check-circle-outline';
 };
 
 const formatRupiah = (num) => {
   return new Intl.NumberFormat('id-ID', { 
-    style: 'currency', 
-    currency: 'IDR', 
-    minimumFractionDigits: 0 
+    style: 'currency', currency: 'IDR', minimumFractionDigits: 0 
   }).format(num || 0);
 };
 
 const formatReviewDate = (dateString) => {
   if (!dateString) return '';
-  const date = new Date(dateString);
   return new Intl.DateTimeFormat('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  }).format(date);
+    year: 'numeric', month: 'long', day: 'numeric'
+  }).format(new Date(dateString));
 };
 
 // ========================================
-// COMPUTED PROPERTIES - FIXED!
+// COMPUTED PROPERTIES
 // ========================================
-const todayDate = computed(() => {
-  return new Date().toISOString().split('T')[0];
-});
+const todayDate = computed(() => new Date().toISOString().split('T')[0]);
 
 const isWishlisted = computed(() => {
   if (!kost.value || !authStore.isAuthenticated) return false;
@@ -588,379 +393,239 @@ const isWishlisted = computed(() => {
 
 const displayLocation = computed(() => {
   if (!kost.value) return '-';
-  
-  const parts = [];
-  if (kost.value.village) parts.push(kost.value.village);
-  if (kost.value.district) parts.push(kost.value.district);
-  
-  if (parts.length === 0 && kost.value.location) {
-    if (kost.value.location.village) parts.push(kost.value.location.village);
-    if (kost.value.location.district) parts.push(kost.value.location.district);
-  }
-  
-  return parts.length === 0 ? kost.value.city || 'Lokasi tidak tersedia' : parts.join(', ');
+  const parts = [kost.value.village, kost.value.district].filter(Boolean);
+  return parts.length > 0 ? parts.join(', ') : (kost.value.location || 'Bali');
 });
 
-// ✅ FIXED: Gallery Preview with room.images[] support
 const galleryPreview = computed(() => {
   if (!kost.value) return [];
-  
   const images = [];
-  
-  // 1. Main thumbnail
-  if (kost.value.thumbnail || kost.value.main_image || kost.value.thumbnail_url) {
-    images.push(getThumb(kost.value.thumbnail || kost.value.main_image || kost.value.thumbnail_url));
-  }
-  
-  // 2. Kost-level images
+  const main = kost.value.mainImage || kost.value.thumbnail || kost.value.thumbnail_url;
+  if (main) images.push(getThumb(main));
+
   if (Array.isArray(kost.value.images)) {
     kost.value.images.forEach(img => {
-      const imgPath = img.path || img.image_path || img.image;
-      if (imgPath) images.push(getThumb(imgPath));
+      const path = img.path || img.image_path || img.image;
+      if (path) images.push(getThumb(path));
     });
   }
-  
-  // 3. Room images (CRITICAL FIX!)
+
   if (Array.isArray(rooms.value)) {
     rooms.value.forEach(room => {
-      // A. Room main image
-      if (room.image) {
-        images.push(getThumb(room.image));
-      }
-      
-      // B. Room images array (INI YANG PENTING!)
-      if (Array.isArray(room.images)) {
-        room.images.forEach(img => {
-          const imgPath = img.path || img.image_path || img.image;
-          if (imgPath) images.push(getThumb(imgPath));
-        });
-      }
-      
-      // C. Room gallery (fallback)
-      if (Array.isArray(room.gallery)) {
-        room.gallery.forEach(imgPath => {
-          if (imgPath) images.push(getThumb(imgPath));
+      if (room.image) images.push(getThumb(room.image));
+      const roomGallery = room.images || room.gallery;
+      if (Array.isArray(roomGallery)) {
+        roomGallery.forEach(img => {
+          const path = img.path || img.image_path || img.image || img;
+          if (path && typeof path === 'string') images.push(getThumb(path));
         });
       }
     });
   }
-  
-  // Remove duplicates
   return [...new Set(images)];
 });
 
+const reviewsCount = computed(() => {
+  return reviewsData.value?.total_reviews || kost.value?.reviews_count || 0;
+});
+
 const lowestPrice = computed(() => {
-  if (!rooms.value?.length) return 0;
-  
-  const validRooms = rooms.value.filter(r => r.price_per_month && r.price_per_month > 0);
-  if (!validRooms.length) return 0;
-  
-  return Math.min(...validRooms.map(r => r.price_per_month));
+  if (!rooms.value.length) return 0;
+  const prices = rooms.value.map(r => r.price_per_month).filter(p => p > 0);
+  return prices.length ? Math.min(...prices) : 0;
 });
 
 const allFacilities = computed(() => {
   if (!rooms.value.length) return [];
-  
-  const facilities = rooms.value
-    .flatMap(r => r.facilities || [])
-    .filter(f => f?.name)
-    .map(f => f.name);
-  
-  return [...new Set(facilities)];
+  const facs = rooms.value.flatMap(r => r.facilities || []).map(f => f.name).filter(Boolean);
+  return [...new Set(facs)];
 });
 
 const calculateSubtotal = computed(() => {
-  if (!selectedRoom.value?.price_per_month) return 0;
-  
-  const duration = durationUnit.value === 'Tahun' 
-    ? bookingDuration.value * 12 
-    : bookingDuration.value;
-    
-  return selectedRoom.value.price_per_month * duration;
+  if (!selectedRoom.value) return 0;
+  const mult = durationUnit.value === 'Tahun' ? 12 : 1;
+  return selectedRoom.value.price_per_month * bookingDuration.value * mult;
 });
 
-const hasReviews = computed(() => {
-  return kost.value?.reviews?.length > 0;
-});
+const hasReviews = computed(() => rawReviews.value.length > 0);
 
 const displayedReviews = computed(() => {
   if (!hasReviews.value) return [];
-  return showAllReviews.value ? kost.value.reviews : kost.value.reviews.slice(0, 3);
-});
-
-// ========================================
-// WATCHERS
-// ========================================
-watch(selectedRoom, (newVal, oldVal) => {
-  console.log('🔄 Selected room changed:', {
-    from: oldVal?.room_type || 'none',
-    to: newVal?.room_type || 'none',
-    id: newVal?.id,
-    hasId: !!newVal?.id
-  });
+  return showAllReviews.value ? rawReviews.value : rawReviews.value.slice(0, 3);
 });
 
 // ========================================
 // METHODS
 // ========================================
+
+// ✅ Cek eligibility pakai endpoint backend yang sudah ada
+// ✅ VERSI PAKSA: Langsung deteksi riwayat booking Nyoman Krisna
+// ✅ VERSI PERBAIKAN: Mengatasi Error 404 & Mismatch ID
+const checkReviewEligibility = async () => {
+  if (!authStore.isAuthenticated || !kost.value) {
+    canUserReview.value = false;
+    return;
+  }
+
+  try {
+    // 1. Panggil route sesuai routes/api.php kamu
+    const response = await api.get('/tenant/bookings'); 
+    
+    // 2. Ambil data dari response
+    const myBookings = response.data?.data || [];
+
+    // 3. Cari transaksi yang cocok dengan ID Kost ini dan statusnya sudah 'active' atau 'finished'
+    // Menggunakan == untuk keamanan tipe data
+    const hasPaidInThisKost = myBookings.some(booking => {
+      const isMatchId = booking.room?.kost_id == kost.value.id;
+      const isPaid = ['active', 'finished', 'approved'].includes(booking.status?.toLowerCase());
+      return isMatchId && isPaid;
+    });
+
+    canUserReview.value = hasPaidInThisKost;
+    
+    // Lihat di Console F12: Jika true, tombol PASTI muncul
+    console.log("🔍 [ELIGIBILITY CHECK] Is Tenant Eligible:", canUserReview.value);
+
+  } catch (err) {
+    console.error("❌ Gagal memvalidasi status penyewa:", err);
+    canUserReview.value = false;
+  }
+};
+
 const fetchDetail = async () => {
   loading.value = true;
   error.value = null;
-  
   try {
-    console.log("📡 [KostDetail] Fetching kost ID:", route.params.id);
-    
     const result = await kostService.getKostDetail(route.params.id);
-    console.log("✅ [KostDetail] Processed data from service:", result);
-    
     kost.value = result;
-    
-    if (result?.rooms && Array.isArray(result.rooms)) {
-      rooms.value = result.rooms;
-      console.log("✅ [KostDetail] Rooms assigned:", rooms.value.length, "rooms");
-      
-      // Auto-select first available room
-      const availableRoom = rooms.value.find(r => r.available_rooms > 0 && r.id);
-      if (availableRoom) {
-        selectedRoom.value = availableRoom;
-        console.log("✅ [KostDetail] Auto-selected room:", {
-          id: availableRoom.id,
-          type: availableRoom.room_type,
-          price: availableRoom.price_per_month
-        });
-      }
-    } else {
-      console.warn("⚠️ [KostDetail] No rooms found in result");
-      rooms.value = [];
-    }
+    rooms.value = result.rooms || [];
 
-    if (authStore.isAuthenticated && !wishlistStore.hasFetched) {
-      await wishlistStore.fetchWishlist();
+    const reviewRes = await api.get(`/kosts/${route.params.id}/reviews`);
+    if (reviewRes.data.success) {
+      reviewsData.value = reviewRes.data.summary;
+      rawReviews.value = reviewRes.data.data;
+      
+      kost.value.rating = reviewRes.data.summary.average_rating;
+      kost.value.reviews_count = reviewRes.data.summary.total_reviews;
+    }
+    
+    const available = rooms.value.find(r => r.available_rooms > 0);
+    if (available) selectedRoom.value = available;
+
+    if (authStore.isAuthenticated) {
+      await checkReviewEligibility();
+      if (!wishlistStore.hasFetched) await wishlistStore.fetchWishlist();
     }
   } catch (err) {
-    console.error("❌ [KostDetail] Error:", err);
     error.value = err.response?.data?.message || "Gagal memuat data properti.";
-    
-    Swal.fire({
-      icon: 'error',
-      title: 'Gagal Memuat Data',
-      text: error.value,
-      confirmButtonColor: '#1e3a8a',
-      confirmButtonText: 'OK'
-    });
   } finally {
     loading.value = false;
   }
 };
 
-const selectRoom = (room) => {
-  if (room.available_rooms < 1) {
+// ✅ Handle tombol tulis ulasan
+const handleWriteReview = () => {
+  if (!authStore.isAuthenticated) {
+    router.push({ name: 'login', query: { redirect: route.fullPath } });
+    return;
+  }
+  
+  if (!canUserReview.value) {
     Swal.fire({
       icon: 'warning',
-      title: 'Kamar Penuh',
-      text: 'Kamar ini sudah penuh. Silakan pilih tipe kamar lain.',
+      title: 'Tidak Dapat Review',
+      text: 'Anda harus menyelesaikan masa sewa di kost ini terlebih dahulu untuk memberikan ulasan.',
       confirmButtonColor: '#1e3a8a'
     });
     return;
   }
-  
-  if (!room.id) {
-    console.error('❌ Room tidak memiliki ID:', room);
-    Swal.fire({
-      icon: 'error',
-      title: 'Data Tidak Valid',
-      text: 'Data kamar tidak valid. Silakan refresh halaman.',
-      confirmButtonColor: '#1e3a8a'
-    });
+
+  showReviewModal.value = true;
+};
+
+// ✅ Handle setelah review berhasil dikirim
+const handleReviewSubmitted = async (newReview) => {
+  // Refresh data reviews dari server
+  try {
+    const reviewRes = await api.get(`/kosts/${route.params.id}/reviews`);
+    if (reviewRes.data.success) {
+      reviewsData.value = reviewRes.data.summary;
+      rawReviews.value = reviewRes.data.data;
+      
+      // Update rating di kost object
+      kost.value.rating = reviewRes.data.summary.average_rating;
+      kost.value.reviews_count = reviewRes.data.summary.total_reviews;
+    }
+  } catch (err) {
+    console.error('Failed to refresh reviews:', err);
+  }
+
+  // User sudah review, jadi tidak bisa review lagi
+  canUserReview.value = false;
+};
+
+const selectRoom = (room) => {
+  if (room.available_rooms < 1) {
+    Swal.fire({ icon: 'warning', title: 'Penuh', text: 'Kamar ini sudah penuh.' });
     return;
   }
-  
   selectedRoom.value = room;
-  
-  Swal.fire({
-    icon: 'success',
-    title: 'Kamar Terpilih',
-    text: `Anda memilih ${room.room_type} - ${formatRupiah(room.price_per_month)}/bulan`,
-    toast: true,
-    position: 'top-end',
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true
-  });
 };
 
 const handleWishlist = async () => {
   if (!authStore.isAuthenticated) {
-    const result = await Swal.fire({
-      icon: 'info',
-      title: 'Login Diperlukan',
-      text: 'Anda harus login terlebih dahulu untuk menyimpan properti ke wishlist.',
-      showCancelButton: true,
-      confirmButtonColor: '#1e3a8a',
-      cancelButtonColor: '#94a3b8',
-      confirmButtonText: 'Login Sekarang',
-      cancelButtonText: 'Batal'
-    });
-    
-    if (result.isConfirmed) {
-      router.push({ name: 'login', query: { redirect: route.fullPath } });
-    }
+    router.push({ name: 'login', query: { redirect: route.fullPath } });
     return;
   }
-  
   loadingWishlist.value = true;
-  
   try {
     await wishlistStore.toggleWishlist(kost.value.id);
-    
-    Swal.fire({
-      icon: isWishlisted.value ? 'success' : 'info',
-      title: isWishlisted.value ? 'Ditambahkan ke Wishlist' : 'Dihapus dari Wishlist',
-      text: isWishlisted.value 
-        ? 'Properti berhasil disimpan ke wishlist Anda.' 
-        : 'Properti dihapus dari wishlist Anda.',
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 3000,
-      timerProgressBar: true
-    });
-  } catch (err) {
-    console.error('❌ Wishlist error:', err);
-    Swal.fire({
-      icon: 'error',
-      title: 'Gagal Memproses',
-      text: 'Gagal memproses wishlist. Silakan coba lagi.',
-      confirmButtonColor: '#1e3a8a'
-    });
   } finally {
     loadingWishlist.value = false;
   }
 };
 
 const handleBooking = async () => {
-  console.log('🎯 [handleBooking] Starting booking process...');
-  
   if (!authStore.isAuthenticated) {
-    const result = await Swal.fire({
-      icon: 'info',
-      title: 'Login Diperlukan',
-      text: 'Anda harus login terlebih dahulu untuk melakukan booking.',
-      showCancelButton: true,
-      confirmButtonColor: '#1e3a8a',
-      cancelButtonColor: '#94a3b8',
-      confirmButtonText: 'Login Sekarang',
-      cancelButtonText: 'Batal'
-    });
-    
-    if (result.isConfirmed) {
-      router.push({ name: 'login', query: { redirect: route.fullPath } });
-    }
+    router.push({ name: 'login', query: { redirect: route.fullPath } });
     return;
   }
-  
-  if (rooms.value.length === 0) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Kamar Tidak Tersedia',
-      text: 'Belum ada kamar tersedia untuk properti ini.',
-      confirmButtonColor: '#1e3a8a'
-    });
-    return;
-  }
-  
-  if (!selectedRoom.value) {
-    await Swal.fire({
-      icon: 'warning',
-      title: 'Pilih Kamar',
-      text: 'Silakan pilih tipe kamar terlebih dahulu!',
-      confirmButtonColor: '#1e3a8a'
-    });
-    
-    const roomSection = document.getElementById('room-selection');
-    roomSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return;
-  }
-
-  if (!bookingDate.value) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Pilih Tanggal',
-      text: 'Pilih tanggal masuk terlebih dahulu!',
-      confirmButtonColor: '#1e3a8a'
-    });
-    return;
-  }
-
-  if (!selectedRoom.value.id) {
-    console.error('❌ [handleBooking] Selected room tidak memiliki ID:', selectedRoom.value);
-    Swal.fire({
-      icon: 'error',
-      title: 'Terjadi Kesalahan',
-      text: 'Terjadi kesalahan. Silakan pilih ulang kamar.',
-      confirmButtonColor: '#1e3a8a'
-    });
-    return;
-  }
-
-  const bookingData = {
-    kost_id: kost.value.id,
-    room_id: selectedRoom.value.id,
-    date: bookingDate.value,
-    duration: bookingDuration.value,
-    unit: durationUnit.value,
-    price: selectedRoom.value.price_per_month
-  };
-
-  console.log('✅ [handleBooking] Booking data:', bookingData);
 
   const result = await Swal.fire({
     icon: 'question',
     title: 'Lanjutkan Booking?',
-    html: `
-      <div style="text-align: left; padding: 10px;">
-        <p><strong>Tipe Kamar:</strong> ${selectedRoom.value.room_type}</p>
-        <p><strong>Harga:</strong> ${formatRupiah(selectedRoom.value.price_per_month)}/bulan</p>
-        <p><strong>Durasi:</strong> ${bookingDuration.value} ${durationUnit.value}</p>
-        <p><strong>Total:</strong> ${formatRupiah(calculateSubtotal.value)}</p>
-      </div>
-    `,
+    html: `Tipe: ${selectedRoom.value.room_type}<br>Total: ${formatRupiah(calculateSubtotal.value)}`,
     showCancelButton: true,
-    confirmButtonColor: '#1e3a8a',
-    cancelButtonColor: '#94a3b8',
-    confirmButtonText: 'Ya, Lanjutkan',
-    cancelButtonText: 'Batal'
+    confirmButtonText: 'Ya, Lanjutkan'
   });
 
   if (result.isConfirmed) {
     router.push({
       name: 'booking-step-1',
-      query: bookingData
+      query: { 
+        kost_id: kost.value.id, 
+        room_id: selectedRoom.value.id, 
+        date: bookingDate.value, 
+        duration: bookingDuration.value, 
+        unit: durationUnit.value,
+        // ✅ TAMBAHKAN BARIS INI AGAR HARGA TIDAK RP 0
+        price: selectedRoom.value.price_per_month 
+      }
     });
   }
 };
 
 const handleContactOwner = () => {
-  const ownerPhone = kost.value?.owner?.phone || kost.value?.user?.phone_whatsapp;
-  
+  const ownerPhone = kost.value?.owner?.whatsapp || kost.value?.user?.phone_whatsapp;
   if (!ownerPhone) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Nomor Tidak Tersedia',
-      text: 'Nomor telepon pemilik tidak tersedia.',
-      confirmButtonColor: '#1e3a8a'
-    });
+    Swal.fire({ icon: 'error', title: 'Error', text: 'Nomor telepon tidak tersedia.' });
     return;
   }
-  
   const phone = ownerPhone.replace(/^0/, '62');
-  const roomInfo = selectedRoom.value ? ` - Tipe ${selectedRoom.value.room_type}` : '';
-  const message = `Halo, saya tertarik dengan properti ${kost.value.name}${roomInfo}`;
-  
-  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+  window.open(`https://wa.me/${phone}?text=Halo, saya tertarik dengan ${kost.value.name}`, '_blank');
 };
 
-// Gallery functions
 const openGalleryModal = (index) => {
   currentImageIndex.value = index;
   showGalleryModal.value = true;
@@ -972,33 +637,17 @@ const closeGalleryModal = () => {
   document.body.style.overflow = '';
 };
 
-const nextImage = () => {
-  if (currentImageIndex.value < galleryPreview.value.length - 1) {
-    currentImageIndex.value++;
-  }
-};
-
-const previousImage = () => {
-  if (currentImageIndex.value > 0) {
-    currentImageIndex.value--;
-  }
-};
-
-const toggleAllReviews = () => {
-  showAllReviews.value = !showAllReviews.value;
-};
+const nextImage = () => { if (currentImageIndex.value < galleryPreview.value.length - 1) currentImageIndex.value++; };
+const previousImage = () => { if (currentImageIndex.value > 0) currentImageIndex.value--; };
+const toggleAllReviews = () => { showAllReviews.value = !showAllReviews.value; };
 
 const handleKeydown = (e) => {
   if (!showGalleryModal.value) return;
-  
   if (e.key === 'Escape') closeGalleryModal();
   if (e.key === 'ArrowLeft') previousImage();
   if (e.key === 'ArrowRight') nextImage();
 };
 
-// ========================================
-// LIFECYCLE HOOKS
-// ========================================
 onMounted(() => {
   fetchDetail();
   window.addEventListener('keydown', handleKeydown);
@@ -1011,6 +660,31 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.reviews-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.btn-write-review {
+  background: #1e3a8a !important; /* Biru Tua mencolok */
+  color: #ffffff !important;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 10px rgba(30, 58, 138, 0.3);
+}
+
+.btn-write-review:hover {
+  background: #172554 !important;
+  transform: translateY(-2px);
+}
 /* ========================================
    BASE STYLES
    ======================================== */
@@ -1296,40 +970,6 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-.gallery-thumbnails {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 10px;
-}
-
-.gallery-thumb {
-  width: 100px;
-  height: 70px;
-  flex-shrink: 0;
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  opacity: 0.5;
-  transition: 0.2s;
-  border: 2px solid transparent;
-}
-
-.gallery-thumb:hover {
-  opacity: 0.8;
-}
-
-.gallery-thumb.active {
-  opacity: 1;
-  border-color: white;
-}
-
-.gallery-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 /* ========================================
    MAIN CONTENT
    ======================================== */
@@ -1600,34 +1240,6 @@ onUnmounted(() => {
   font-size: 0.85rem;
 }
 
-.room-fac-list { 
-  display: flex; 
-  flex-wrap: wrap; 
-  gap: 6px; 
-  margin-top: 8px; 
-}
-
-.fac-tag { 
-  background: #eff6ff; 
-  color: #1e40af; 
-  padding: 3px 8px; 
-  border-radius: 5px; 
-  font-size: 0.75rem; 
-  font-weight: 600; 
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.fac-more {
-  background: #f1f5f9;
-  color: #64748b;
-  padding: 3px 8px;
-  border-radius: 5px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
 .room-card-selector {
   display: flex;
   align-items: center;
@@ -1644,59 +1256,182 @@ onUnmounted(() => {
   color: #94a3b8; 
 }
 
-.hint-text {
-  font-size: 0.85rem;
-  color: #94a3b8;
-  margin-top: 0.5rem;
-}
-
 /* ========================================
-   REVIEWS
+   REVIEWS SECTION - PERBAIKAN UTAMA
    ======================================== */
-.reviews-summary {
+.reviews-header-flex {
   display: flex;
-  gap: 2rem;
+  justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.btn-write-review {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border: 1.5px solid #1e3a8a;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.btn-write-review:hover {
+  background: #1e3a8a;
+  color: white;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+}
+
+.no-reviews-placeholder {
+  text-align: center;
+  padding: 3rem 1.5rem;
   background: #f8fafc;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-}
-
-.rating-big {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.star-big {
-  color: #f59e0b;
-  font-size: 3rem;
-}
-
-.rating-number {
-  font-size: 3rem;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.reviews-total {
-  font-size: 1.1rem;
+  border-radius: 16px;
+  border: 2px dashed #e2e8f0;
   color: #64748b;
+}
+
+.no-reviews-placeholder p {
+  font-weight: 600;
   margin: 0;
 }
 
+/* Reviews Summary - Layout Diperbaiki */
+.reviews-summary-pro {
+  display: grid;
+  grid-template-columns: 1fr 1.8fr;
+  gap: 2.5rem;
+  padding: 2rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.summary-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.rating-big-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.rating-number {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1;
+}
+
+.rating-max {
+  font-size: 1.4rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.stars-wrapper {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0.75rem;
+  font-size: 1.5rem;
+}
+
+.star-active {
+  color: #fbbf24;
+}
+
+.star-inactive {
+  color: #e5e7eb;
+}
+
+.total-text {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+.summary-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+.bar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.star-label {
+  font-size: 0.9rem;
+  color: #475569;
+  font-weight: 600;
+  min-width: 20px;
+  text-align: right;
+}
+
+.bar-bg {
+  flex: 1;
+  height: 10px;
+  background: #f1f5f9;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+.count-label {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 600;
+  min-width: 30px;
+  text-align: left;
+}
+
+/* Reviews List - Perbaikan Layout Profil */
 .reviews-list {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .review-item {
   padding: 1.5rem;
-  background: #f8fafc;
+  background: #ffffff;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.review-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 .review-header {
@@ -1704,48 +1439,110 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 1rem;
+  gap: 1rem;
 }
 
+/* Reviewer Info - PERBAIKAN UTAMA DI SINI */
 .reviewer-info {
   display: flex;
+  align-items: flex-start;
   gap: 12px;
-  align-items: center;
+  flex: 1;
+  min-width: 0; /* Penting untuk text truncation */
 }
 
 .reviewer-avatar {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reviewer-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
   color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reviewer-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reviewer-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .reviewer-name {
   font-weight: 700;
-  margin: 0 0 4px 0;
+  font-size: 1rem;
   color: #1e293b;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.role-badge {
+  background: #eff6ff;
+  color: #1e40af;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  border: 1px solid #bfdbfe;
 }
 
 .review-date {
   font-size: 0.85rem;
-  color: #64748b;
+  color: #94a3b8;
   margin: 0;
+  line-height: 1.3;
 }
 
-.review-rating {
+.review-rating-badge {
   display: flex;
   align-items: center;
   gap: 4px;
   background: #fef3c7;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #92400e;
+  flex-shrink: 0;
+  border: 1px solid #fde68a;
 }
 
-.star-small {
+.review-rating-badge svg {
   color: #f59e0b;
+  font-size: 1.1rem;
 }
 
-.review-text {
+.review-comment {
   color: #475569;
-  line-height: 1.6;
+  line-height: 1.7;
   margin: 0;
+  font-size: 0.95rem;
 }
 
 .btn-show-more {
@@ -1753,12 +1550,12 @@ onUnmounted(() => {
   padding: 12px;
   background: white;
   border: 2px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 10px;
   font-weight: 600;
   color: #1e3a8a;
   cursor: pointer;
   margin-top: 1rem;
-  transition: 0.2s;
+  transition: all 0.2s ease;
 }
 
 .btn-show-more:hover {
@@ -1889,12 +1686,6 @@ onUnmounted(() => {
   margin-bottom: 6px; 
 }
 
-.breakdown-row span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .breakdown-row.total { 
   font-weight: 700; 
   color: #0f172a; 
@@ -1984,15 +1775,11 @@ onUnmounted(() => {
   color: #94a3b8;
 }
 
-.opacity-50 {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .spin {
   animation: spin 1s linear infinite;
 }
 
+.mb-2 { margin-bottom: 0.5rem; }
 .mb-3 { margin-bottom: 0.75rem; }
 .mb-4 { margin-bottom: 1rem; }
 .mb-8 { margin-bottom: 2rem; }
@@ -2026,19 +1813,6 @@ onUnmounted(() => {
     display: none; 
   }
   
-  .gallery-skeleton-wrapper { 
-    grid-template-columns: 1fr; 
-    height: auto; 
-  }
-  
-  .thumb-skeleton-side { 
-    display: none; 
-  }
-  
-  .main-content-layout { 
-    grid-template-columns: 1fr; 
-  }
-  
   .booking-card {
     position: static;
   }
@@ -2049,33 +1823,41 @@ onUnmounted(() => {
     margin-top: 1rem;
     justify-content: center;
   }
+  
+  .reviews-summary-pro {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .summary-left {
+    padding: 1.5rem;
+  }
+}
 
-  .gallery-modal-content {
-    height: 95vh;
-  }
-  
-  .gallery-main {
+@media (max-width: 640px) {
+  .reviews-header-flex {
     flex-direction: column;
+    align-items: flex-start;
   }
   
-  .gallery-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 10;
+  .btn-write-review {
+    width: 100%;
+    justify-content: center;
   }
   
-  .gallery-nav.prev {
-    left: 10px;
-  }
-  
-  .gallery-nav.next {
-    right: 10px;
-  }
-  
-  .reviews-summary {
+  .review-header {
     flex-direction: column;
-    text-align: center;
+    gap: 0.75rem;
+  }
+  
+  .review-rating-badge {
+    align-self: flex-start;
+  }
+  
+  .reviewer-name-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 }
 </style>

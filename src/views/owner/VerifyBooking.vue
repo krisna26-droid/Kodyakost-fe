@@ -1,3 +1,192 @@
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { Icon } from '@iconify/vue';
+import { notify } from '@/utils/swal';
+import ownerService from '@/services/ownerService';
+
+const route = useRoute();
+const router = useRouter();
+const booking = ref(null);
+const loading = ref(true);
+const processing = ref(false);
+const showKtpModal = ref(false);
+
+const fetchData = async () => {
+  loading.value = true;
+  try {
+    const id = route.params.id;
+    booking.value = await ownerService.getBookingDetail(id);
+    
+    console.log('✅ Booking loaded:', {
+      id: booking.value.id,
+      status: booking.value.status,
+      tenant: booking.value.tenant?.name,
+      has_ktp: !!booking.value.tenant?.ktp_url
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching booking:', error);
+    notify.error("Gagal memuat detail pengajuan.");
+    booking.value = null;
+  } finally {
+    loading.value = false;
+  }
+};
+
+const updateStatus = async (status) => {
+  const isApprove = status === 'approved';
+  
+  // Konfirmasi
+  const confirmed = await notify.confirm(
+    isApprove ? "Terima Penyewa?" : "Tolak Pengajuan?",
+    isApprove 
+      ? "Penyewa akan diminta segera melakukan pembayaran." 
+      : "Pengajuan akan ditolak dan tidak dapat dibatalkan.",
+    isApprove ? "Ya, Terima" : "Ya, Tolak"
+  );
+
+  if (!confirmed) return;
+
+  processing.value = true;
+  
+  try {
+    console.log(`🔄 Updating booking #${booking.value.id} to: ${status}`);
+    console.log('📋 Current booking data:', {
+      id: booking.value.id,
+      current_status: booking.value.status,
+      tenant_id: booking.value.tenant_id,
+      room_id: booking.value.room_id
+    });
+    
+    // ✅ SEND CLEAN PAYLOAD - ONLY STATUS
+    const response = await ownerService.updateBookingStatus(booking.value.id, status);
+    
+    console.log('✅ Status updated successfully:', response);
+    
+    // Success notification
+    await notify.alertSuccess(
+      "Berhasil!", 
+      `Pengajuan telah ${isApprove ? 'disetujui' : 'ditolak'}.`
+    );
+    
+    // Redirect back to bookings list
+    router.push({ name: 'owner-bookings' });
+    
+  } catch (error) {
+    console.error('❌ Error updating status:', error);
+    
+    // Detailed error logging
+    const errorData = {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      message: error.response?.data?.message,
+      errors: error.response?.data?.errors,
+      exception: error.response?.data?.exception,
+      trace: error.response?.data?.trace,
+      fullResponse: error.response?.data
+    };
+    
+    console.error('📊 Full error details:', errorData);
+    
+    // User-friendly error messages
+    let errorMessage = "Gagal memproses status booking.";
+    
+    if (error.response?.status === 500) {
+      // Check if it's notification error
+      if (error.response?.data?.message?.includes('notification') || 
+          error.response?.data?.message?.includes('mail') ||
+          error.response?.data?.exception?.includes('Mail')) {
+        errorMessage = "Booking berhasil diupdate tetapi notifikasi email gagal dikirim. Status sudah berubah di database.";
+        // Masih redirect karena sebenarnya sukses
+        setTimeout(() => {
+          router.push({ name: 'owner-bookings' });
+        }, 2000);
+      } else {
+        errorMessage = "Server error. Kemungkinan masalah di backend. Hubungi developer untuk cek log.";
+      }
+    } else if (error.response?.status === 422) {
+      const validationErrors = error.response.data?.errors;
+      if (validationErrors) {
+        errorMessage = Object.values(validationErrors).flat().join(', ');
+      }
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    }
+    
+    notify.error(errorMessage);
+    
+  } finally {
+    processing.value = false;
+  }
+};
+
+const openKtpModal = () => {
+  showKtpModal.value = true;
+};
+
+const closeKtpModal = () => {
+  showKtpModal.value = false;
+};
+
+const handleImageError = (event) => {
+  console.error('❌ Image failed to load:', event.target.src);
+  event.target.src = 'https://placehold.co/400x250?text=KTP+Tidak+Tersedia';
+};
+
+const formatRupiah = (num) => {
+  return new Intl.NumberFormat('id-ID', { 
+    style: 'currency', 
+    currency: 'IDR', 
+    minimumFractionDigits: 0 
+  }).format(num || 0);
+};
+
+const formatDate = (date) => {
+  if (!date) return '-';
+  return new Date(date).toLocaleDateString('id-ID', { 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric' 
+  });
+};
+
+const getInitials = (name) => {
+  if (!name) return '?';
+  return name.split(' ').map(x => x[0]).join('').toUpperCase().slice(0, 2);
+};
+
+const formatPhone = (phone) => {
+  if (!phone) return '';
+  return phone.startsWith('0') ? '62' + phone.slice(1) : phone;
+};
+
+const formatStatus = (status) => {
+  const statusMap = {
+    pending: 'Menunggu Persetujuan',
+    approved: 'Disetujui',
+    active: 'Aktif',
+    rejected: 'Ditolak',
+    canceled: 'Dibatalkan'
+  };
+  return statusMap[status] || status;
+};
+
+const calculateDuration = (start, end) => {
+  if (!start || !end) return 0;
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  
+  let months = (endDate.getFullYear() - startDate.getFullYear()) * 12;
+  months -= startDate.getMonth();
+  months += endDate.getMonth();
+  
+  return months <= 0 ? 0 : months;
+};
+
+onMounted(fetchData);
+</script>
+
 <template>
   <div class="verify-booking-owner">
     <div class="container">
@@ -85,7 +274,9 @@
             </div>
             <div class="summary-item">
               <span class="label">Durasi Sewa</span>
-              <span class="value">{{ booking.duration || 0 }} Bulan</span>
+              <span class="value">
+                {{ booking.duration || calculateDuration(booking.start_date, booking.end_date) }} Bulan
+              </span>
             </div>
             <div class="summary-item">
               <span class="label">Tanggal Mulai</span>
@@ -106,13 +297,16 @@
           </div>
         </div>
 
-        <!-- TOMBOL AKSI - ALWAYS VISIBLE -->
+        <!-- TOMBOL AKSI -->
         <div class="card action-card" v-if="booking.status === 'pending'">
           <h3 class="section-title">
             <Icon icon="mdi:checkbox-marked-circle" width="22" /> 
             Keputusan
           </h3>
-          <p class="action-note">Apakah Anda ingin menyetujui permintaan sewa dari <strong>{{ booking.tenant?.name }}</strong>?</p>
+          <p class="action-note">
+            Periksa identitas penyewa dengan teliti sebelum menyetujui. <br>
+            Apakah Anda ingin menyetujui permintaan sewa dari <strong>{{ booking.tenant?.name }}</strong>?
+          </p>
           
           <div class="btn-group">
             <BaseButton 
@@ -133,6 +327,7 @@
               outline 
               block 
               @click="updateStatus('rejected')" 
+              :loading="processing"
               :disabled="processing"
             >
               <template #icon-left><Icon icon="mdi:close-circle" width="20" /></template>
@@ -179,124 +374,6 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { Icon } from '@iconify/vue';
-import { notify } from '@/utils/swal';
-import ownerService from '@/services/ownerService';
-
-const route = useRoute();
-const router = useRouter();
-const booking = ref(null);
-const loading = ref(true);
-const processing = ref(false);
-const showKtpModal = ref(false);
-
-const fetchData = async () => {
-  loading.value = true;
-  try {
-    const id = route.params.id;
-    booking.value = await ownerService.getBookingDetail(id);
-    
-    // DEBUG: untuk memastikan duration sudah ada
-    console.log('Booking loaded:', {
-      id: booking.value.id,
-      duration: booking.value.duration,
-      start_date: booking.value.start_date,
-      end_date: booking.value.end_date,
-      status: booking.value.status
-    });
-    
-  } catch (error) {
-    console.error('Error fetching booking:', error);
-    notify.error("Gagal memuat detail pengajuan.");
-    booking.value = null;
-  } finally {
-    loading.value = false;
-  }
-};
-
-const updateStatus = async (status) => {
-  const isApprove = status === 'approved';
-  const confirmed = await notify.confirm(
-    isApprove ? "Terima Penyewa?" : "Tolak Pengajuan?",
-    isApprove ? "Penyewa akan diminta segera melakukan pembayaran." : "Pengajuan ini akan dibatalkan otomatis.",
-    isApprove ? "Ya, Terima" : "Ya, Tolak"
-  );
-
-  if (confirmed) {
-    processing.value = true;
-    try {
-      await ownerService.updateBookingStatus(booking.value.id, status);
-      await notify.alertSuccess(
-        "Berhasil!", 
-        `Pengajuan telah ${isApprove ? 'disetujui' : 'ditolak'}.`
-      );
-      router.push({ name: 'owner-bookings' });
-    } catch (error) {
-      console.error('Error updating status:', error);
-      notify.error("Gagal memproses status.");
-    } finally {
-      processing.value = false;
-    }
-  }
-};
-
-const openKtpModal = () => {
-  showKtpModal.value = true;
-};
-
-const closeKtpModal = () => {
-  showKtpModal.value = false;
-};
-
-const handleImageError = (event) => {
-  console.error('Image failed to load:', event.target.src);
-  event.target.src = 'https://placehold.co/400x250?text=KTP+Tidak+Tersedia';
-};
-
-const formatRupiah = (num) => {
-  return new Intl.NumberFormat('id-ID', { 
-    style: 'currency', 
-    currency: 'IDR', 
-    minimumFractionDigits: 0 
-  }).format(num || 0);
-};
-
-const formatDate = (date) => {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString('id-ID', { 
-    day: 'numeric', 
-    month: 'long', 
-    year: 'numeric' 
-  });
-};
-
-const getInitials = (name) => {
-  if (!name) return '?';
-  return name.split(' ').map(x => x[0]).join('').toUpperCase().slice(0, 2);
-};
-
-const formatPhone = (phone) => {
-  if (!phone) return '';
-  return phone.startsWith('0') ? '62' + phone.slice(1) : phone;
-};
-
-const formatStatus = (status) => {
-  const statusMap = {
-    pending: 'Menunggu Persetujuan',
-    approved: 'Disetujui',
-    active: 'Aktif',
-    rejected: 'Ditolak',
-    canceled: 'Dibatalkan'
-  };
-  return statusMap[status] || status;
-};
-
-onMounted(fetchData);
-</script>
-
 <style scoped>
 .verify-booking-owner { 
   padding: 2rem 1.5rem; 
@@ -310,7 +387,6 @@ onMounted(fetchData);
   margin: 0 auto; 
 }
 
-/* PAGE HEADER */
 .page-header { 
   display: flex; 
   align-items: center; 
@@ -332,7 +408,6 @@ onMounted(fetchData);
   margin: 0;
 }
 
-/* LAYOUT */
 .content-wrapper,
 .loading-wrapper {
   display: flex;
@@ -340,7 +415,6 @@ onMounted(fetchData);
   gap: 1.5rem;
 }
 
-/* CARDS */
 .card { 
   background: white; 
   border-radius: 16px; 
@@ -363,7 +437,6 @@ onMounted(fetchData);
   color: #fca311; 
 }
 
-/* USER CARD */
 .user-detail { 
   display: flex; 
   gap: 1.25rem; 
@@ -421,7 +494,6 @@ onMounted(fetchData);
   background: #dcfce7;
 }
 
-/* KTP CARD */
 .ktp-preview { 
   text-align: center; 
 }
@@ -475,7 +547,6 @@ onMounted(fetchData);
   margin: 0;
 }
 
-/* SUMMARY CARD */
 .summary-grid {
   display: grid;
   gap: 1rem;
@@ -520,7 +591,6 @@ onMounted(fetchData);
   color: #059669 !important;
 }
 
-/* ACTION CARD - CRITICAL: ALWAYS VISIBLE */
 .action-card {
   background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%) !important;
   border: 2px solid #fcd34d !important;
@@ -546,7 +616,6 @@ onMounted(fetchData);
   gap: 1rem; 
 }
 
-/* ENSURE BUTTONS ARE ALWAYS VISIBLE */
 .btn-group :deep(button) {
   min-height: 52px !important;
   font-size: 1rem !important;
@@ -560,7 +629,6 @@ onMounted(fetchData);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* STATUS CARD */
 .status-wrapper {
   text-align: center;
   padding: 1rem 0;
@@ -607,7 +675,6 @@ onMounted(fetchData);
   font-size: 0.85rem;
 }
 
-/* ERROR STATE */
 .error-state {
   text-align: center;
   padding: 4rem 2rem;
@@ -632,7 +699,6 @@ onMounted(fetchData);
   margin-bottom: 1.5rem;
 }
 
-/* KTP MODAL */
 .ktp-modal {
   position: fixed;
   top: 0;
@@ -695,7 +761,6 @@ onMounted(fetchData);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-/* RESPONSIVE */
 @media (max-width: 600px) {
   .verify-booking-owner {
     padding: 1rem;

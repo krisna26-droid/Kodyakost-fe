@@ -1,296 +1,164 @@
 import apiClient from '@/api/Axios';
 
-const LIVE_URL = 'https://kodyakostapi.adityavisual.my.id';
-
-// Helper fix URL
-const fixImage = (path) => {
-  if (!path) return 'https://placehold.co/600x400?text=No+Image';
-  if (path.startsWith('http')) return path;
-  return `${LIVE_URL}/storage/${path}`;
-};
-
-// Helper untuk hitung duration
-const calculateDuration = (startDate, endDate) => {
-  if (!startDate || !endDate) return 0;
-  
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  const months = (end.getFullYear() - start.getFullYear()) * 12 + 
-                 (end.getMonth() - start.getMonth());
-  
-  return months > 0 ? months : 0;
-};
-
 export default {
-  // ==========================================
-  // 1. DASHBOARD - HITUNG MANUAL DARI BOOKINGS
-  // ==========================================
-  async getDashboardStats() {
+  // --- DASHBOARD & FINANCIAL ---
+  async getDashboardStats(year = new Date().getFullYear(), month = new Date().getMonth() + 1) {
     try {
-      // Ambil semua bookings
-      const response = await apiClient.get('/owner/bookings');
-      const allBookings = response.data.data || [];
-      
-      console.log('📦 All Bookings:', allBookings);
-      
-      // Hitung income bulan ini
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-      
-      const monthlyIncome = allBookings
-        .filter(booking => {
-          if (booking.payment_status !== 'paid') return false;
-          const bookingDate = new Date(booking.created_at);
-          return bookingDate.getMonth() === currentMonth && 
-                 bookingDate.getFullYear() === currentYear;
-        })
-        .reduce((sum, booking) => sum + (parseFloat(booking.total_price) || 0), 0);
-      
-      // Hitung income tahun ini
-      const yearlyIncome = allBookings
-        .filter(booking => {
-          if (booking.payment_status !== 'paid') return false;
-          const bookingDate = new Date(booking.created_at);
-          return bookingDate.getFullYear() === currentYear;
-        })
-        .reduce((sum, booking) => sum + (parseFloat(booking.total_price) || 0), 0);
-      
-      // Ambil transaksi terbaru (paid)
-      const recentTransactions = allBookings
-        .filter(booking => booking.payment_status === 'paid')
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .slice(0, 10)
-        .map(booking => ({
-          ...booking,
-          tenant: booking.tenant,
-          room: booking.room
-        }));
-      
-      // === HITUNG KAMAR TERISI DARI BOOKING AKTIF ===
-      const occupiedRooms = allBookings.filter(booking => {
-        // Kamar dianggap terisi jika booking statusnya AKTIF
-        const activeStatuses = ['active', 'aktif', 'approved', 'confirmed'];
-        return activeStatuses.includes(booking.status?.toLowerCase());
-      }).length;
-      
-      console.log('🛏️ Occupied Rooms (from active bookings):', occupiedRooms);
-      
-      return {
-        data: {
-          summary: {
-            income_this_month: monthlyIncome,
-            income_this_year: yearlyIncome,
-            occupied_rooms: occupiedRooms // Tambahkan ini
-          },
-          recent_transactions: recentTransactions
-        }
-      };
-      
+      const response = await apiClient.get('/owner/financial-report', {
+        params: { year, month }
+      });
+      return response.data;
     } catch (error) {
-      console.error('❌ getDashboardStats error:', error);
-      return {
-        data: {
-          summary: {
-            income_this_month: 0,
-            income_this_year: 0,
-            occupied_rooms: 0
-          },
-          recent_transactions: []
-        }
-      };
-    }
-  },
-
-  // ==========================================
-  // 2. GET BOOKINGS (UNTUK PENDING COUNT)
-  // ==========================================
-  async getBookings(params = {}) {
-    try {
-      const response = await apiClient.get('/owner/bookings', { params });
-      let data = response.data.data || [];
-      
-      // Filter by status jika ada parameter
-      if (params.status) {
-        data = data.filter(booking => 
-          booking.status === params.status || 
-          booking.payment_status === params.status
-        );
-      }
-      
-      // Fix URL untuk KTP dan foto + TAMBAHKAN DURATION
-      return {
-        data: data.map(booking => ({
-          ...booking,
-          duration: calculateDuration(booking.start_date, booking.end_date),
-          tenant: booking.tenant ? {
-            ...booking.tenant,
-            ktp_url: fixImage(booking.tenant.ktp_url || booking.tenant.ktp_path)
-          } : null,
-          room: booking.room ? {
-            ...booking.room,
-            image: fixImage(booking.room.image),
-            kost: booking.room.kost || null
-          } : null
-        }))
-      };
-    } catch (error) {
-      console.error('❌ getBookings error:', error);
-      return { data: [] };
-    }
-  },
-
-  // ==========================================
-  // 3. MANAJEMEN KOST
-  // ==========================================
-  async getMyKosts() {
-    try {
-      const response = await apiClient.get('/owner/kosts'); 
-      
-      console.log('🏠 Raw Kosts Response:', response.data);
-      
-      const data = response.data.data || [];
-      
-      // FIX IMAGE URL
-      return {
-        data: data.map(kost => ({
-          ...kost,
-          thumbnail: fixImage(kost.thumbnail || kost.main_image),
-          // Parse ke integer untuk memastikan perhitungan benar
-          total_rooms: parseInt(kost.total_rooms) || 0,
-          available_rooms: parseInt(kost.available_rooms) || 0
-        }))
-      };
-    } catch (error) {
-      console.error('❌ getMyKosts error:', error);
+      console.error('❌ Error fetching financial report:', error);
       throw error;
     }
   },
 
-  async createKost(formData) {
+  // --- KOST MANAGEMENT ---
+  async getMyKosts() {
+    try {
+      const response = await apiClient.get('/owner/kosts');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching kosts:', error);
+      throw error;
+    }
+  },
+
+  async storeKost(formData) {
     try {
       const response = await apiClient.post('/owner/kosts', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-      return response.data; 
-    } catch (error) { 
-      throw error; 
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error creating kost:', error.response?.data || error);
+      throw error;
+    }
+  },
+
+  async updateKost(id, formData) {
+    try {
+      if (formData instanceof FormData && !formData.has('_method')) {
+        formData.append('_method', 'PUT');
+      }
+      
+      const response = await apiClient.post(`/owner/kosts/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error updating kost:', error.response?.data || error);
+      throw error;
     }
   },
 
   async deleteKost(id) {
     try {
-      await apiClient.delete(`/owner/kosts/${id}`);
-      return true;
-    } catch (error) { 
-      throw error; 
+      const response = await apiClient.delete(`/owner/kosts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error deleting kost:', error);
+      throw error;
     }
   },
 
-  async getKostDetail(id) {
-    try {
-      const response = await this.getMyKosts();
-      const kosts = response.data || [];
-      return kosts.find(k => k.id == id) || null;
-    } catch (error) { 
-      return null; 
-    }
-  },
-
-  // ==========================================
-  // 4. MANAJEMEN KAMAR
-  // ==========================================
+  // --- ROOM MANAGEMENT ---
   async getRoomsByKost(kostId) {
     try {
       const response = await apiClient.get('/owner/rooms', { 
         params: { kost_id: kostId } 
       });
-      const data = response.data.data || [];
-
-      // FIX IMAGE URL
-      return data.map(room => ({
-        ...room,
-        image: fixImage(room.image)
-      }));
-    } catch (error) { 
-      throw error; 
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching rooms:', error);
+      throw error;
     }
   },
 
-  async createRoom(formData) {
+  async storeRoom(formData) {
     try {
       const response = await apiClient.post('/owner/rooms', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       return response.data;
-    } catch (error) { 
-      throw error; 
+    } catch (error) {
+      console.error('❌ Error creating room:', error.response?.data || error);
+      throw error;
+    }
+  },
+
+  async updateRoom(id, formData) {
+    try {
+      if (formData instanceof FormData && !formData.has('_method')) {
+        formData.append('_method', 'PUT');
+      }
+      const response = await apiClient.post(`/owner/rooms/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error updating room:', error.response?.data || error);
+      throw error;
     }
   },
 
   async deleteRoom(id) {
     try {
-      await apiClient.delete(`/owner/rooms/${id}`);
-      return true;
-    } catch (error) { 
-      throw error; 
+      const response = await apiClient.delete(`/owner/rooms/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error deleting room:', error);
+      throw error;
     }
   },
 
-  // ==========================================
-  // 5. BOOKING MANAGEMENT
-  // ==========================================
+  // --- BOOKING MANAGEMENT ---
   async getIncomingBookings() {
     try {
       const response = await apiClient.get('/owner/bookings');
-      const data = response.data.data || [];
-      
-      // Fix URL untuk KTP dan foto + TAMBAHKAN DURATION
-      return data.map(booking => ({
-        ...booking,
-        duration: calculateDuration(booking.start_date, booking.end_date),
-        tenant: booking.tenant ? {
-          ...booking.tenant,
-          ktp_url: fixImage(booking.tenant.ktp_url || booking.tenant.ktp_path)
-        } : null,
-        room: booking.room ? {
-          ...room,
-          image: fixImage(booking.room.image),
-          kost: booking.room.kost || null
-        } : null
-      }));
-    } catch (error) { 
-      console.error('❌ Error fetching bookings:', error);
-      return []; 
+      return response.data.data || [];
+    } catch (error) {
+      console.error('❌ Error fetching incoming bookings:', error);
+      throw error;
     }
   },
 
   async getBookingDetail(id) {
     try {
-      const bookings = await this.getIncomingBookings();
-      const booking = bookings.find(b => b.id == id);
+      const response = await apiClient.get('/owner/bookings');
+      const allBookings = response.data.data || [];
+      const detail = allBookings.find(b => b.id == id);
       
-      if (!booking) {
-        throw new Error('Booking tidak ditemukan');
-      }
-      
-      return booking;
-      
-    } catch (error) { 
+      if (!detail) throw new Error("Data booking tidak ditemukan");
+      return detail;
+    } catch (error) {
       console.error('❌ Error fetching booking detail:', error);
-      throw error; 
+      throw error;
     }
   },
 
-  async updateBookingStatus(id, status) {
+  /**
+   * UPDATE STATUS BOOKING
+   * Mengatasi masalah "Data truncated" dengan normalisasi data dan logging ketat.
+   */
+  // ownerService.js
+
+async updateBookingStatus(id, status) {
     try {
+      // Mapping: Jika UI mengirim 'rejected', kita ubah menjadi 'canceled' agar diterima Database ENUM
+      const dbStatus = status === 'rejected' ? 'canceled' : status;
+
+      console.log(`📤 Syncing to DB ENUM - ID: ${id}, Status: ${dbStatus}`);
+
       const response = await apiClient.patch(`/owner/bookings/${id}`, { 
-        status 
+        status: dbStatus 
       });
+
       return response.data;
-    } catch (error) { 
-      throw error; 
+    } catch (error) {
+      console.error('❌ Update Error Detail:', error.response?.data);
+      throw error;
     }
-  },
+  }
 };

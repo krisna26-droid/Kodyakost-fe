@@ -51,21 +51,31 @@ export default {
       throw error;
     }
   },
-  // 5. UPLOAD KTP (FIXED ROUTE)
+
+  // 5. UPLOAD KTP (FIXED - Console log untuk debug)
   async uploadKtp(file) {
     try {
       const formData = new FormData();
-      formData.append('ktp_image', file); 
+      formData.append('ktp_image', file);
 
-      // ✅ Pakai jalur /tenant sesuai api.php
+      console.log('📤 Uploading KTP to: /tenant/profile/ktp');
+      console.log('📁 File:', file.name, file.type, file.size);
+
+      // ✅ Endpoint sesuai api.php baris 177
       const response = await apiClient.post('/tenant/profile/ktp', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+
+      console.log('✅ KTP upload success:', response.data);
       return response.data;
     } catch (error) {
+      console.error('❌ KTP upload failed:', {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        errors: error.response?.data?.errors,
+        url: error.config?.url
+      });
       throw error;
     }
   }
 }
-
-  

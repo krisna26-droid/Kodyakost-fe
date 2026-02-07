@@ -1,143 +1,3 @@
-<template>
-  <div class="owner-dashboard">
-    <div class="container">
-
-      <!-- WELCOME -->
-      <div class="welcome-card">
-        <div class="text-content">
-          <h2>Bisnis Anda Hari Ini <span class="wave">👋</span></h2>
-          <p>Pantau performa properti dan kelola booking masuk dengan mudah.</p>
-        </div>
-
-        <BaseButton
-          variant="primary"
-          size="md"
-          @click="$router.push({ name: 'add-kost' })"
-        >
-          <template #icon-left>
-            <Icon icon="mdi:plus" />
-          </template>
-          Tambah Kost
-        </BaseButton>
-      </div>
-
-      <!-- LOADING SKELETON -->
-      <div v-if="loading" class="stats-grid">
-        <div v-for="i in 3" :key="i" class="stat-card skeleton-wrapper">
-          <BaseSkeleton width="60px" height="60px" border-radius="12px" />
-          <div style="flex:1">
-            <BaseSkeleton width="40%" height="14px" class="mb-2" />
-            <BaseSkeleton width="70%" height="24px" />
-          </div>
-        </div>
-      </div>
-
-      <!-- STATS -->
-      <div v-else class="stats-grid">
-
-        <!-- PENDAPATAN BULAN INI -->
-        <div class="stat-card green-card">
-          <div class="icon-box">
-            <Icon icon="mdi:cash-multiple" width="32" />
-          </div>
-          <div class="info">
-            <span class="label">Pendapatan Bulan Ini</span>
-            <h3 class="value">
-              Rp {{ formatRupiah(stats.monthly_income) }}
-            </h3>
-          </div>
-        </div>
-
-        <!-- BOOKING BARU -->
-        <div
-          class="stat-card orange-card"
-          style="cursor:pointer"
-          @click="$router.push({ name: 'owner-bookings' })"
-        >
-          <div class="icon-box">
-            <Icon icon="mdi:clipboard-clock-outline" width="32" />
-          </div>
-          <div class="info">
-            <span class="label">Booking Baru</span>
-            <h3 class="value">
-              {{ stats.pending_bookings }}
-              <span class="small">menunggu</span>
-            </h3>
-          </div>
-        </div>
-
-        <!-- KAMAR TERISI -->
-        <div class="stat-card blue-card">
-          <div class="icon-box">
-            <Icon icon="mdi:bed-outline" width="32" />
-          </div>
-          <div class="info">
-            <span class="label">Kamar Terisi</span>
-            <h3 class="value">
-              {{ stats.occupied_rooms }}
-            </h3>
-
-            <div class="progress-bar">
-              <div
-                class="fill"
-                :style="{ width: occupancyRate + '%' }"
-              />
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- AKTIVITAS TERBARU -->
-      <div class="recent-section">
-        <div class="section-header">
-          <h3>Aktivitas Terbaru</h3>
-          <BaseButton variant="ghost" size="sm" @click="fetchStats">
-            <template #icon-left>
-              <Icon icon="mdi:refresh" />
-            </template>
-            Refresh
-          </BaseButton>
-        </div>
-
-        <!-- Loading Recent Activity -->
-        <div v-if="loadingActivity" class="activity-loading">
-          <BaseSkeleton v-for="i in 3" :key="i" height="60px" class="mb-3" />
-        </div>
-
-        <!-- Recent Transactions List -->
-        <div v-else-if="recentTransactions.length > 0" class="activity-list">
-          <div
-            v-for="transaction in recentTransactions"
-            :key="transaction.id"
-            class="activity-item"
-          >
-            <div class="activity-icon">
-              <Icon icon="mdi:check-circle" width="24" />
-            </div>
-            <div class="activity-content">
-              <h4>{{ transaction.tenant?.name || 'Penyewa' }}</h4>
-              <p>{{ transaction.room?.kost?.name || 'Kost' }} - Kamar {{ transaction.room?.room_number || '-' }}</p>
-              <span class="time">{{ formatDate(transaction.created_at) }}</span>
-            </div>
-            <div class="activity-amount">
-              <span class="amount">Rp {{ formatRupiah(transaction.total_price) }}</span>
-              <span class="badge badge-success">Lunas</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Empty State -->
-        <div v-else class="empty-activity">
-          <Icon icon="mdi:bell-sleep-outline" width="40" />
-          <p>Belum ada aktivitas booking baru.</p>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { Icon } from '@iconify/vue';
@@ -156,6 +16,7 @@ const stats = ref({
 
 const recentTransactions = ref([]);
 
+// Menghitung persentase keterisian kamar
 const occupancyRate = computed(() => {
   if (!stats.value.total_rooms) return 0;
   const rate = (stats.value.occupied_rooms / stats.value.total_rooms) * 100;
@@ -169,14 +30,6 @@ const formatRupiah = (num) => {
 const formatDate = (dateString) => {
   if (!dateString) return '-';
   const date = new Date(dateString);
-  const now = new Date();
-  const diffTime = Math.abs(now - date);
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) return 'Hari ini';
-  if (diffDays === 1) return 'Kemarin';
-  if (diffDays < 7) return `${diffDays} hari lalu`;
-  
   return new Intl.DateTimeFormat('id-ID', {
     day: 'numeric',
     month: 'short',
@@ -184,98 +37,51 @@ const formatDate = (dateString) => {
   }).format(date);
 };
 
-const fetchStats = async () => {
+const fetchDashboardData = async () => {
   loading.value = true;
   loadingActivity.value = true;
 
   try {
-    console.log('🔄 Fetching dashboard data...');
-
-    // === 1. AMBIL DATA FINANSIAL & TRANSAKSI & OCCUPIED ROOMS ===
+    // 1. Ambil Stats Finansial (Untuk angka '2' / Pendapatan)
     const financialRes = await ownerService.getDashboardStats();
+    if (financialRes?.success) {
+      const data = financialRes.data;
+      stats.value.monthly_income = data.summary?.income_this_month || 0;
+      recentTransactions.value = data.recent_transactions || [];
+      
+      // Angka '2' (Occupied) diambil dari summary atau jumlah transaksi lunas
+      stats.value.occupied_rooms = data.summary?.occupied_rooms || recentTransactions.value.length;
+    }
+
+    // 2. AMBIL DATA KOST (Untuk memperbaiki angka '/ 0')
+    const kostsRes = await ownerService.getMyKosts();
     
-    console.log('💰 Financial Response:', financialRes);
+    if (kostsRes?.success && Array.isArray(kostsRes.data)) {
+      let akumulasiKamar = 0;
 
-    if (financialRes?.data) {
-      const summary = financialRes.data.summary || {};
-      
-      stats.value.monthly_income = summary.income_this_month ?? 0;
-      stats.value.occupied_rooms = summary.occupied_rooms ?? 0; // Dari booking aktif
-      
-      if (financialRes.data.recent_transactions) {
-        recentTransactions.value = financialRes.data.recent_transactions;
+      // Iterasi setiap kost milik owner
+      for (const kost of kostsRes.data) {
+        // Karena data Kost di API index mungkin tidak membawa info jumlah kamar,
+        // kita perlu memanggil detail kamar per kost jika total_rooms tidak ada di model Kost.
+        if (kost.total_rooms) {
+          akumulasiKamar += parseInt(kost.total_rooms);
+        } else {
+          // Fallback: Ambil data kamar berdasarkan kost_id
+          const roomsRes = await ownerService.getRoomsByKost(kost.id);
+          if (roomsRes?.success && Array.isArray(roomsRes.data)) {
+            // Jumlahkan total_rooms dari setiap tipe kamar di kost tersebut
+            const totalPerKost = roomsRes.data.reduce((sum, room) => sum + (parseInt(room.total_rooms) || 0), 0);
+            akumulasiKamar += totalPerKost;
+          }
+        }
       }
+      
+      // Update nilai penyebut agar tidak 0 lagi
+      stats.value.total_rooms = akumulasiKamar;
     }
-
-    // === 2. AMBIL DATA BOOKING (PENDING) ===
-    try {
-      const bookingsRes = await ownerService.getBookings({ 
-        status: 'pending' 
-      });
-      
-      console.log('📋 Bookings Response:', bookingsRes);
-      
-      if (bookingsRes?.data) {
-        stats.value.pending_bookings = Array.isArray(bookingsRes.data) 
-          ? bookingsRes.data.length 
-          : 0;
-      }
-    } catch (bookingError) {
-      console.warn('⚠️ Booking endpoint error:', bookingError);
-      stats.value.pending_bookings = 0;
-    }
-
-    // === 3. AMBIL DATA KOST (TOTAL ROOMS) ===
-    try {
-      const kostsRes = await ownerService.getMyKosts();
-      
-      console.log('🏠 Kosts Response:', kostsRes);
-      
-      if (kostsRes?.data) {
-        const kosts = Array.isArray(kostsRes.data) 
-          ? kostsRes.data 
-          : [];
-        
-        let totalRooms = 0;
-        
-        kosts.forEach(kost => {
-          const total = parseInt(kost.total_rooms) || 0;
-          totalRooms += total;
-          
-          console.log(`🏠 ${kost.name}: ${total} total rooms`);
-        });
-        
-        stats.value.total_rooms = totalRooms;
-        
-        console.log(`📊 Total Rooms: ${totalRooms}, Occupied: ${stats.value.occupied_rooms}`);
-      }
-    } catch (kostError) {
-      console.warn('⚠️ Kost endpoint error:', kostError);
-      
-      // FALLBACK: Jika endpoint kost gagal, hitung total dari unique rooms di booking
-      try {
-        const allBookingsRes = await ownerService.getBookings({});
-        const allBookings = allBookingsRes.data || [];
-        
-        // Hitung unique room IDs
-        const uniqueRoomIds = new Set(
-          allBookings.map(booking => booking.room_id).filter(Boolean)
-        );
-        
-        stats.value.total_rooms = uniqueRoomIds.size;
-        
-        console.log(`📊 Fallback Total Rooms (from bookings): ${stats.value.total_rooms}`);
-      } catch (fallbackError) {
-        console.error('❌ Fallback also failed:', fallbackError);
-        stats.value.total_rooms = stats.value.occupied_rooms; // Minimal set sama dengan occupied
-      }
-    }
-
-    console.log('✅ Final Stats:', stats.value);
 
   } catch (error) {
     console.error('❌ Dashboard Error:', error);
-    notify.error('Gagal memuat data dashboard.');
   } finally {
     loading.value = false;
     loadingActivity.value = false;
@@ -283,9 +89,137 @@ const fetchStats = async () => {
 };
 
 onMounted(() => {
-  fetchStats();
+  fetchDashboardData();
 });
 </script>
+
+<template>
+  <div class="owner-dashboard">
+    <div class="container">
+
+      <div class="welcome-card">
+        <div class="text-content">
+          <h2>Bisnis Anda Hari Ini <span class="wave">👋</span></h2>
+          <p>Pantau performa properti dan kelola booking masuk dengan mudah.</p>
+        </div>
+
+        <BaseButton
+          variant="primary"
+          size="md"
+          @click="$router.push({ name: 'add-kost' })"
+        >
+          <template #icon-left>
+            <Icon icon="mdi:plus" />
+          </template>
+          Tambah Kost
+        </BaseButton>
+      </div>
+
+      <div v-if="loading" class="stats-grid">
+        <div v-for="i in 3" :key="i" class="stat-card skeleton-wrapper">
+          <BaseSkeleton width="60px" height="60px" border-radius="12px" />
+          <div style="flex:1">
+            <BaseSkeleton width="40%" height="14px" class="mb-2" />
+            <BaseSkeleton width="70%" height="24px" />
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="stats-grid">
+        <div class="stat-card green-card">
+          <div class="icon-box">
+            <Icon icon="mdi:cash-multiple" width="32" />
+          </div>
+          <div class="info">
+            <span class="label">Pendapatan Bulan Ini</span>
+            <h3 class="value">
+              Rp {{ formatRupiah(stats.monthly_income) }}
+            </h3>
+          </div>
+        </div>
+
+        <div
+          class="stat-card orange-card"
+          style="cursor:pointer"
+          @click="$router.push({ name: 'owner-bookings' })"
+        >
+          <div class="icon-box">
+            <Icon icon="mdi:clipboard-clock-outline" width="32" />
+          </div>
+          <div class="info">
+            <span class="label">Booking Baru</span>
+            <h3 class="value">
+              {{ stats.pending_bookings }}
+              <span class="small">menunggu</span>
+            </h3>
+          </div>
+        </div>
+
+        <div class="stat-card blue-card">
+          <div class="icon-box">
+            <Icon icon="mdi:bed-outline" width="32" />
+          </div>
+          <div class="info">
+            <span class="label">Kamar Terisi</span>
+            <h3 class="value">
+              {{ stats.occupied_rooms }} / {{ stats.total_rooms || 0 }}
+            </h3>
+
+            <div class="progress-bar">
+              <div
+                class="fill"
+                :style="{ width: occupancyRate + '%' }"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="recent-section">
+        <div class="section-header">
+          <h3>Aktivitas Transaksi Terbaru</h3>
+          <BaseButton variant="ghost" size="sm" @click="fetchDashboardData" :loading="loadingActivity">
+            <template #icon-left>
+              <Icon icon="mdi:refresh" />
+            </template>
+            Refresh
+          </BaseButton>
+        </div>
+
+        <div v-if="loadingActivity" class="activity-loading">
+          <BaseSkeleton v-for="i in 3" :key="i" height="60px" class="mb-3" />
+        </div>
+
+        <div v-else-if="recentTransactions.length > 0" class="activity-list">
+          <div
+            v-for="transaction in recentTransactions"
+            :key="transaction.id"
+            class="activity-item"
+          >
+            <div class="activity-icon">
+              <Icon icon="mdi:check-circle" width="24" />
+            </div>
+            <div class="activity-content">
+              <h4>{{ transaction.tenant?.name || 'Penyewa' }}</h4>
+              <p>{{ transaction.room?.kost?.name || 'Kost' }} - {{ transaction.room?.room_type || '-' }}</p>
+              <span class="time">{{ formatDate(transaction.created_at) }}</span>
+            </div>
+            <div class="activity-amount">
+              <span class="amount">Rp {{ formatRupiah(transaction.total_price) }}</span>
+              <span class="badge badge-success">Lunas</span>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="empty-activity">
+          <Icon icon="mdi:bell-sleep-outline" width="40" />
+          <p>Belum ada transaksi lunas terbaru.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</template>
 
 <style scoped>
 /* === LAYOUT === */

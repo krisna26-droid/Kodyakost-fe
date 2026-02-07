@@ -78,21 +78,24 @@ const route = useRoute();
 const loading = ref(false);
 const minDate = new Date().toISOString().split('T')[0];
 
-const pricePerMonth = parseInt(route.query.price) || 0;
+// ✅ FIX: Ambil harga dari query URL agar tidak Rp 0
+const pricePerMonth = computed(() => parseInt(route.query.price) || 0);
 
 const form = reactive({
-  room_id: route.query.room_id, // Bisa berupa '2' atau '2_standard...'
+  room_id: route.query.room_id, // Mengambil ID kamar (bisa berupa slug '2_standard_...')
   start_date: route.query.date || '',
   duration: parseInt(route.query.duration) || 1,
   unit: route.query.unit || 'Bulan'
 });
 
+// ✅ Menghitung total harga berdasarkan durasi (Bulan vs Tahun)
 const totalPrice = computed(() => {
   const durationInMonths = form.unit === 'Tahun' ? form.duration * 12 : form.duration;
-  return pricePerMonth * durationInMonths;
+  return pricePerMonth.value * durationInMonths;
 });
 
 const submitBooking = async () => {
+  // Validasi dasar sebelum menembak API
   if (!form.room_id) {
     alert("Data kamar tidak ditemukan.");
     return;
@@ -104,8 +107,9 @@ const submitBooking = async () => {
 
   loading.value = true;
   try {
-    // [FIX] Bersihkan ID dari string slug dan pastikan Integer
+    // ✅ Membersihkan room_id jika berbentuk slug (misal '2_standard' menjadi 2)
     const cleanRoomId = parseInt(String(form.room_id).split('_')[0]);
+    // ✅ Mengonversi durasi ke satuan bulan untuk kebutuhan backend
     const cleanDuration = parseInt(form.unit === 'Tahun' ? form.duration * 12 : form.duration);
 
     const payload = {
@@ -114,9 +118,11 @@ const submitBooking = async () => {
       duration: cleanDuration
     };
 
+    // Panggil service untuk menyimpan data ke database
     const response = await transactionService.createBooking(payload);
     const newBookingId = response.data?.id || response.id;
     
+    // Pindah ke step berikutnya (Menunggu Konfirmasi Owner)
     router.push({ 
       name: 'booking-step-2', 
       query: { booking_id: newBookingId } 
@@ -131,9 +137,14 @@ const submitBooking = async () => {
   }
 };
 
-const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { 
+  style: 'currency', 
+  currency: 'IDR', 
+  minimumFractionDigits: 0 
+}).format(num);
 
 onMounted(() => {
+  // Memastikan user tidak mengakses halaman ini tanpa memilih kamar
   if (!form.room_id) {
     alert("Kamar belum dipilih.");
     router.push({ name: 'properties' });
@@ -142,7 +153,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* CSS tetap sama dengan milikmu */
 .step-page { background: #f8fafc; min-height: 100vh; font-family: 'Poppins', sans-serif; display: flex; justify-content: center; padding-top: 40px; }
 .container { width: 100%; max-width: 500px; padding: 20px; }
 .stepper { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; font-size: 0.75rem; color: #94a3b8; font-weight: 600; }

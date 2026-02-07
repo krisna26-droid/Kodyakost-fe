@@ -44,13 +44,9 @@ const generateRoomId = (room, index, kostId) => {
 // --- 5. HELPER: PROCESS ROOM IMAGES ---
 const processRoomImages = (room) => {
   const images = [];
-  
-  // 1. Main room image
   if (room.image) {
     images.push(fixImageUrl(room.image));
   }
-  
-  // 2. Room images array (CRITICAL!)
   if (Array.isArray(room.images) && room.images.length > 0) {
     room.images.forEach(img => {
       const imgPath = img.image_path || img.path || img.image || img;
@@ -59,8 +55,6 @@ const processRoomImages = (room) => {
       }
     });
   }
-  
-  // 3. Gallery array (fallback)
   if (Array.isArray(room.gallery) && room.gallery.length > 0) {
     room.gallery.forEach(imgPath => {
       if (imgPath && typeof imgPath === 'string') {
@@ -68,7 +62,6 @@ const processRoomImages = (room) => {
       }
     });
   }
-  
   return images;
 }
 
@@ -84,7 +77,6 @@ export default {
       const enrichedData = rawData.map((item) => {
         const roomsWithId = (item.rooms || []).map((room, index) => {
           const roomImages = processRoomImages(room);
-          
           return {
             ...room,
             id: generateRoomId(room, index, item.id),
@@ -104,28 +96,47 @@ export default {
           };
         });
 
+        // Logika Parsing Alamat & Lokasi
+        let rawAddress = item.address || item.location?.address || '';
+        let cleanAddress = typeof rawAddress === 'object' ? rawAddress.address : rawAddress;
+        
+        let cleanDistrict = item.district || item.location?.district || '';
+        if (typeof cleanDistrict === 'object') cleanDistrict = cleanDistrict.district;
+
         return {
           id: item.id,
           name: item.name,
-          mainImage: fixImageUrl(item.thumbnail || item.main_image),
+          mainImage: fixImageUrl(item.thumbnail || item.main_image || item.image),
           price: Number(item.price_per_month || item.price_start || item.price || 0), 
-          location: item.district || item.location?.district || 'Bali',
-          rating: item.rating || item.average_rating || 0,
-          reviewCount: item.review_count || item.reviews_count || 0,
+          price_per_month: Number(item.price_per_month || item.price_start || item.price || 0),
+          
+          location: cleanDistrict || item.city || 'Bali',
+          address: cleanAddress,
+          district: cleanDistrict,
+          village: item.village || item.location?.village || '',
+          city: item.city || item.location?.city || '',
+          
+          // ✅ Backend sudah return rating & reviews_count!
+          rating: Number(item.rating || 0),
+          average_rating: Number(item.rating || 0),
+          avg_rating: Number(item.rating || 0),
+          
+          reviewCount: Number(item.total_reviews || 0),
+          review_count: Number(item.total_reviews || 0),
+          reviews_count: Number(item.total_reviews || 0),
+          
+          // ✅ Backend sudah return views!
+          views: Number(item.views || 0),
+          
           type: item.type || 'Campur',
           facilities: extractFacilities(roomsWithId),
           description: item.description,
-          address: item.address || item.location?.address,
-          district: item.district || item.location?.district,
-          village: item.village || item.location?.village,
-          city: item.city || item.location?.city,
           isVerified: item.is_verified,
           rooms: roomsWithId,
           latitude: item.latitude || item.location?.latitude,
-          longitude: item.longitude || item.location?.longitude,
-          views: item.views || 0
+          longitude: item.longitude || item.location?.longitude
         }
-      })
+      });
 
       return { data: enrichedData, meta: response.data.meta || {}, success: true }
     } catch (error) {
@@ -137,63 +148,62 @@ export default {
   // --- GET DETAIL KOST ---
   async getKostDetail(id) {
     try {
-      const response = await apiClient.get(`/kosts/${id}`)
+      const response = await apiClient.get(`/kosts/${id}`);
       const item = response.data.data || response.data;
 
       if (item) {
         const cleanMainImage = fixImageUrl(item.thumbnail || item.main_image || item.image);
         const locationData = item.location || {};
         
-        // Process rooms dengan SEMUA GAMBAR
+        // 1. Ambil Review DETAIL dari ReviewController (untuk list review + user info)
+        let reviewsData = { data: [], averageRating: 0, totalReviews: 0 };
+        try {
+          const revRes = await apiClient.get(`/kosts/${id}/reviews`);
+          if (revRes.data.success) {
+            reviewsData = {
+              data: revRes.data.data,
+              averageRating: revRes.data.summary?.average_rating || 0,
+              totalReviews: revRes.data.summary?.total_reviews || 0
+            };
+          }
+        } catch (e) {
+          console.warn("Review not found for this kost");
+        }
+
+        // 2. Process rooms
         let cleanRooms = [];
         if (Array.isArray(item.rooms) && item.rooms.length > 0) {
           cleanRooms = item.rooms.map((room, index) => {
             const generatedId = generateRoomId(room, index, item.id);
             const roomImages = processRoomImages(room);
             
-            const mapped = {
+            return {
+              ...room,
               id: generatedId,
               room_type: room.type || room.room_type || 'Standard',
               price_per_month: Number(room.price || room.price_per_month || 0),
               total_rooms: Number(room.total || room.total_rooms || 0),
               available_rooms: Number(room.available || room.available_rooms || 0),
               room_size: room.size || room.room_size || '',
-              
-              // Images
               image: roomImages[0] || fixImageUrl(room.image),
               gallery: roomImages,
-              
-              // Images array untuk compatibility
-              images: Array.isArray(room.images) 
-                ? room.images.map(img => ({
-                    id: img.id || `img_${index}`,
-                    path: fixImageUrl(img.image_path || img.path || img.image || img),
-                    image_path: fixImageUrl(img.image_path || img.path || img.image || img)
-                  }))
-                : roomImages.map((url, i) => ({
-                    id: `${generatedId}_img_${i}`,
-                    path: url,
-                    image_path: url
-                  })),
-              
-              // Facilities
+              images: roomImages.map((url, i) => ({
+                id: `${generatedId}_img_${i}`,
+                path: url,
+                image_path: url
+              })),
               facilities: Array.isArray(room.facilities) 
                 ? room.facilities.map(f => ({
                     id: f.id || f.name,
                     name: f.name,
                     icon: f.icon
                   }))
-                : [],
-              
-              // Keep original
-              ...room
+                : []
             };
-            
-            return mapped;
           });
         }
 
-        // Process kost images
+        // 3. Process kost images
         let cleanImages = [];
         if (Array.isArray(item.images) && item.images.length > 0) {
           cleanImages = item.images.map(img => ({
@@ -203,15 +213,24 @@ export default {
           }));
         }
 
-        const result = {
+        // 4. Parsing Alamat & Lokasi
+        const rawAddress = item.address || locationData.address || '';
+        const cleanAddress = typeof rawAddress === 'object' ? (rawAddress.address || '') : rawAddress;
+        
+        let districtStr = item.district || locationData.district || '';
+        if (typeof districtStr === 'object') districtStr = districtStr.district || districtStr.name || '';
+
+        // 5. Gabungkan semua data
+        return {
           ...item,
           main_image: cleanMainImage,
           mainImage: cleanMainImage,
           thumbnail: cleanMainImage,
           thumbnail_url: cleanMainImage,
+          image: cleanMainImage,
           
-          address: item.address || locationData.address || '',
-          district: item.district || locationData.district || '',
+          address: cleanAddress,
+          district: districtStr,
           village: item.village || locationData.village || '',
           city: item.city || locationData.city || '',
           latitude: item.latitude || locationData.latitude,
@@ -224,31 +243,54 @@ export default {
           price: Number(item.price_per_month || item.price_start || item.price || 0),
           price_per_month: Number(item.price_per_month || item.price || 0),
           
-          rating: item.rating || item.average_rating || 0,
-          reviews_count: item.reviews_count || item.review_count || 0,
+          // ✅ Backend sudah return rating (dari withAvg)
+          rating: Number(item.rating || reviewsData.averageRating || 0),
+          average_rating: Number(item.rating || reviewsData.averageRating || 0),
+          avg_rating: Number(item.rating || reviewsData.averageRating || 0),
           
-          views: item.views || 0,
+          // ✅ Backend sudah return total_reviews (dari withCount)
+          reviewCount: Number(item.total_reviews || reviewsData.totalReviews || 0),
+          reviews_count: Number(item.total_reviews || reviewsData.totalReviews || 0),
+          review_count: Number(item.total_reviews || reviewsData.totalReviews || 0),
+          
+          // ✅ Backend sudah increment dan return views!
+          views: Number(item.views || 0),
           
           location: locationData,
           owner: item.owner || item.user || null,
-          reviews: Array.isArray(item.reviews) ? item.reviews : []
+          reviews: reviewsData.data // Array review lengkap dengan user info
         };
-
-        return result;
       }
       return item;
     } catch (error) { 
-      console.error("Error:", error);
-      throw error 
+      console.error("Error fetching kost detail:", error);
+      throw error;
     }
   },
 
-  // --- SEARCH ---
+  // --- GET REVIEWS ---
+  async getKostReviews(kostId) {
+    try {
+      const response = await apiClient.get(`/kosts/${kostId}/reviews`);
+      
+      if (response.data.success) {
+        return {
+          data: response.data.data,
+          averageRating: response.data.summary?.average_rating || 0,
+          totalReviews: response.data.summary?.total_reviews || 0
+        };
+      }
+      return { data: [], averageRating: 0, totalReviews: 0 };
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      return { data: [], averageRating: 0, totalReviews: 0 };
+    }
+  },
+
   async searchKosts(query) {
     return this.getKosts({ search: query });
   },
 
-  // --- HELPERS ---
   async getKostRooms(kostId) {
      const detail = await this.getKostDetail(kostId);
      return detail.rooms || []; 

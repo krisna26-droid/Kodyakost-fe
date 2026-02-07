@@ -41,7 +41,7 @@
           <Icon icon="mdi:inbox-outline" width="40" />
         </div>
         <h3>Tidak ada data</h3>
-        <p>Belum ada permintaan sewa pada status ini.</p>
+        <p>Belum ada permintaan sewa dengan status <b>{{ formatStatus(activeTab) }}</b>.</p>
       </div>
 
       <div v-else class="booking-list">
@@ -54,8 +54,13 @@
               </div>
               <div>
                 <h4 class="user-name">{{ item.tenant?.name }}</h4>
-                <a :href="`https://wa.me/${formatPhone(item.tenant?.phone_whatsapp)}`" target="_blank" class="user-contact">
-                  <Icon icon="mdi:whatsapp" width="14" /> Hubungi
+                <a 
+                  v-if="item.tenant?.phone" 
+                  :href="`https://wa.me/${formatPhone(item.tenant.phone)}`" 
+                  target="_blank" 
+                  class="user-contact"
+                >
+                  <Icon icon="mdi:whatsapp" width="14" /> Hubungi WA
                 </a>
               </div>
             </div>
@@ -63,73 +68,73 @@
 
           <div class="card-center">
             <div class="info-row">
-              <span class="label">Properti</span>
-              <span class="val">{{ item.room?.kost?.name }}</span>
+              <span class="label">Kost</span>
+              <span class="val">{{ item.room?.kost?.name || 'Kost Tidak Diketahui' }}</span>
             </div>
             <div class="info-row">
-              <span class="label">Kamar</span>
-              <span class="val">{{ item.room?.room_type }}</span>
+              <span class="label">Tipe Kamar</span>
+              <span class="val">{{ item.room?.room_type || 'Tipe Standar' }}</span>
             </div>
             <div class="info-row">
-              <span class="label">Jadwal</span>
-              <span class="val">{{ formatDate(item.start_date) }} ({{ item.duration }} Bulan)</span>
+              <span class="label">Mulai Sewa</span>
+              <span class="val">{{ formatDate(item.start_date) }}</span>
             </div>
           </div>
 
           <div class="card-right">
-             <div class="price-tag">
-               <small>Total Pendapatan</small>
-               <h3>{{ formatRupiah(item.total_price) }}</h3>
-             </div>
-             
-             <div v-if="item.status === 'pending'" class="btn-group">
-               <BaseButton 
-                 variant="ghost" 
-                 size="sm" 
-                 @click="goToDetail(item.id)"
-                 class="btn-detail"
-               >
-                 <template #icon-left><Icon icon="mdi:file-document-outline" /></template>
-                 Lihat Detail
-               </BaseButton>
+              <div class="price-tag">
+                <small>Total Transaksi</small>
+                <h3>{{ formatRupiah(item.total_price) }}</h3>
+              </div>
+              
+              <div v-if="item.status === 'pending'" class="btn-group">
+                <div class="action-row-main">
+                  <BaseButton 
+                    variant="danger" 
+                    size="sm" 
+                    outline
+                    @click="handleAction(item.id, 'rejected')"
+                    :disabled="processing === item.id"
+                  >
+                    <template #icon-left><Icon icon="mdi:close" /></template>
+                    Tolak
+                  </BaseButton>
 
-               <BaseButton 
-                 variant="danger" 
-                 size="sm" 
-                 outline
-                 @click="handleAction(item.id, 'rejected')"
-                 :disabled="processing === item.id"
-               >
-                 <template #icon-left><Icon icon="mdi:close" /></template>
-                 Tolak
-               </BaseButton>
+                  <BaseButton 
+                    variant="primary" 
+                    size="sm" 
+                    @click="handleAction(item.id, 'approved')"
+                    :loading="processing === item.id"
+                  >
+                    <template #icon-left><Icon icon="mdi:check" /></template>
+                    Terima
+                  </BaseButton>
+                </div>
 
-               <BaseButton 
-                 variant="primary" 
-                 size="sm" 
-                 @click="handleAction(item.id, 'approved')"
-                 :loading="processing === item.id"
-               >
-                 <template #icon-left><Icon icon="mdi:check" /></template>
-                 Terima
-               </BaseButton>
-             </div>
+                <BaseButton 
+                  variant="ghost" 
+                  size="sm" 
+                  @click="goToDetail(item.id)"
+                  class="btn-detail-full"
+                >
+                  Lihat Detail & KTP
+                </BaseButton>
+              </div>
 
-             <div v-else class="action-group">
-               <BaseButton 
-                 variant="ghost" 
-                 size="sm" 
-                 @click="goToDetail(item.id)"
-                 class="btn-detail-small"
-               >
-                 <template #icon-left><Icon icon="mdi:eye-outline" /></template>
-                 Detail
-               </BaseButton>
-               
-               <span :class="['status-badge', getStatusClass(item.status)]">
-                 {{ formatStatus(item.status) }}
-               </span>
-             </div>
+              <div v-else class="action-group">
+                <span :class="['status-badge', getStatusClass(item.status)]">
+                  {{ formatStatus(item.status) }}
+                </span>
+                <BaseButton 
+                  variant="ghost" 
+                  size="sm" 
+                  @click="goToDetail(item.id)"
+                  class="btn-detail-small"
+                >
+                  <template #icon-left><Icon icon="mdi:eye-outline" /></template>
+                  Detail
+                </BaseButton>
+              </div>
           </div>
 
         </div>
@@ -170,24 +175,28 @@ const pendingCount = computed(() => bookings.value.filter(b => b.status === 'pen
 const fetchBookings = async () => {
   loading.value = true;
   try {
+    // API memanggil list booking milik owner
     bookings.value = await ownerService.getIncomingBookings();
   } catch (error) {
-    notify.error("Gagal mengambil data booking.");
+    notify.error("Gagal mengambil daftar permintaan.");
   } finally {
     loading.value = false;
   }
 };
 
 const goToDetail = (id) => {
-  router.push({ name: 'owner-verify-booking', params: { id } });
+  // Pastikan route ini terdaftar di router Anda
+  router.push({ name: 'owner-booking-detail', params: { id } });
 };
+
+// Di dalam script setup IncomingPage.vue
 
 const handleAction = async (id, status) => {
   const isApprove = status === 'approved';
   const confirmed = await notify.confirm(
     isApprove ? 'Terima Pengajuan?' : 'Tolak Pengajuan?',
     isApprove 
-      ? 'Calon penyewa akan diberitahu untuk segera melakukan pembayaran.' 
+      ? 'Tenant akan menerima notifikasi untuk segera melakukan pembayaran.' 
       : 'Permintaan sewa ini akan dibatalkan.',
     isApprove ? 'Ya, Terima' : 'Ya, Tolak'
   );
@@ -196,26 +205,113 @@ const handleAction = async (id, status) => {
 
   processing.value = id;
   try {
+    // Percobaan pertama sesuai instruksi Controller (rejected)
     await ownerService.updateBookingStatus(id, status);
-    const index = bookings.value.findIndex(b => b.id === id);
-    if (index !== -1) bookings.value[index].status = status;
+    
+    updateLocalStatus(id, status);
     notify.success(`Berhasil ${isApprove ? 'menerima' : 'menolak'} pengajuan.`);
   } catch (error) {
-    notify.error("Gagal memproses perubahan status.");
+    // JIKA ERROR DATA TRUNCATED (rejected 8 huruf mungkin kepanjangan buat DB Anda)
+    if (error.message === "DB_LIMIT_REACHED" && status === 'rejected') {
+      console.warn("⚠️ 'rejected' ditolak DB, mencoba fallback ke 'reject'...");
+      try {
+        // Coba kirim versi lebih pendek (6 huruf)
+        await ownerService.updateBookingStatus(id, 'reject');
+        updateLocalStatus(id, 'rejected'); // Tetap tampilkan 'rejected' di UI
+        notify.success("Berhasil menolak pengajuan (via fallback).");
+        return;
+      } catch (fallbackError) {
+        notify.error("Gagal: Database tidak mengenali status penolakan.");
+      }
+    } else {
+      const msg = error.response?.data?.message || "Gagal memproses perubahan status.";
+      notify.error(msg);
+    }
   } finally {
     processing.value = null;
   }
 };
 
-const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
-const formatDate = (date) => new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-const getInitials = (name) => (name ? name.charAt(0).toUpperCase() : '?');
-const formatPhone = (phone) => phone ? (phone.startsWith('0') ? '62' + phone.slice(1) : phone) : '';
-const formatStatus = (s) => ({ pending: 'Menunggu', approved: 'Disetujui', active: 'Aktif', rejected: 'Ditolak', canceled: 'Dibatalkan' }[s] || s);
-const getStatusClass = (s) => ({ pending: 'st-pending', approved: 'st-approved', active: 'st-active', rejected: 'st-canceled', canceled: 'st-canceled' }[s] || '');
+// Fungsi pembantu agar tidak duplikasi kode
+const updateLocalStatus = (id, newStatus) => {
+  const index = bookings.value.findIndex(b => b.id === id);
+  if (index !== -1) {
+    bookings.value[index].status = newStatus;
+  }
+};
+
+// HELPER FUNCTIONS
+const formatRupiah = (num) => {
+  return new Intl.NumberFormat('id-ID', { 
+    style: 'currency', 
+    currency: 'IDR', 
+    minimumFractionDigits: 0 
+  }).format(num || 0);
+};
+
+const formatDate = (date) => {
+  if (!date) return '-';
+  return new Date(date).toLocaleDateString('id-ID', { 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric' 
+  });
+};
+
+const getInitials = (name) => (name ? name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : '??');
+
+const formatPhone = (phone) => {
+  if (!phone) return '';
+  let p = phone.toString().replace(/[^0-9]/g, '');
+  if (p.startsWith('0')) p = '62' + p.slice(1);
+  return p;
+};
+
+const formatStatus = (s) => {
+  const map = { 
+    pending: 'Menunggu', 
+    approved: 'Disetujui', 
+    active: 'Aktif', 
+    rejected: 'Ditolak', 
+    canceled: 'Dibatalkan',
+    all: 'Semua'
+  };
+  return map[s] || s;
+};
+
+const getStatusClass = (s) => {
+  const map = { 
+    pending: 'st-pending', 
+    approved: 'st-approved', 
+    active: 'st-active', 
+    rejected: 'st-canceled', 
+    canceled: 'st-canceled' 
+  };
+  return map[s] || '';
+};
 
 onMounted(fetchBookings);
 </script>
+
+<style scoped>
+/* CSS Anda sudah sangat baik, saya tambahkan sedikit untuk layout tombol aksi */
+.action-row-main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.btn-detail-full {
+  width: 100%;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+  font-size: 0.8rem !important;
+}
+
+/* Sisanya mengikuti style asli Anda ... */
+</style>
 
 <style scoped>
 .incoming-page { 

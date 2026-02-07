@@ -97,7 +97,7 @@
             <Icon icon="mdi:information-outline" width="24" />
             <div class="info-content">
               <h4>Langkah Selanjutnya</h4>
-              <p>Setelah properti kost berhasil dibuat, Anda akan diarahkan untuk <b>menambahkan Tipe Kamar</b> beserta harga dan fasilitasnya.</p>
+              <p>Setelah properti kost berhasil dibuat, statusnya adalah <b>Pending</b>. Anda bisa langsung <b>menambahkan Tipe Kamar</b> agar bisa diverifikasi oleh Admin.</p>
             </div>
           </div>
 
@@ -105,7 +105,7 @@
             <button type="button" class="btn-cancel" @click="$router.back()">Batalkan</button>
             <button type="submit" class="btn-submit" :disabled="loading">
               <Icon v-if="loading" icon="mdi:loading" class="spin" />
-              <span v-else>Lanjutkan ke Tambah Kamar</span>
+              <span v-else>Simpan & Lanjut Tambah Kamar</span>
             </button>
           </div>
 
@@ -119,7 +119,7 @@
 import { ref, reactive, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
-import { notify } from '@/utils/swal'; // Memanggil utilitas notifikasi kita
+import { notify } from '@/utils/swal'; 
 import ownerService from '@/services/ownerService';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -127,6 +127,7 @@ import 'leaflet/dist/leaflet.css';
 const router = useRouter();
 const loading = ref(false);
 
+// Data Wilayah Denpasar sesuai Enum DB
 const areaData = {
   "Denpasar Selatan": ["Sesetan", "Panjer", "Sidakarya", "Sanur", "Renon", "Pedungan", "Serangan"],
   "Denpasar Barat": ["Dauh Puri", "Pemecutan", "Padangsambian", "Tegal Kertha", "Tegal Harum"],
@@ -156,25 +157,23 @@ const triggerFile = () => mainInput.value.click();
 const onFileChange = (e) => {
   const file = e.target.files[0];
   if (file) {
-    // Validasi Ukuran File (Pake notify.error)
-    if (file.size > 2048000) {
+    if (file.size > 2 * 1024 * 1024) {
       notify.error("Ukuran file terlalu besar. Maksimal 2MB!");
       return;
     }
     mainFile.value = file;
     mainPreview.value = URL.createObjectURL(file);
-    console.log("📸 [AddKost] File terpilih:", file.name);
   }
 };
 
 let map, marker;
 onMounted(() => {
+  // Setup Leaflet
   map = L.map('map').setView([form.latitude, form.longitude], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
   
-  // Invalidate size agar peta tidak abu-abu saat modal/halaman load
   setTimeout(() => map.invalidateSize(), 400);
 
   marker = L.marker([form.latitude, form.longitude], { draggable: true }).addTo(map);
@@ -196,17 +195,15 @@ onMounted(() => {
 });
 
 const handleSubmit = async () => {
-  // 1. Validasi Foto (Pake notify.error)
   if (!mainFile.value) {
-    notify.error("Waduh, foto utama kostnya jangan lupa diunggah dulu, Cuk!");
+    notify.error("Foto utama kost wajib diunggah!");
     return;
   }
 
-  // 2. Konfirmasi Sebelum Kirim (Pake notify.confirm)
   const confirmed = await notify.confirm(
     "Simpan Properti?",
-    "Pastikan data sudah benar. Setelah ini kamu harus mengisi detail kamar.",
-    "Ya, Simpan Kost"
+    "Data kost akan disimpan dengan status Pending. Lanjut untuk mengisi detail kamar?",
+    "Ya, Simpan"
   );
 
   if (!confirmed) return;
@@ -214,33 +211,38 @@ const handleSubmit = async () => {
   loading.value = true;
   try {
     const fd = new FormData();
-    // Append semua field form ke FormData
-    Object.keys(form).forEach(key => fd.append(key, form[key]));
+    // Append data text
+    fd.append('name', form.name);
+    fd.append('description', form.description);
+    fd.append('district', form.district);
+    fd.append('village', form.village);
+    fd.append('address', form.address);
+    fd.append('latitude', form.latitude);
+    fd.append('longitude', form.longitude);
+    
+    // Append File (Key harus 'thumbnail' sesuai KostController)
     fd.append('thumbnail', mainFile.value);
 
-    console.log("📤 [AddKost] Mengirim data ke API...");
-    const res = await ownerService.createKost(fd);
+    const res = await ownerService.storeKost(fd);
     
-    // Ambil ID dari berbagai kemungkinan struktur response backend
-    const kostId = res.data?.data?.id || res.data?.id;
+    // Menyesuaikan dengan struktur response return response()->json([...])
+    const kostId = res.data?.id;
 
-    if (kostId) {
-      // 3. Notif Sukses (Pake notify.alertSuccess)
+    if (res.success) {
       await notify.alertSuccess(
         "Kost Berhasil Dibuat!", 
-        "Mantap! Sekarang lanjut tambahkan tipe kamar (misal: Kamar Mandi Dalam) agar kostmu bisa tayang."
+        "Data kost sudah masuk sistem. Sekarang, silakan tambahkan tipe kamar."
       );
       
+      // Redirect ke halaman manage-rooms (Pastikan route ini ada)
       router.push({ 
-        name: 'manage-rooms', 
-        params: { id: kostId } 
+        name: 'owner-rooms', // Sesuaikan nama route Anda
+        query: { kost_id: kostId } 
       });
     }
   } catch (error) {
-    console.error("❌ [AddKost] Error Simpan Kost:", error);
-    
-    // 4. Handle Error dari Server (Pake notify.error)
-    const errorMsg = error.response?.data?.message || "Gagal simpan data. Cek koneksimu atau coba lagi nanti.";
+    console.error("❌ Error Simpan Kost:", error);
+    const errorMsg = error.response?.data?.message || "Gagal menyimpan data. Silakan coba lagi.";
     notify.error(errorMsg);
   } finally {
     loading.value = false;

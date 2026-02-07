@@ -1,236 +1,22 @@
-<template>
-  <div class="profile-view">
-    <div class="container">
-      
-      <div class="page-header">
-        <button @click="$router.back()" class="back-btn">
-          <Icon icon="mdi:arrow-left" /> Kembali
-        </button>
-        <h1>Profil Saya</h1>
-      </div>
-
-      <div class="profile-grid">
-        
-        <div class="profile-card identity-card">
-          <div class="avatar-wrapper">
-            <img 
-              :src="previewAvatar || getAvatarUrl(user?.avatar) || defaultAvatar" 
-              @error="handleImageError"
-              alt="User Avatar" 
-              class="avatar-img"
-            />
-            
-            <button class="edit-avatar-btn" @click="triggerFileInput" title="Ubah Foto">
-              <Icon icon="mdi:camera" />
-            </button>
-            
-            <input 
-              type="file" 
-              ref="fileInput" 
-              class="hidden-input" 
-              @change="handleFileChange" 
-              accept="image/png, image/jpeg, image/jpg" 
-            />
-          </div>
-
-          <h2 class="user-name">{{ user?.name || 'Pengguna' }}</h2>
-          <span class="user-role">{{ formatRole(user?.role) }}</span>
-
-          <div class="joined-date">
-            <Icon icon="mdi:calendar-blank" />
-            <span>Bergabung sejak {{ formatDate(user?.created_at) }}</span>
-          </div>
-        </div>
-
-        <div class="content-column">
-          
-          <div class="profile-card form-card">
-            <div class="card-header">
-              <h3>Informasi Pribadi</h3>
-              <button 
-                v-if="!isEditing" 
-                @click="enableEdit" 
-                class="edit-btn"
-              >
-                <Icon icon="mdi:pencil" /> Edit Profil
-              </button>
-            </div>
-
-            <form @submit.prevent="handleSaveProfile">
-              <div class="form-grid">
-                
-                <div class="form-group">
-                  <label>Nama Lengkap</label>
-                  <input 
-                    v-model="form.name" 
-                    type="text" 
-                    :disabled="!isEditing"
-                    :class="{ 'editable': isEditing }"
-                    placeholder="Nama Lengkap"
-                    required
-                  />
-                </div>
-
-                <div class="form-group">
-                  <label>Email</label>
-                  <div class="input-wrapper locked">
-                    <input 
-                      v-model="form.email" 
-                      type="email" 
-                      disabled
-                      title="Email tidak dapat diubah"
-                    />
-                    <Icon icon="mdi:lock" class="lock-icon" />
-                  </div>
-                </div>
-
-                <!-- NOMOR TELEPON -->
-                <div class="form-group">
-                  <label>Nomor WhatsApp</label>
-                  <input 
-                    v-model="form.phone" 
-                    type="tel" 
-                    :disabled="!isEditing"
-                    :class="{ 'editable': isEditing }"
-                    placeholder="08xxxxxxxxxx"
-                    required
-                  />
-                </div>
-
-                <!-- KTP SECTION - DI KANAN NOMOR TELEPON -->
-                <div class="form-group">
-                  <label>
-                    Foto KTP 
-                    <span v-if="user?.is_ktp_verified" class="verified-badge">
-                      <Icon icon="mdi:check-circle" /> Terverifikasi
-                    </span>
-                  </label>
-                  
-                  <!-- Preview KTP atau Upload Button -->
-                  <div class="ktp-container">
-                    <!-- Jika sudah ada KTP -->
-                    <div v-if="previewKtp || user?.ktp_image" class="ktp-preview">
-                      <img 
-                        :src="previewKtp || getKtpUrl(user?.ktp_image)" 
-                        alt="KTP Preview"
-                        @click="viewKtpFullscreen"
-                        class="ktp-image"
-                      />
-                      <button 
-                        type="button" 
-                        @click="triggerKtpInput" 
-                        class="change-ktp-btn"
-                        :disabled="!isEditing"
-                      >
-                        <Icon icon="mdi:camera" /> Ubah KTP
-                      </button>
-                    </div>
-
-                    <!-- Jika belum ada KTP -->
-                    <div v-else class="ktp-upload-placeholder">
-                      <Icon icon="mdi:card-account-details-outline" class="placeholder-icon" />
-                      <p>Belum ada KTP</p>
-                      <button 
-                        type="button" 
-                        @click="triggerKtpInput"
-                        class="upload-ktp-btn"
-                        :disabled="!isEditing"
-                      >
-                        <Icon icon="mdi:upload" /> Upload KTP
-                      </button>
-                    </div>
-
-                    <input 
-                      type="file" 
-                      ref="ktpFileInput" 
-                      class="hidden-input" 
-                      @change="handleKtpChange" 
-                      accept="image/png, image/jpeg, image/jpg" 
-                    />
-                  </div>
-                  <small class="form-hint">
-                    <Icon icon="mdi:information-outline" /> 
-                    KTP diperlukan untuk verifikasi saat booking kost
-                  </small>
-                </div>
-
-                <div class="form-group full-width">
-                  <label>Bio Singkat</label>
-                  <textarea 
-                    v-model="form.bio" 
-                    rows="3"
-                    :disabled="!isEditing"
-                    :class="{ 'editable': isEditing }"
-                    placeholder="Ceritakan sedikit tentang diri Anda..."
-                  ></textarea>
-                </div>
-
-              </div>
-
-              <div v-if="isEditing" class="action-buttons">
-                <button type="button" class="btn-cancel" @click="cancelEdit">Batal</button>
-                <button 
-                  type="submit" 
-                  class="btn-save" 
-                  :disabled="authStore.loading"
-                >
-                  <Icon v-if="authStore.loading" icon="mdi:loading" class="spin" />
-                  {{ authStore.loading ? 'Menyimpan...' : 'Simpan Perubahan' }}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <div class="profile-card security-card">
-            <div class="card-header">
-              <h3>Keamanan Akun</h3>
-            </div>
-            <div class="password-row">
-              <div class="pass-info">
-                <label>Password</label>
-                <p>••••••••••••</p>
-              </div>
-              <button type="button" class="change-pass-btn">Ubah Password</button>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal Fullscreen KTP -->
-    <div v-if="showKtpModal" class="ktp-modal" @click="closeKtpModal">
-      <div class="modal-content">
-        <button class="close-modal" @click="closeKtpModal">
-          <Icon icon="mdi:close" />
-        </button>
-        <img 
-          :src="previewKtp || getKtpUrl(user?.ktp_image)" 
-          alt="KTP Fullscreen"
-          class="ktp-fullscreen"
-        />
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { Icon } from '@iconify/vue';
 import { notify } from '@/utils/swal';
+import BaseInput from '@/components/common/BaseInput.vue';
+import BaseButton from '@/components/common/BaseButton.vue';
 
 const authStore = useAuthStore();
 const user = computed(() => authStore.user);
 
-// --- KONFIGURASI URL DINAMIS ---
+// Konfigurasi URL Dinamis
 const API_URL = import.meta.env.VITE_API_URL || 'https://kodyakostapi.adityavisual.my.id/api';
 const BASE_STORAGE_URL = API_URL.replace(/\/api\/?$/, '');
-
-const defaultAvatar = 'https://i.pravatar.cc/150?img=11';
+const defaultAvatar = 'https://ui-avatars.com/api/?name=User&background=random';
 
 // State UI
 const isEditing = ref(false);
+const loading = ref(false); 
 const fileInput = ref(null);
 const selectedFile = ref(null);
 const previewAvatar = ref(null);
@@ -239,40 +25,25 @@ const previewAvatar = ref(null);
 const ktpFileInput = ref(null);
 const selectedKtpFile = ref(null);
 const previewKtp = ref(null);
-const showKtpModal = ref(false);
 
 // State Form
 const form = ref({
   name: '',
   email: '',
-  phone: '',
-  bio: ''
+  phone: ''
 });
 
-// --- HELPER METHODS ---
+// Helper URL
 const getAvatarUrl = (path) => {
   if (!path) return null;
   if (path.startsWith('http')) return path;
-  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  return `${BASE_STORAGE_URL}/storage/${cleanPath}`;
+  return `${BASE_STORAGE_URL}/storage/${path.replace(/^\//, '')}`;
 };
 
 const getKtpUrl = (path) => {
   if (!path) return null;
   if (path.startsWith('http')) return path;
-  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  return `${BASE_STORAGE_URL}/storage/${cleanPath}`;
-};
-
-const handleImageError = (e) => {
-  if (e.target.src !== defaultAvatar) e.target.src = defaultAvatar;
-};
-
-const formatRole = (role) => (role === 'owner' ? 'Pemilik Properti' : 'Pencari Kost');
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  return new Date(dateString).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  return `${BASE_STORAGE_URL}/storage/${path.replace(/^\//, '')}`;
 };
 
 const resetForm = () => {
@@ -280,212 +51,370 @@ const resetForm = () => {
     form.value.name = user.value.name || '';
     form.value.email = user.value.email || '';
     form.value.phone = user.value.phone_whatsapp || '';
-    form.value.bio = user.value.bio || ''; 
   }
 };
 
-// --- HANDLERS AVATAR ---
-const triggerFileInput = () => {
-  isEditing.value = true;
-  fileInput.value.click();
+// Handlers Media
+const triggerFileInput = () => { 
+  isEditing.value = true; 
+  fileInput.value.click(); 
+};
+
+const triggerKtpInput = () => { 
+  // ⚠️ Cek role dulu sebelum upload
+  if (user.value?.role !== 'tenant') {
+    notify.error('Fitur upload KTP hanya tersedia untuk Pencari Kos (tenant)');
+    return;
+  }
+  
+  if (!isEditing.value) isEditing.value = true;
+  ktpFileInput.value.click(); 
 };
 
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
-    if (file.size > 2 * 1024 * 1024) {
-      return notify.error("Ukuran foto terlalu besar (Maks 2MB)");
-    }
     selectedFile.value = file;
     previewAvatar.value = URL.createObjectURL(file);
-    notify.success("Foto terpilih, klik Simpan untuk memperbarui");
+    notify.success("Foto profil dipilih!");
   }
-};
-
-// --- HANDLERS KTP ---
-const triggerKtpInput = () => {
-  if (!isEditing.value) {
-    isEditing.value = true;
-  }
-  ktpFileInput.value.click();
 };
 
 const handleKtpChange = (event) => {
   const file = event.target.files[0];
   if (file) {
-    if (file.size > 2 * 1024 * 1024) {
-      return notify.error("Ukuran foto KTP terlalu besar (Maks 2MB)");
+    // Validasi file
+    const maxSize = 2 * 1024 * 1024; // 2MB
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    
+    if (!allowedTypes.includes(file.type)) {
+      notify.error('Format file harus JPG atau PNG!');
+      event.target.value = '';
+      return;
     }
+    
+    if (file.size > maxSize) {
+      notify.error('Ukuran file maksimal 2MB!');
+      event.target.value = '';
+      return;
+    }
+    
     selectedKtpFile.value = file;
     previewKtp.value = URL.createObjectURL(file);
-    notify.success("Foto KTP terpilih, klik Simpan untuk memperbarui");
+    notify.success("Foto KTP dipilih!");
   }
 };
 
-const viewKtpFullscreen = () => {
-  showKtpModal.value = true;
-};
+// ✅ SIMPAN DATA PROFILE & KTP
+const handleSaveProfile = async () => {
+  loading.value = true;
+  
+  try {
+    let profileSuccess = true;
+    let ktpSuccess = true;
 
-const closeKtpModal = () => {
-  showKtpModal.value = false;
-};
+    // --- TAHAP 1: UPDATE PROFIL UMUM ---
+    const hasProfileChanges = 
+      form.value.name !== user.value?.name ||
+      form.value.phone !== user.value?.phone_whatsapp ||
+      selectedFile.value;
 
-// --- EDIT & SAVE ---
-const enableEdit = () => { 
-  isEditing.value = true; 
+    if (hasProfileChanges) {
+      const profileData = new FormData();
+      profileData.append('name', form.value.name);
+      profileData.append('phone_whatsapp', form.value.phone);
+      if (selectedFile.value) profileData.append('avatar', selectedFile.value);
+
+      profileSuccess = await authStore.updateProfile(profileData);
+      
+      if (!profileSuccess) {
+        notify.error(authStore.error || "Gagal memperbarui profil!");
+        loading.value = false;
+        return;
+      }
+    }
+
+    // --- TAHAP 2: UPLOAD KTP ---
+    if (selectedKtpFile.value) {
+      // ⚠️ Cek role lagi sebelum upload
+      if (user.value?.role !== 'tenant') {
+        notify.error('Fitur upload KTP hanya tersedia untuk Pencari Kos (tenant)');
+        loading.value = false;
+        return;
+      }
+      
+      console.log('🔄 Uploading KTP...');
+      console.log('User role:', user.value?.role);
+      console.log('File:', selectedKtpFile.value.name);
+      
+      const ktpData = new FormData();
+      ktpData.append('ktp_image', selectedKtpFile.value); 
+      
+      ktpSuccess = await authStore.uploadKtp(ktpData);
+      
+      if (!ktpSuccess) {
+        const errorMsg = authStore.error || "Gagal upload KTP!";
+        
+        // Berikan info lebih jelas untuk error 404
+        if (errorMsg.includes('404') || errorMsg.includes('not found')) {
+          notify.error('Route upload KTP tidak ditemukan. Pastikan backend sudah running dan route sudah di-clear cache.');
+        } else {
+          notify.error(errorMsg);
+        }
+        
+        loading.value = false;
+        return;
+      }
+    }
+
+    // ✅ Semua berhasil
+    if (profileSuccess && ktpSuccess) {
+      notify.success("Profil berhasil diperbarui!");
+      isEditing.value = false;
+      
+      // Bersihkan state temporary
+      selectedFile.value = null;
+      selectedKtpFile.value = null;
+      previewAvatar.value = null;
+      previewKtp.value = null;
+      
+      // Reset file input
+      if (fileInput.value) fileInput.value.value = '';
+      if (ktpFileInput.value) ktpFileInput.value.value = '';
+    }
+  } catch (error) {
+    console.error("Save profile error:", error);
+    notify.error("Terjadi kesalahan saat menyimpan data.");
+  } finally {
+    loading.value = false;
+  }
 };
 
 const cancelEdit = async () => {
-  const yakin = await notify.confirm("Batalkan perubahan?", "Data yang Anda masukkan tidak akan disimpan.");
+  const yakin = await notify.confirm("Batalkan perubahan?", "Data yang sudah diubah tidak akan disimpan.");
   if (yakin) {
     isEditing.value = false;
-    selectedFile.value = null;
-    previewAvatar.value = null;
-    selectedKtpFile.value = null;
-    previewKtp.value = null;
     resetForm();
-  }
-};
-
-const handleSaveProfile = async () => {
-  const formData = new FormData();
-  formData.append('name', form.value.name);
-  formData.append('phone_whatsapp', form.value.phone);
-  if (form.value.bio) formData.append('bio', form.value.bio);
-  
-  if (selectedFile.value) {
-    formData.append('avatar', selectedFile.value);
-  }
-
-  // Update profil umum dulu
-  const success = await authStore.updateProfile(formData);
-
-  // Jika ada KTP baru, upload terpisah
-  if (selectedKtpFile.value) {
-    const ktpSuccess = await authStore.uploadKtp(selectedKtpFile.value);
-    if (!ktpSuccess) {
-      notify.error("Profil tersimpan, tapi gagal upload KTP");
-    }
-  }
-
-  if (success) {
-    notify.success("Profil Anda berhasil diperbarui!");
-    isEditing.value = false;
-    selectedFile.value = null;
     previewAvatar.value = null;
-    selectedKtpFile.value = null;
     previewKtp.value = null;
-  } else {
-    notify.error(authStore.error || "Gagal menyimpan perubahan profil.");
+    selectedFile.value = null;
+    selectedKtpFile.value = null;
+    if (fileInput.value) fileInput.value.value = '';
+    if (ktpFileInput.value) ktpFileInput.value.value = '';
   }
 };
 
-onMounted(() => {
-  if (!user.value) authStore.fetchUser();
+// Debug pada mount
+onMounted(() => { 
   resetForm();
+  console.log('👤 User Info:', {
+    role: user.value?.role,
+    name: user.value?.name,
+    isTenant: user.value?.role === 'tenant'
+  });
 });
 
 watch(user, () => resetForm());
 </script>
 
+<template>
+  <div class="profile-view">
+    <div class="container">
+      <div class="page-header">
+        <BaseButton variant="ghost" size="sm" @click="$router.back()" rounded="full">
+          <template #icon-left><Icon icon="mdi:arrow-left" /></template>
+          Kembali
+        </BaseButton>
+        <h1>Profil Saya</h1>
+      </div>
+
+      <div class="profile-grid">
+        <div class="profile-card identity-card">
+          <div class="avatar-wrapper">
+            <img 
+              :src="previewAvatar || getAvatarUrl(user?.avatar) || defaultAvatar" 
+              class="avatar-img"
+              alt="Avatar"
+            />
+            <button 
+              class="edit-avatar-btn" 
+              @click="triggerFileInput" 
+              title="Ubah Foto"
+              :disabled="!isEditing"
+            >
+              <Icon icon="mdi:camera" />
+            </button>
+            <input type="file" ref="fileInput" class="hidden" @change="handleFileChange" accept="image/*" />
+          </div>
+          <h2 class="user-name">{{ user?.name }}</h2>
+          <span class="user-role">{{ user?.role === 'owner' ? 'Pemilik' : 'Pencari' }}</span>
+        </div>
+
+        <div class="content-column">
+          <div class="profile-card form-card">
+            <div class="card-header">
+              <h3>Informasi Pribadi</h3>
+              <BaseButton v-if="!isEditing" variant="outline" size="sm" @click="isEditing = true">
+                <template #icon-left><Icon icon="pencil" /></template>
+                Edit Profil
+              </BaseButton>
+            </div>
+
+            <form @submit.prevent="handleSaveProfile">
+              <div class="form-grid">
+                <BaseInput v-model="form.name" label="Nama Lengkap" :disabled="!isEditing" required />
+                
+                <BaseInput v-model="form.email" label="Email" disabled>
+                  <template #append><Icon icon="mdi:lock" /></template>
+                </BaseInput>
+                
+                <BaseInput v-model="form.phone" label="Nomor WhatsApp" type="tel" :disabled="!isEditing" required />
+                
+                <!-- ⚠️ KTP HANYA UNTUK TENANT -->
+                <div class="form-group full" v-if="user?.role === 'tenant'">
+                  <label>
+                    Foto KTP 
+                  </label>
+                  <div 
+                    class="ktp-box" 
+                    @click="isEditing ? triggerKtpInput() : null"
+                    :class="{ 'disabled': !isEditing }"
+                  >
+                    <img 
+                      v-if="previewKtp || user?.ktp_image" 
+                      :src="previewKtp || getKtpUrl(user?.ktp_image)" 
+                      class="ktp-img" 
+                      alt="KTP" 
+                    />
+                    <div v-else class="ktp-placeholder">
+                      <Icon icon="mdi:card-account-details-outline" />
+                      <p>{{ isEditing ? 'Klik untuk upload KTP' : 'Belum ada KTP' }}</p>
+                      <small>Format: JPG/PNG, Maks 2MB</small>
+                    </div>
+                    <input type="file" ref="ktpFileInput" class="hidden" @change="handleKtpChange" accept="image/jpeg,image/jpg,image/png" />
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="isEditing" class="action-buttons">
+                <BaseButton type="button" variant="ghost" @click="cancelEdit" :disabled="loading">
+                  Batal
+                </BaseButton>
+                <BaseButton type="submit" variant="primary" :loading="loading">
+                  Simpan Perubahan
+                </BaseButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <style scoped>
-/* GENERAL STYLES */
-.profile-view { background-color: #f3f4f6; min-height: 100vh; padding: 40px 0; font-family: 'Poppins', sans-serif; color: #333; }
-.container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+.profile-view { background: #f9fafb; min-height: 100vh; padding: 2rem 0; font-family: 'Poppins', sans-serif; }
+.container { max-width: 1000px; margin: 0 auto; padding: 0 1rem; }
+.page-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+.page-header h1 { font-size: 1.5rem; font-weight: 700; color: #1e293b; margin: 0; }
 
-/* HEADER */
-.page-header { margin-bottom: 30px; display: flex; align-items: center; gap: 20px; }
-.page-header h1 { font-size: 1.8rem; font-weight: 700; color: #1f3a52; }
-.back-btn { background: white; border: 1px solid #ddd; padding: 8px 16px; border-radius: 50px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-weight: 500; transition: all 0.2s; }
-.back-btn:hover { background: #e5e7eb; }
-
-/* GRID */
-.profile-grid { display: grid; grid-template-columns: 300px 1fr; gap: 30px; }
-
-/* CARDS */
-.profile-card { background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid #f1f5f9; }
-
-/* IDENTITY CARD */
+.profile-grid { display: grid; grid-template-columns: 280px 1fr; gap: 2rem; }
+.profile-card { background: #fff; border-radius: 1rem; padding: 2rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 .identity-card { text-align: center; height: fit-content; }
-.avatar-wrapper { position: relative; width: 120px; height: 120px; margin: 0 auto 20px; }
-.avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid #f0fbfb; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-.edit-avatar-btn { position: absolute; bottom: 0; right: 0; background: #fca311; color: white; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: transform 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-.edit-avatar-btn:hover { transform: scale(1.1); }
-.hidden-input { display: none; }
-.user-name { font-size: 1.4rem; font-weight: 700; color: #1f3a52; margin-bottom: 5px; }
-.user-role { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 20px; }
-.joined-date { display: flex; align-items: center; justify-content: center; gap: 8px; color: #6b7280; font-size: 0.9rem; padding-top: 20px; border-top: 1px solid #f3f4f6; }
 
-/* FORM CARD */
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-.card-header h3 { font-size: 1.2rem; font-weight: 700; color: #1f3a52; }
-.edit-btn { background: none; border: 1px solid #fca311; color: #fca311; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
-.edit-btn:hover { background: #fff8e6; }
+.avatar-wrapper { position: relative; width: 120px; height: 120px; margin: 0 auto 1rem; }
+.avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #00897b; }
+.edit-avatar-btn { 
+  position: absolute; 
+  bottom: 0; 
+  right: 0; 
+  background: #00897b; 
+  color: #fff; 
+  border: none; 
+  width: 36px; 
+  height: 36px; 
+  border-radius: 50%; 
+  cursor: pointer; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: all 0.2s;
+}
+.edit-avatar-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
 
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-.form-group { display: flex; flex-direction: column; gap: 8px; }
-.form-group.full-width { grid-column: span 2; }
-.form-group label { font-size: 0.9rem; font-weight: 600; color: #4b5563; display: flex; align-items: center; gap: 8px; }
+.user-name { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin: 0; }
+.user-role { font-size: 0.875rem; color: #64748b; font-weight: 500; }
 
-.verified-badge { display: inline-flex; align-items: center; gap: 4px; background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.card-header h3 { font-size: 1.125rem; font-weight: 700; color: #1e293b; margin: 0; }
 
-input, textarea { padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 0.95rem; background: #f9fafb; color: #1f3a52; transition: all 0.2s; font-family: inherit; }
-input.editable, textarea.editable { background: white; border-color: #cbd5e1; }
-input.editable:focus, textarea.editable:focus { border-color: #fca311; outline: none; box-shadow: 0 0 0 3px rgba(252, 163, 17, 0.1); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.form-group label { display: block; font-size: 0.875rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; }
+.full { grid-column: span 2; }
+.hidden { display: none; }
 
-.input-wrapper.locked { position: relative; }
-.input-wrapper.locked input { padding-right: 40px; cursor: not-allowed; opacity: 0.7; }
-.lock-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+.ktp-box { 
+  border: 2px dashed #e2e8f0; 
+  border-radius: 0.75rem; 
+  height: 200px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  cursor: pointer; 
+  overflow: hidden; 
+  transition: all 0.2s; 
+  background: #f8fafc; 
+}
+.ktp-box:not(.disabled):hover { 
+  border-color: #00897b; 
+  background: #f0fdfa; 
+}
+.ktp-box.disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.ktp-img { width: 100%; height: 100%; object-fit: contain; }
+.ktp-placeholder { text-align: center; color: #94a3b8; }
+.ktp-placeholder svg { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.ktp-placeholder p { font-size: 0.875rem; margin: 0.5rem 0; }
+.ktp-placeholder small { font-size: 0.75rem; color: #94a3b8; }
 
-/* KTP SECTION */
-.ktp-container { background: #f9fafb; border: 2px dashed #e5e7eb; border-radius: 12px; padding: 15px; min-height: 150px; display: flex; align-items: center; justify-content: center; }
+.verified { 
+  color: #059669; 
+  font-size: 0.75rem; 
+  background: #ecfdf5; 
+  padding: 2px 10px; 
+  border-radius: 1rem; 
+  margin-left: 0.5rem; 
+  border: 1px solid #d1fae5; 
+}
 
-.ktp-preview { text-align: center; width: 100%; }
-.ktp-image { width: 100%; max-width: 300px; height: auto; border-radius: 8px; object-fit: cover; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 10px; }
-.ktp-image:hover { transform: scale(1.02); }
+.pending {
+  color: #d97706;
+  font-size: 0.75rem;
+  background: #fef3c7;
+  padding: 2px 10px;
+  border-radius: 1rem;
+  margin-left: 0.5rem;
+  border: 1px solid #fde68a;
+}
 
-.change-ktp-btn { background: #fca311; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
-.change-ktp-btn:hover { background: #e69200; }
-.change-ktp-btn:disabled { background: #d1d5db; cursor: not-allowed; }
+.action-buttons { 
+  display: flex; 
+  justify-content: flex-end; 
+  gap: 1rem; 
+  margin-top: 2rem; 
+  padding-top: 1.5rem; 
+  border-top: 1px solid #f1f5f9; 
+}
 
-.ktp-upload-placeholder { text-align: center; color: #9ca3af; }
-.placeholder-icon { font-size: 3rem; margin-bottom: 10px; color: #cbd5e1; }
-.ktp-upload-placeholder p { font-size: 0.9rem; margin-bottom: 15px; }
-
-.upload-ktp-btn { background: #1f3a52; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
-.upload-ktp-btn:hover { background: #152938; }
-.upload-ktp-btn:disabled { background: #94a3b8; cursor: not-allowed; }
-
-.form-hint { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; color: #6b7280; margin-top: 5px; }
-
-/* MODAL FULLSCREEN KTP */
-.ktp-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
-.modal-content { position: relative; max-width: 90%; max-height: 90%; }
-.ktp-fullscreen { width: 100%; height: auto; border-radius: 8px; }
-.close-modal { position: absolute; top: -40px; right: 0; background: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: 0.2s; }
-.close-modal:hover { background: #f3f4f6; }
-
-.action-buttons { display: flex; justify-content: flex-end; gap: 15px; padding-top: 20px; border-top: 1px solid #f3f4f6; }
-.btn-cancel { background: white; border: 1px solid #d1d5db; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; color: #64748b; }
-.btn-save { background: #1f3a52; color: white; border: none; padding: 10px 25px; border-radius: 10px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-.btn-save:disabled { background: #94a3b8; cursor: not-allowed; }
-.spin { animation: spin 1s linear infinite; }
-@keyframes spin { 100% { transform: rotate(360deg); } }
-
-/* SECURITY CARD */
-.security-card { margin-top: 30px; }
-.password-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; }
-.pass-info label { font-size: 0.9rem; font-weight: 600; color: #4b5563; }
-.pass-info p { letter-spacing: 2px; color: #9ca3af; margin-top: 5px; }
-.change-pass-btn { background: #f3f4f6; border: none; padding: 8px 16px; border-radius: 8px; color: #1f3a52; font-weight: 600; cursor: pointer; transition: 0.2s; }
-.change-pass-btn:hover { background: #e5e7eb; }
-
-@media (max-width: 768px) {
-  .profile-grid { grid-template-columns: 1fr; }
-  .form-grid { grid-template-columns: 1fr; }
-  .form-group.full-width { grid-column: span 1; }
-  .action-buttons { flex-direction: column-reverse; }
-  .btn-cancel, .btn-save { width: 100%; justify-content: center; }
-  .ktp-image { max-width: 100%; }
+@media (max-width: 768px) { 
+  .profile-grid { grid-template-columns: 1fr; } 
+  .form-grid { grid-template-columns: 1fr; } 
+  .full { grid-column: span 1; }
 }
 </style>
