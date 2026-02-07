@@ -75,6 +75,10 @@
             </div>
 
             <div class="actions">
+              <BaseButton variant="warning" icon size="sm" @click="openEditModal(room)" title="Edit Kamar" style="margin-right: 8px;">
+                <Icon icon="mdi:pencil-outline" />
+              </BaseButton>
+
               <BaseButton variant="danger" icon size="sm" @click="confirmDeleteRoom(room.id)" title="Hapus Kamar">
                 <Icon icon="mdi:trash-can-outline" />
               </BaseButton>
@@ -87,7 +91,7 @@
         <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
           <div class="modal-content">
             <div class="modal-header">
-              <h3>Tambah Kamar Baru</h3>
+              <h3>{{ isEdit ? 'Edit Tipe Kamar' : 'Tambah Kamar Baru' }}</h3>
               <BaseButton variant="ghost" icon @click="closeModal"><Icon icon="mdi:close" /></BaseButton>
             </div>
             
@@ -125,16 +129,20 @@
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="form-group" v-if="!isEdit">
                 <label>Foto Kamar <span class="req">*</span></label>
                 <div class="file-upload-wrapper">
                   <input type="file" @change="handleFile" accept="image/*" class="input-file" />
                   <p class="hint">Upload foto interior kamar (Max 2MB)</p>
                 </div>
               </div>
+              <div class="form-group" v-else>
+                <label>Foto Kamar</label>
+                <p class="hint" style="color: #fca311;">ℹ️ Foto tidak dapat diubah di mode edit (batasan sistem).</p>
+              </div>
 
               <BaseButton variant="primary" type="submit" block :loading="submitting" class="mt-6">
-                Simpan Kamar
+                {{ isEdit ? 'Simpan Perubahan' : 'Simpan Kamar' }}
               </BaseButton>
             </form>
           </div>
@@ -152,6 +160,10 @@ import { Icon } from '@iconify/vue';
 import ownerService from '@/services/ownerService';
 import { notify } from '@/utils/swal';
 import axios from 'axios';
+
+// Mode Tambah/Edit
+const isEdit = ref(false);
+const currentRoomId = ref(null);
 
 const route = useRoute();
 const router = useRouter();
@@ -208,12 +220,32 @@ const fetchFacilities = async () => {
 };
 
 const openModal = () => {
+  isEdit.value = false;
+  currentRoomId.value = null;
+  showModal.value = true;
+  if (allFacilities.value.length === 0) fetchFacilities();
+};
+
+const openEditModal = (room) => {
+  isEdit.value = true;
+  currentRoomId.value = room.id;
+  
+  // Mapping data dari baris ke form
+  form.room_type = room.room_type;
+  form.price_per_month = room.price_per_month;
+  form.total_rooms = room.total_rooms;
+  form.room_size = room.room_size || '';
+  form.facility_ids = room.facilities ? room.facilities.map(f => f.id) : [];
+  form.image = null; 
+  
   showModal.value = true;
   if (allFacilities.value.length === 0) fetchFacilities();
 };
 
 const closeModal = () => {
   showModal.value = false;
+  isEdit.value = false;
+  currentRoomId.value = null;
   Object.assign(form, { room_type: '', price_per_month: '', total_rooms: 1, room_size: '', facility_ids: [], image: null });
 };
 
@@ -228,29 +260,47 @@ const handleFile = (e) => {
 };
 
 const submitRoom = async () => {
-  if (!form.image) return notify.error("Foto kamar wajib diunggah!");
+  // Validasi foto hanya saat tambah baru
+  if (!isEdit.value && !form.image) return notify.error("Foto kamar wajib diunggah!");
+  
   submitting.value = true;
   try {
     const fd = new FormData();
-    fd.append('kost_id', kostId.value);
     fd.append('room_type', form.room_type);
-    fd.append('price_per_month', form.price_per_month);
+    
+    const cleanPrice = String(form.price_per_month).replace(/\D/g, '');
+    fd.append('price_per_month', cleanPrice);
     fd.append('total_rooms', form.total_rooms);
+    
     if (form.room_size) fd.append('room_size', form.room_size);
     form.facility_ids.forEach(id => fd.append('facility_ids[]', id));
-    fd.append('image', form.image);
 
-    await ownerService.createRoom(fd);
-    notify.success("Kamar berhasil ditambahkan!");
+    let response;
+    if (isEdit.value) {
+      // Logic UPDATE
+      response = await ownerService.updateRoom(currentRoomId.value, fd);
+      notify.success("Kamar berhasil diperbarui!");
+    } else {
+      // Logic STORE
+      fd.append('kost_id', kostId.value);
+      fd.append('image', form.image);
+      response = await ownerService.storeRoom(fd);
+      notify.success("Kamar berhasil ditambahkan!");
+    }
+    
     closeModal();
     fetchRooms();
   } catch (e) {
-    notify.error(e.response?.data?.message || "Gagal menyimpan kamar.");
-  } finally { submitting.value = false; }
+    console.error("❌ Detail Error:", e.response?.data);
+    const msg = e.response?.data?.message || "Gagal menyimpan data kamar.";
+    notify.error(msg);
+  } finally { 
+    submitting.value = false; 
+  }
 };
 
 const confirmDeleteRoom = async (roomId) => {
-  const confirmed = await notify.confirm("Hapus Kamar?", "Tipe kamar ini beserta datanya akan dihapus permanen.");
+  const confirmed = await notify.confirm("Hapus Kamar?", "Data akan dihapus permanen.");
   if (confirmed) {
     try {
       await ownerService.deleteRoom(roomId);

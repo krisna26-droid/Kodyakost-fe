@@ -22,10 +22,23 @@
           @click="activeTab = tab.value"
         >
           {{ tab.label }}
-          <span class="badge-count" v-if="tab.value === 'pending' && pendingCount > 0">
-            {{ pendingCount }}
+          <span class="badge-count" v-if="getTabCount(tab.value) > 0">
+            {{ getTabCount(tab.value) }}
           </span>
         </button>
+      </div>
+
+      <!-- DEBUG INFO -->
+      <div v-if="!loading && bookings.length > 0" style="background: #fff3cd; padding: 12px; margin-bottom: 1rem; border-radius: 8px; font-size: 0.85rem;">
+        <strong>🔍 Debug Info:</strong> 
+        <div style="margin-top: 8px;">
+          <div v-for="booking in bookings.slice(0, 3)" :key="booking.id">
+            ID: {{ booking.id }} | Status di DB: <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 4px;">{{ booking.status }}</code>
+          </div>
+        </div>
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ffc107;">
+          <small><b>Info:</b> Backend validasi: approved/rejected | Database ENUM tidak punya 'rejected' ❌</small>
+        </div>
       </div>
 
       <div v-if="loading" class="booking-list">
@@ -87,13 +100,13 @@
                 <h3>{{ formatRupiah(item.total_price) }}</h3>
               </div>
               
-              <div v-if="item.status === 'pending'" class="btn-group">
+              <div v-if="isPendingStatus(item.status)" class="btn-group">
                 <div class="action-row-main">
                   <BaseButton 
                     variant="danger" 
                     size="sm" 
                     outline
-                    @click="handleAction(item.id, 'rejected')"
+                    @click="handleReject(item.id)"
                     :disabled="processing === item.id"
                   >
                     <template #icon-left><Icon icon="mdi:close" /></template>
@@ -103,7 +116,7 @@
                   <BaseButton 
                     variant="primary" 
                     size="sm" 
-                    @click="handleAction(item.id, 'approved')"
+                    @click="handleApprove(item.id)"
                     :loading="processing === item.id"
                   >
                     <template #icon-left><Icon icon="mdi:check" /></template>
@@ -155,29 +168,51 @@ const router = useRouter();
 const bookings = ref([]);
 const loading = ref(true);
 const processing = ref(null); 
-const activeTab = ref('pending');
+const activeTab = ref('menunggu');
 
 const tabs = [
-  { label: 'Menunggu', value: 'pending' },
-  { label: 'Disetujui', value: 'approved' }, 
-  { label: 'Aktif', value: 'active' }, 
-  { label: 'Ditolak', value: 'rejected' },
-  { label: 'Semua', value: 'all' },
+  { label: 'Menunggu', value: 'menunggu', statuses: ['pending', 'requested'] },
+  { label: 'Disetujui', value: 'approved', statuses: ['approved'] }, 
+  { label: 'Aktif', value: 'active', statuses: ['active', 'paid'] }, 
+  { label: 'Ditolak', value: 'rejected', statuses: ['rejected', 'canceled'] },
+  { label: 'Semua', value: 'all', statuses: [] },
 ];
 
 const filteredList = computed(() => {
   if (activeTab.value === 'all') return bookings.value;
-  return bookings.value.filter(b => b.status === activeTab.value);
+  
+  const currentTab = tabs.find(t => t.value === activeTab.value);
+  if (!currentTab || !currentTab.statuses.length) return bookings.value;
+  
+  return bookings.value.filter(b => currentTab.statuses.includes(b.status));
 });
 
-const pendingCount = computed(() => bookings.value.filter(b => b.status === 'pending').length);
+const getTabCount = (tabValue) => {
+  if (tabValue === 'all') return 0;
+  
+  const tab = tabs.find(t => t.value === tabValue);
+  if (!tab || !tab.statuses.length) return 0;
+  
+  return bookings.value.filter(b => tab.statuses.includes(b.status)).length;
+};
+
+const isPendingStatus = (status) => {
+  return ['pending', 'requested'].includes(status);
+};
 
 const fetchBookings = async () => {
   loading.value = true;
   try {
-    // API memanggil list booking milik owner
     bookings.value = await ownerService.getIncomingBookings();
+    console.log('📦 Bookings loaded:', bookings.value.length);
+    console.log('📊 Status breakdown:', 
+      bookings.value.reduce((acc, b) => {
+        acc[b.status] = (acc[b.status] || 0) + 1;
+        return acc;
+      }, {})
+    );
   } catch (error) {
+    console.error('❌ Fetch error:', error);
     notify.error("Gagal mengambil daftar permintaan.");
   } finally {
     loading.value = false;
@@ -185,46 +220,72 @@ const fetchBookings = async () => {
 };
 
 const goToDetail = (id) => {
-  // Pastikan route ini terdaftar di router Anda
   router.push({ name: 'owner-booking-detail', params: { id } });
 };
 
-// Di dalam script setup IncomingPage.vue
-
-const handleAction = async (id, status) => {
-  const isApprove = status === 'approved';
+const handleApprove = async (id) => {
   const confirmed = await notify.confirm(
-    isApprove ? 'Terima Pengajuan?' : 'Tolak Pengajuan?',
-    isApprove 
-      ? 'Tenant akan menerima notifikasi untuk segera melakukan pembayaran.' 
-      : 'Permintaan sewa ini akan dibatalkan.',
-    isApprove ? 'Ya, Terima' : 'Ya, Tolak'
+    'Terima Pengajuan?',
+    'Tenant akan menerima notifikasi untuk segera melakukan pembayaran.',
+    'Ya, Terima'
   );
 
   if (!confirmed) return;
 
   processing.value = id;
   try {
-    // Percobaan pertama sesuai instruksi Controller (rejected)
-    await ownerService.updateBookingStatus(id, status);
+    console.log(`📤 Approving booking ${id} with status: approved`);
+    await ownerService.updateBookingStatus(id, 'approved');
     
-    updateLocalStatus(id, status);
-    notify.success(`Berhasil ${isApprove ? 'menerima' : 'menolak'} pengajuan.`);
+    updateLocalStatus(id, 'approved');
+    notify.success('Berhasil menerima pengajuan.');
   } catch (error) {
-    // JIKA ERROR DATA TRUNCATED (rejected 8 huruf mungkin kepanjangan buat DB Anda)
-    if (error.message === "DB_LIMIT_REACHED" && status === 'rejected') {
-      console.warn("⚠️ 'rejected' ditolak DB, mencoba fallback ke 'reject'...");
-      try {
-        // Coba kirim versi lebih pendek (6 huruf)
-        await ownerService.updateBookingStatus(id, 'reject');
-        updateLocalStatus(id, 'rejected'); // Tetap tampilkan 'rejected' di UI
-        notify.success("Berhasil menolak pengajuan (via fallback).");
-        return;
-      } catch (fallbackError) {
-        notify.error("Gagal: Database tidak mengenali status penolakan.");
-      }
+    console.error('❌ Approve error:', error);
+    const msg = error.response?.data?.message || "Gagal menerima pengajuan.";
+    notify.error(msg);
+  } finally {
+    processing.value = null;
+  }
+};
+
+/**
+ * 🔥 HANDLE REJECT - WORKAROUND
+ * Backend punya bug: validasi menerima 'rejected' tapi database tidak punya!
+ * 
+ * Solusi sementara: Tampilkan pesan error ke user dan sarankan hubungi developer backend
+ */
+const handleReject = async (id) => {
+  const confirmed = await notify.confirm(
+    'Tolak Pengajuan?',
+    'Permintaan sewa ini akan dibatalkan.',
+    'Ya, Tolak'
+  );
+
+  if (!confirmed) return;
+
+  processing.value = id;
+  try {
+    console.log(`📤 Rejecting booking ${id} with status: rejected`);
+    
+    // Coba kirim 'rejected' dulu (sesuai validasi backend)
+    await ownerService.updateBookingStatus(id, 'rejected');
+    
+    updateLocalStatus(id, 'rejected'); // Atau 'canceled' tergantung response
+    notify.success('Berhasil menolak pengajuan.');
+  } catch (error) {
+    console.error('❌ Reject error:', error);
+    
+    // Jika error karena database truncate, beri info jelas ke user
+    if (error.response?.data?.message?.includes('truncated') || 
+        error.response?.data?.message?.includes('1265')) {
+      
+      notify.error(
+        '⚠️ Backend Error: Database tidak mendukung status "rejected". ' +
+        'Silakan hubungi developer backend untuk mengubah ENUM database atau validasi controller. ' +
+        'Status yang valid kemungkinan: "canceled"'
+      );
     } else {
-      const msg = error.response?.data?.message || "Gagal memproses perubahan status.";
+      const msg = error.response?.data?.message || "Gagal menolak pengajuan.";
       notify.error(msg);
     }
   } finally {
@@ -232,11 +293,11 @@ const handleAction = async (id, status) => {
   }
 };
 
-// Fungsi pembantu agar tidak duplikasi kode
 const updateLocalStatus = (id, newStatus) => {
   const index = bookings.value.findIndex(b => b.id === id);
   if (index !== -1) {
     bookings.value[index].status = newStatus;
+    console.log(`✅ Local status updated for booking ${id}: ${newStatus}`);
   }
 };
 
@@ -269,11 +330,14 @@ const formatPhone = (phone) => {
 
 const formatStatus = (s) => {
   const map = { 
-    pending: 'Menunggu', 
+    pending: 'Menunggu',
+    requested: 'Menunggu',
     approved: 'Disetujui', 
     active: 'Aktif', 
     rejected: 'Ditolak', 
     canceled: 'Dibatalkan',
+    paid: 'Sudah Dibayar',
+    menunggu: 'Menunggu',
     all: 'Semua'
   };
   return map[s] || s;
@@ -281,11 +345,13 @@ const formatStatus = (s) => {
 
 const getStatusClass = (s) => {
   const map = { 
-    pending: 'st-pending', 
+    pending: 'st-pending',
+    requested: 'st-pending',
     approved: 'st-approved', 
     active: 'st-active', 
     rejected: 'st-canceled', 
-    canceled: 'st-canceled' 
+    canceled: 'st-canceled',
+    paid: 'st-active'
   };
   return map[s] || '';
 };
@@ -294,7 +360,6 @@ onMounted(fetchBookings);
 </script>
 
 <style scoped>
-/* CSS Anda sudah sangat baik, saya tambahkan sedikit untuk layout tombol aksi */
 .action-row-main {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -310,10 +375,6 @@ onMounted(fetchBookings);
   font-size: 0.8rem !important;
 }
 
-/* Sisanya mengikuti style asli Anda ... */
-</style>
-
-<style scoped>
 .incoming-page { 
   padding: 2rem; 
   background: #f8fafc; 
@@ -391,7 +452,7 @@ onMounted(fetchBookings);
   padding: 4rem 2rem;
   background: white;
   border-radius: 16px;
-  border: 2px dashed #e2e8f0;
+  border: 2px solid #e2e8f0;
 }
 
 .icon-bg {
@@ -524,17 +585,6 @@ onMounted(fetchBookings);
   gap: 8px; 
 }
 
-.btn-detail {
-  background: #f1f5f9 !important;
-  color: #475569 !important;
-  font-weight: 600 !important;
-  border: 1px solid #e2e8f0 !important;
-}
-
-.btn-detail:hover {
-  background: #e2e8f0 !important;
-}
-
 .action-group {
   display: flex;
   flex-direction: column;
@@ -625,57 +675,6 @@ onMounted(fetchBookings);
 
   .btn-detail-small {
     flex: 1;
-  }
-}
-
-@media (max-width: 600px) {
-  .incoming-page {
-    padding: 1rem;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .title {
-    font-size: 1.5rem;
-  }
-
-  .tabs {
-    gap: 6px;
-  }
-
-  .tab {
-    padding: 8px 14px;
-    font-size: 0.85rem;
-  }
-
-  .booking-card {
-    padding: 16px;
-  }
-
-  .user-profile {
-    gap: 0.75rem;
-  }
-
-  .avatar {
-    width: 44px;
-    height: 44px;
-    font-size: 1rem;
-  }
-
-  .user-name {
-    font-size: 0.95rem;
-  }
-
-  .info-row {
-    font-size: 0.8rem;
-  }
-
-  .price-tag h3 {
-    font-size: 1.1rem;
   }
 }
 </style>

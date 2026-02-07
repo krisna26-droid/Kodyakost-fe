@@ -140,19 +140,16 @@ export default {
 
   /**
    * UPDATE STATUS BOOKING
-   * Mengatasi masalah "Data truncated" dengan normalisasi data dan logging ketat.
+   * ✅ FIXED: Mengirim status yang sesuai dengan ENUM database
    */
-  // ownerService.js
-
-async updateBookingStatus(id, status) {
+  async updateBookingStatus(id, status) {
     try {
-      // Mapping: Jika UI mengirim 'rejected', kita ubah menjadi 'canceled' agar diterima Database ENUM
-      const dbStatus = status === 'rejected' ? 'canceled' : status;
+      const cleanStatus = String(status).trim().toLowerCase();
 
-      console.log(`📤 Syncing to DB ENUM - ID: ${id}, Status: ${dbStatus}`);
+      console.log(`📤 Mengirim ke API - ID: ${id}, Status: "${cleanStatus}"`);
 
       const response = await apiClient.patch(`/owner/bookings/${id}`, { 
-        status: dbStatus 
+        status: cleanStatus 
       });
 
       return response.data;

@@ -89,7 +89,7 @@ const router = createRouter({
         { path: 'bookings', name: 'owner-bookings', component: () => import('@/views/owner/BookingIncoming.vue') },
         { 
           path: 'bookings/:id/verify', 
-          name: 'owner-verify-booking', 
+          name: 'owner-booking-detail', // Ganti dari 'owner-verify-booking' ke sini
           component: () => import('@/views/owner/VerifyBooking.vue'),
           props: true
         },

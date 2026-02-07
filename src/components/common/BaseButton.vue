@@ -8,7 +8,7 @@ defineProps({
     type: String,
     default: 'primary',
     validator: v =>
-      ['primary', 'secondary', 'outline', 'ghost', 'danger', 'success', 'google'].includes(v)
+      ['primary', 'secondary', 'outline', 'ghost', 'danger', 'success', 'warning', 'google'].includes(v)
   },
   size: {
     type: String,
@@ -48,9 +48,11 @@ defineEmits(['click']);
     :aria-busy="loading"
     @click="$emit('click', $event)"
   >
-    <span v-if="loading" class="spinner" />
+    <span v-if="loading" class="spinner-container">
+      <span class="spinner" />
+    </span>
 
-    <span v-else class="content">
+    <span class="content" :class="{ 'opacity-0': loading }">
       <slot name="icon-left" />
       <span class="label">
         <slot />
@@ -62,7 +64,7 @@ defineEmits(['click']);
 
 <style scoped>
 /* =====================
-   BASE
+   BASE & VARIABLES
 ===================== */
 .base-btn {
   --c-primary: #00897b;
@@ -70,64 +72,56 @@ defineEmits(['click']);
   --c-secondary: #546e7a;
   --c-danger: #e53935;
   --c-success: #43a047;
+  --c-warning: #fca311; /* Tambahan Warna KodyaKost */
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
   position: relative;
   box-sizing: border-box;
+  outline: none;
 
   font-family: inherit;
   font-weight: 600;
   white-space: nowrap;
   user-select: none;
   cursor: pointer;
+  overflow: hidden;
 
   background: var(--btn-bg, transparent);
   color: var(--btn-color, #fff);
   border: var(--btn-border, 1px solid transparent);
   box-shadow: var(--btn-shadow, none);
 
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease,
-    color 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .content {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  transition: opacity 0.2s;
+}
+
+.opacity-0 {
+  opacity: 0;
 }
 
 /* =====================
    SIZE
 ===================== */
-.btn-sm {
-  height: 2.25rem;
-  padding: 0 1rem;
-  font-size: var(--font-xs);
-}
-
-.btn-md {
-  height: 2.75rem;
-  padding: 0 1.5rem;
-  font-size: var(--font-sm);
-}
-
-.btn-lg {
-  height: 3.25rem;
-  padding: 0 2rem;
-  font-size: var(--font-base);
-}
+.btn-sm { height: 2.25rem; padding: 0 1rem; font-size: 0.8125rem; }
+.btn-md { height: 2.85rem; padding: 0 1.75rem; font-size: 0.9375rem; }
+.btn-lg { height: 3.5rem; padding: 0 2.25rem; font-size: 1rem; }
 
 /* =====================
    RADIUS
 ===================== */
-.rounded-sm { border-radius: var(--radius-sm); }
-.rounded-md { border-radius: var(--radius-md); }
-.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-sm { border-radius: 4px; }
+.rounded-md { border-radius: 12px; } 
+.rounded-lg { border-radius: 16px; }
 .rounded-full { border-radius: 9999px; }
 
 /* =====================
@@ -135,25 +129,24 @@ defineEmits(['click']);
 ===================== */
 .btn-primary {
   --btn-bg: linear-gradient(135deg, var(--c-primary), var(--c-primary-dark));
-  --btn-shadow: 0 6px 16px rgba(0, 137, 123, 0.25);
+  --btn-shadow: 0 4px 12px rgba(0, 137, 123, 0.2);
 }
 
-.btn-secondary {
-  --btn-bg: var(--c-secondary);
-}
+.btn-secondary { --btn-bg: var(--c-secondary); }
+.btn-success { --btn-bg: var(--c-success); }
+.btn-danger { --btn-bg: var(--c-danger); }
 
-.btn-success {
-  --btn-bg: var(--c-success);
-}
-
-.btn-danger {
-  --btn-bg: var(--c-danger);
+/* Tambahan Variant Warning untuk tombol Edit */
+.btn-warning {
+  --btn-bg: var(--c-warning);
+  --btn-color: #fff;
+  --btn-shadow: 0 4px 12px rgba(252, 163, 17, 0.2);
 }
 
 .btn-outline {
   --btn-bg: transparent;
   --btn-color: var(--c-primary);
-  --btn-border: 1.5px solid var(--c-primary);
+  --btn-border: 2px solid var(--c-primary);
 }
 
 .btn-ghost {
@@ -172,11 +165,8 @@ defineEmits(['click']);
 ===================== */
 .base-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-}
-
-.btn-outline:hover:not(:disabled),
-.btn-ghost:hover:not(:disabled) {
-  background: rgba(0, 137, 123, 0.08);
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 }
 
 .base-btn:active:not(:disabled) {
@@ -184,40 +174,43 @@ defineEmits(['click']);
 }
 
 .base-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
+  filter: grayscale(0.5);
 }
 
 /* =====================
-   ICON MODE
+   SPINNER LOGIC
 ===================== */
-.btn-icon {
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
+.spinner-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* =====================
-   SPINNER
-===================== */
 .spinner {
-  width: 1.2em;
-  height: 1.2em;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 3px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
+  border-top-color: #fff;
   animation: spin 0.8s linear infinite;
 }
 
+.btn-outline .spinner, .btn-ghost .spinner, .btn-google .spinner {
+  border-top-color: var(--c-primary);
+  border-color: rgba(0, 137, 123, 0.1);
+}
+
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
 /* =====================
    UTIL
 ===================== */
-.w-full {
-  width: 100%;
-}
+.w-full { width: 100%; }
+.btn-icon { padding: 0; width: 2.85rem; } 
 </style>
