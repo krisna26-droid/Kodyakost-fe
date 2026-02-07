@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useRouter, useRoute } from 'vue-router'; 
 import { Icon } from '@iconify/vue';
@@ -11,6 +11,7 @@ const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute(); 
 
+// State Management
 const role = ref('tenant'); 
 const fullName = ref('');
 const phoneNumber = ref('');
@@ -20,36 +21,66 @@ const confirmPassword = ref('');
 const showPassword = ref(false);
 const agreeToTerms = ref(false);
 const showSuccessModal = ref(false);
+const isSubmitting = ref(false);
+
+// Untuk menyimpan referensi timeout agar tidak terjadi memory leak/error unmount
+let redirectTimer = null;
 
 const handleSignUp = async () => {
+  // 1. Validasi lokal sederhana
   if (password.value !== confirmPassword.value) {
     authStore.error = 'Passwords do not match!';
     return;
   }
-  
-  // Kirim objek payload sesuai yang diharapkan authStore.register
-  const isSuccess = await authStore.register({
-    name: fullName.value,
-    email: email.value,
-    password: password.value,
-    role: role.value,
-    phone: phoneNumber.value // Akan dikonversi ke phone_whatsapp di Store
-  });
 
-  if (isSuccess) {
-    showSuccessModal.value = true;
-    setTimeout(() => {
-      showSuccessModal.value = false;
-      // Kembali ke login dengan query role yang sama
-      router.push({ path: '/login', query: { role: role.value } });
-    }, 1500);
+  isSubmitting.value = true;
+  authStore.error = null; // Reset error sebelum mulai
+
+  try {
+    // 2. Proses Registrasi
+    const isSuccess = await authStore.register({
+      name: fullName.value,
+      email: email.value,
+      password: password.value,
+      role: role.value,
+      phone: phoneNumber.value
+    });
+
+    if (isSuccess) {
+      showSuccessModal.value = true;
+      
+      // 3. Redirect aman dengan pembersihan timer
+      redirectTimer = setTimeout(() => {
+        // Cek apakah modal masih terbuka sebelum menutupnya (mencegah unmount error)
+        showSuccessModal.value = false;
+        router.push({ 
+          path: '/login', 
+          query: { role: role.value, registered: 'true' } 
+        });
+      }, 2000);
+    }
+  } catch (err) {
+    console.error("Registration Error:", err);
+    authStore.error = "Terjadi kesalahan saat mendaftar. Silakan coba lagi.";
+  } finally {
+    isSubmitting.value = false;
   }
 };
 
+// Lifecycle Hooks
 onMounted(() => {
   authStore.error = null;
-  // Default role dari URL jika ada (?role=owner)
-  if (route.query.role) role.value = route.query.role;
+  // Ambil role dari URL query jika ada
+  if (route.query.role) {
+    role.value = route.query.role;
+  }
+});
+
+onUnmounted(() => {
+  // PENTING: Bersihkan timer jika user pindah halaman sebelum timeout selesai
+  if (redirectTimer) {
+    clearTimeout(redirectTimer);
+  }
 });
 </script>
 

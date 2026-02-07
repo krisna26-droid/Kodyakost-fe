@@ -129,6 +129,56 @@ export const useAuthStore = defineStore('auth', {
         console.error("Refresh user error:", err);
         return false;
       }
-    }
+    },
+    // --- 6. REGISTER (Frontend-only adjustment) ---
+    async register(payload) {
+      this.loading = true;
+      this.error = null;
+      try {
+        // Backend minta 'phone_whatsapp' di validasi, jadi kita kirim itu
+        const response = await apiClient.post('/register', {
+          name: payload.name,
+          email: payload.email,
+          password: payload.password,
+          role: payload.role,
+          phone_whatsapp: payload.phone // Penyesuaian ke key backend
+        });
+
+        // Backend Laravel kamu mengembalikan struktur: { data: {user}, access_token: "..." }
+        if (response.data && response.data.access_token) {
+          const user = response.data.data; // Backendmu pakai key 'data' untuk user
+          const token = response.data.access_token;
+
+          this.user = user;
+          this.token = token;
+
+          // Simpan ke storage agar tidak logout saat refresh
+          localStorage.setItem('user', JSON.stringify(user));
+          localStorage.setItem('token', token);
+          
+          // Set header untuk request selanjutnya
+          apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
+          return true;
+        }
+        
+        return false;
+      } catch (err) {
+        // Menangkap error validasi (misal: email sudah ada)
+        // Backendmu kirim: { success: false, message: 'Validation Error', errors: [...] }
+        if (err.response?.data?.errors) {
+          // Ambil pesan error pertama dari object errors
+          const firstError = Object.values(err.response.data.errors)[0][0];
+          this.error = firstError;
+        } else {
+          this.error = err.response?.data?.message || "Terjadi kesalahan pendaftaran";
+        }
+        
+        console.error("❌ Register Error:", err.response?.data || err.message);
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
   }
 });
